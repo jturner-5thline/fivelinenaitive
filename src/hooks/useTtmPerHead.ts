@@ -5,11 +5,14 @@ import { useCompany } from '@/hooks/useCompany';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { supabase } from '@/integrations/supabase/client';
 import { buildTtmPeriods, loadAllTtmRows, TTM_REVENUE_REALM_ID } from '@/lib/metrics/ttmRevenuePerDealHour';
-import { calculateTtmPerHead, type HeadcountRow } from '@/lib/metrics/ttmPerHead';
-import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
+import { calculateTtmPerHead, firmWideHeadcount, type HeadcountRow } from '@/lib/metrics/ttmPerHead';
+import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS } from '@/lib/monthlyHeadcount';
 import { loadGrossProfitMonths, type TtmNumeratorMetric } from './useTtmRevenuePerDealHour';
 
-export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumeratorMetric = 'revenue') {
+export type TtmHeadScope = 'debt' | 'firm';
+const ALL_REALMS = HEADCOUNT_UNITS.map(u => u.realmId);
+
+export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumeratorMetric = 'revenue', scope: TtmHeadScope = 'debt') {
   const { user } = useAuth();
   const { company } = useCompany();
   const { timeframe, reportingPeriod } = useInsightsTimeframe();
@@ -20,20 +23,23 @@ export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumerato
   const companyId = company?.id;
   const hasAccess = companyId === FIFTH_LINE_COMPANY_ID;
   const query = useQuery({
-    queryKey: ['ttm-per-head', metric, user?.id, companyId, start, end, view, multiplier],
+    queryKey: ['ttm-per-head', scope, metric, user?.id, companyId, start, end, view, multiplier],
     enabled: active && !!user && hasAccess,
     staleTime: 60_000,
     queryFn: async () => {
       if (!companyId || !hasAccess) throw new Error('This metric is available only in the 5th Line workspace.');
-      const [amounts, headcount] = await Promise.all([
-        metric === 'gross_profit' ? loadGrossProfitMonths(companyId, start, end) :
-          loadAllTtmRows((from, to) => supabase.from('quickbooks_invoices').select('txn_date, total_amt')
-            .eq('realm_id', TTM_REVENUE_REALM_ID).gte('txn_date', start).lte('txn_date', end).order('id').range(from, to)),
+      const realms = scope === 'firm' ? ALL_REALMS : [TTM_REVENUE_REALM_ID];
+      const [amounts, rawHeadcount] = await Promise.all([
+        metric === 'gross_profit'
+          ? Promise.all(realms.map(r => loadGrossProfitMonths(companyId, start, end, r))).then(a => a.flat())
+          : loadAllTtmRows((from, to) => supabase.from('quickbooks_invoices').select('txn_date, total_amt')
+            .in('realm_id', realms).gte('txn_date', start).lte('txn_date', end).order('id').range(from, to)),
         loadAllTtmRows((from, to) => supabase.from('monthly_entity_headcount').select('month, headcount')
-          .eq('company_id', HEADCOUNT_COMPANY_ID).eq('realm_id', TTM_REVENUE_REALM_ID)
-          .gte('month', start).lte('month', end).order('month').range(from, to)),
+          .eq('company_id', HEADCOUNT_COMPANY_ID).in('realm_id', realms)
+          .gte('month', start).lte('month', end).order('id').range(from, to)),
       ]);
-      const all = periods.map(p => calculateTtmPerHead(p, amounts, headcount as HeadcountRow[]));
+      const headcount = scope === 'firm' ? firmWideHeadcount(rawHeadcount as HeadcountRow[]) : rawHeadcount as HeadcountRow[];
+      const all = periods.map(p => calculateTtmPerHead(p, amounts, headcount));
       return all.slice(1).map((period, i) => {
         const prior = all[i];
         const delta = period.rate != null && prior?.rate != null ? period.rate - prior.rate : null;

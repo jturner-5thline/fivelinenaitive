@@ -22,3 +22,15 @@ export function calculateTtmPerHead(period: TtmPeriod, amounts: TtmInvoice[], he
   const avgHeadcount = complete ? months.reduce((s, m) => s + (m.headcount ?? 0), 0) / 12 : null;
   return { ...period, revenue, avgHeadcount, rate: avgHeadcount && avgHeadcount > 0 ? revenue / avgHeadcount : null, months };
 }
+
+/** Firm-wide monthly headcount: sum of all units minus 1 (James counted in Debt & Parent); months with no unit values are omitted. */
+export function firmWideHeadcount(rows: HeadcountRow[]): HeadcountRow[] {
+  const byMonth = new Map<string, number>();
+  for (const r of rows) {
+    const v = r.headcount == null ? NaN : Number(r.headcount);
+    if (!Number.isFinite(v)) continue;
+    const k = r.month.slice(0, 7);
+    byMonth.set(k, (byMonth.get(k) ?? 0) + v);
+  }
+  return [...byMonth].map(([k, total]) => ({ month: `${k}-01`, headcount: Math.max(0, total - 1) }));
+}

@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { InsightsDrilldownDrawer, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
-import { useTtmPerHead } from '@/hooks/useTtmPerHead';
+import { useTtmPerHead, type TtmHeadScope } from '@/hooks/useTtmPerHead';
+import { HEADCOUNT_DUPLICATE_NOTE } from '@/lib/monthlyHeadcount';
 import type { TtmNumeratorMetric } from '@/hooks/useTtmRevenuePerDealHour';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import type { TtmHeadMonth } from '@/lib/metrics/ttmPerHead';
@@ -57,12 +58,17 @@ const COPY: Record<TtmNumeratorMetric, { title: string; noun: string; id: string
   gross_profit: { title: 'TTM Gross Profit per Head', noun: 'Gross Profit', id: 'ttm-gross-profit-per-head' },
 };
 
-export function TtmPerHeadChart({ metric = 'revenue' }: { metric?: TtmNumeratorMetric }) {
-  const { title, noun, id } = COPY[metric];
-  const query = useTtmPerHead(1, true, metric);
+export function TtmPerHeadChart({ metric = 'revenue', scope = 'debt' }: { metric?: TtmNumeratorMetric; scope?: TtmHeadScope }) {
+  const firm = scope === 'firm';
+  const base = COPY[metric];
+  const title = firm ? `${base.title} (Firm-wide)` : base.title;
+  const noun = base.noun;
+  const id = firm ? `${base.id}-firm` : base.id;
+  const entity = firm ? 'All entities' : '5th Line Capital Advisors';
+  const query = useTtmPerHead(1, true, metric, scope);
   const [selected, setSelected] = useState<Row | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const wide = useTtmPerHead(3, expanded, metric);
+  const wide = useTtmPerHead(3, expanded, metric, scope);
   const rows = query.data ?? [];
   const wideRows = wide.data ?? [];
   const latest = rows.at(-1);
@@ -87,7 +93,7 @@ export function TtmPerHeadChart({ metric = 'revenue' }: { metric?: TtmNumeratorM
             <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Expand chart" onClick={() => setExpanded(true)}><Maximize2 className="h-4 w-4" /></Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">5th Line Capital Advisors · ÷ avg Debt headcount</p>
+        <p className="text-xs text-muted-foreground">{firm ? <>All entities · ÷ avg <span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">firm-wide headcount</span></> : '5th Line Capital Advisors · ÷ avg Debt headcount'}</p>
       </CardHeader>
       <CardContent>
         {query.isLoading ? <Skeleton className="h-[300px] w-full" /> : query.isError ? errorBox('min-h-[300px]', () => void query.refetch()) : <>
@@ -106,7 +112,7 @@ export function TtmPerHeadChart({ metric = 'revenue' }: { metric?: TtmNumeratorM
       <DialogContent className="max-w-6xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>5th Line Capital Advisors · {wideRows.length} rolling periods{wideRows.length ? ` (${wideRows[0].label} – ${wideRows.at(-1)!.label})` : ''}</DialogDescription>
+          <DialogDescription>{entity} · {wideRows.length} rolling periods{wideRows.length ? ` (${wideRows[0].label} – ${wideRows.at(-1)!.label})` : ''}</DialogDescription>
         </DialogHeader>
         {wide.isLoading ? <Skeleton className="h-[480px] w-full" /> : wide.isError ? errorBox('h-[480px]', () => void wide.refetch()) :
           <Bars rows={wideRows} onSelect={r => { setExpanded(false); setSelected(r); }} height={480} noun={noun} />}
@@ -114,7 +120,7 @@ export function TtmPerHeadChart({ metric = 'revenue' }: { metric?: TtmNumeratorM
     </Dialog>
     <InsightsDrilldownDrawer<TtmHeadMonth>
       open={selected != null} onClose={() => setSelected(null)}
-      context={selected ? { sourceId: id, sourceLabel: title, selection: selected.label, periodLabel: `${selected.start} – ${selected.end}`, filters: [{ label: noun, value: '5th Line Capital Advisors' }, { label: 'Headcount', value: 'Debt' }] } : null}
+      context={selected ? { sourceId: id, sourceLabel: title, selection: selected.label, periodLabel: `${selected.start} – ${selected.end}`, filters: [{ label: noun, value: entity }, { label: 'Headcount', value: firm ? 'Firm-wide (less 1 duplicate)' : 'Debt' }] } : null}
       columns={columns} rows={selected?.months ?? []}
       emptyHint="No months in this trailing 12-month period."
       summary={selected && <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">

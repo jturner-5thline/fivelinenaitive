@@ -66,16 +66,16 @@ export function useTtmRevenuePerDealHour(multiplier = 1, active = true, metric: 
   return { ...query, hasAccess, view };
 }
 /** Monthly QBO P&L "Gross Profit" for Capital Advisors, shaped like dated amounts. */
-export async function loadGrossProfitMonths(companyId: string, start: string, end: string) {
+export async function loadGrossProfitMonths(companyId: string, start: string, end: string, realmId: string = TTM_REVENUE_REALM_ID) {
   const months = monthPeriods(start, end);
   try {
-    await ensureFinServPnlSnapshots(companyId, months, TTM_REVENUE_REALM_ID);
+    await ensureFinServPnlSnapshots(companyId, months, realmId);
   } catch (err) {
     console.warn('[ttm-gross-profit] snapshot refresh failed; using stored months', err);
   }
   const rows = await loadAllTtmRows((from, to) => supabase.from('qbo_pnl_snapshots')
     .select('period_start, period_end, gross_profit')
-    .eq('company_id', companyId).eq('realm_id', TTM_REVENUE_REALM_ID).eq('accounting_method', 'Accrual')
+    .eq('company_id', companyId).eq('realm_id', realmId).eq('accounting_method', 'Accrual')
     .gte('period_start', start).lte('period_end', end)
     .order('id').range(from, to));
   const wanted = new Set(months.map(m => `${m.start_date}_${m.end_date}`));

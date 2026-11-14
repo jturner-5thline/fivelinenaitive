@@ -3114,6 +3114,10 @@ export function ConsolidatedDebtPipelineDashboard({
           <TtmPerHeadChart />
           <TtmPerHeadChart metric="gross_profit" />
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TtmPerHeadChart scope="firm" />
+          <TtmPerHeadChart metric="gross_profit" scope="firm" />
+        </div>
       </div>
 
       {(otherMetricsSection.cards.length > 0 || AVG_TIME_TILES.length > 0) && (
