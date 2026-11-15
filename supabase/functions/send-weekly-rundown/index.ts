@@ -68,7 +68,7 @@ function buildHtml(name: string | null): string {
           </tr>
           <tr>
             <td align="center">
-              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">Naitive · Weekly Rundown · Sent every Monday at 10:00 AM ET</p>
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">Naitive · Weekly Rundown · Sent every Monday at 10:05 AM CT</p>
             </td>
           </tr>
         </table>
@@ -98,9 +98,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Cron fires at 19:00 and 20:00 UTC every Monday so that exactly
-    // one of those fires aligns with 15:00 America/New_York year-round
-    // (15:00 EDT = 19:00 UTC, 15:00 EST = 20:00 UTC). Skip the other.
+    // Cron fires at 15:05 and 16:05 UTC every Monday so exactly one aligns
+    // with 10:05 America/Chicago year-round (CDT = 15:05 UTC, CST = 16:05 UTC).
+    // Variables keep legacy et* names but hold Central Time values.
     // Manual invocations (with a `testRecipient` body, or `force: true`)
     // bypass the guard so the function remains testable on demand.
     let body: any = {};
@@ -109,13 +109,13 @@ const handler = async (req: Request): Promise<Response> => {
     if (!isManual) {
       const etHour = Number(
         new Intl.DateTimeFormat('en-US', {
-          timeZone: 'America/New_York',
+          timeZone: 'America/Chicago',
           hour: 'numeric',
           hour12: false,
         }).format(new Date())
       );
       const etWeekday = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
+        timeZone: 'America/Chicago',
         weekday: 'short',
       }).format(new Date());
       if (etHour !== 10 || etWeekday !== 'Mon') {
