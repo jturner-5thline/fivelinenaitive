@@ -63,6 +63,7 @@ export const DEAL_CSV: CsvSchema = {
 };
 
 export const CONTACT_COMPANY_NAME = '__company_name__';
+export const CONTACT_FULL_NAME = '__full_name__';
 
 export const CONTACT_CSV: CsvSchema = {
   requiredKey: 'email',
@@ -70,7 +71,7 @@ export const CONTACT_CSV: CsvSchema = {
     { key: 'id', header: 'Record ID', kind: 'text', readOnly: true },
     { key: 'first_name', header: 'First Name', kind: 'text', aliases: ['firstname', 'given name'], example: 'Jane' },
     { key: 'last_name', header: 'Last Name', kind: 'text', aliases: ['lastname', 'surname'], example: 'Smith' },
-    { key: 'full_name', header: 'Full Name', kind: 'text', aliases: ['name', 'contact name'] },
+    { key: 'full_name', header: 'Full Name', kind: 'text', aliases: ['name', 'contact name'], readOnly: true, importKey: CONTACT_FULL_NAME },
     { key: 'email', header: 'Email', kind: 'text', aliases: ['email address', 'e-mail', 'primary email'], example: 'jane@example.com' },
     { key: CONTACT_COMPANY_NAME, header: 'Company Name', kind: 'text', aliases: ['company', 'account', 'organization', 'employer'], example: 'Example Co' },
     { key: 'job_title', header: 'Job Title', kind: 'text', aliases: ['title', 'role', 'position'], example: 'CFO' },

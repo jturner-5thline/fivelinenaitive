@@ -1,5 +1,9 @@
 # Roadmap
 
+## Contact CSV generated-name fix
+- [x] Prevent Full Name writes while retaining full-name-only import and existing Record ID matching.
+- [x] Eight regression tests passed; signed-in 1280x1800 preview intercepted 18 existing-contact updates with no generated-name payloads and showed success. Automatic build and new-test/schema lint passed; existing affected-file lint errors remain. No live writes or dependency removals; published app, mobile and real persistence unverified.
+
 ## Harvest FinServ integration
 - [x] Connect Harvest securely and verify read access.
 - [x] Add tenant-scoped January 2024 onward sync, status and manual refresh; 11,746 entries imported and status persisted after refresh.

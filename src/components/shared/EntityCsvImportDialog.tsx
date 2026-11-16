@@ -142,7 +142,7 @@ export function EntityCsvImportDialog({
     }
   };
 
-  const writable = schema.fields.filter(f => !f.readOnly);
+  const writable = schema.fields.filter(f => !f.readOnly || f.importKey);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>

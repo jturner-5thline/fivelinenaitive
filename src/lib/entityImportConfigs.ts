@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { EntityImportConfig } from '@/components/shared/EntityCsvImportDialog';
-import { COMPANY_CSV, CONTACT_COMPANY_NAME, CONTACT_CSV, DEAL_CSV } from '@/utils/csvSchemas';
+import { COMPANY_CSV, CONTACT_COMPANY_NAME, CONTACT_FULL_NAME, CONTACT_CSV, DEAL_CSV } from '@/utils/csvSchemas';
 import { normDomain, normKey, RECORD_ID_KEY } from '@/utils/entityCsv';
 
 async function fetchAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>): Promise<T[]> {
@@ -51,7 +51,7 @@ export function dealImportConfig(opts: { userId?: string; companyId?: string | n
 }
 
 const contactName = (r: Record<string, any>) =>
-  r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ');
+  r.full_name || r[CONTACT_FULL_NAME] || [r.first_name, r.last_name].filter(Boolean).join(' ');
 
 export function contactImportConfig(opts: { userId?: string; orgCompanyId?: string | null }): EntityImportConfig {
   return {
@@ -64,9 +64,10 @@ export function contactImportConfig(opts: { userId?: string; orgCompanyId?: stri
     isImportable: r => !!(r.email || contactName(r)),
     identityKeys: r => [r[RECORD_ID_KEY] && `id:${String(r[RECORD_ID_KEY]).trim().toLowerCase()}`, r.email && `e:${normKey(r.email)}`, !r.email && contactName(r) && `n:${normKey(contactName(r))}`].filter(Boolean) as string[],
     loadExisting: async () => {
-      if (!opts.orgCompanyId) return new Map();
+      const orgCompanyId = opts.orgCompanyId;
+      if (!orgCompanyId) return new Map();
       const rows = await fetchAll<{ id: string; email: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>((a, b) =>
-        supabase.from('contacts').select('id, email, full_name, first_name, last_name').eq('org_company_id', opts.orgCompanyId!).range(a, b));
+        supabase.from('contacts').select('id, email, full_name, first_name, last_name').eq('org_company_id', orgCompanyId).range(a, b));
       const m = new Map<string, string>();
       for (const r of rows) {
         m.set(`id:${r.id.toLowerCase()}`, r.id);
@@ -77,13 +78,14 @@ export function contactImportConfig(opts: { userId?: string; orgCompanyId?: stri
       return m;
     },
     prepare: async (recs, mode) => {
-      if (!opts.orgCompanyId) throw new Error('No workspace selected');
+      const orgCompanyId = opts.orgCompanyId;
+      if (!orgCompanyId) throw new Error('No workspace selected');
       // Resolve "Company Name" to CRM companies, creating missing ones.
       const names = [...new Set(recs.map(r => String(r[CONTACT_COMPANY_NAME] ?? '').trim()).filter(Boolean))];
       const byName = new Map<string, string>();
       if (names.length) {
         const existing = await fetchAll<{ id: string; name: string }>((a, b) =>
-          supabase.from('crm_companies').select('id, name').eq('org_company_id', opts.orgCompanyId!).range(a, b));
+          supabase.from('crm_companies').select('id, name').eq('org_company_id', orgCompanyId).range(a, b));
         existing.forEach(c => byName.set(normKey(c.name), c.id));
         const missing = names.filter(n => !byName.has(normKey(n)));
         for (let i = 0; i < missing.length; i += 100) {
@@ -94,11 +96,17 @@ export function contactImportConfig(opts: { userId?: string; orgCompanyId?: stri
         }
       }
       return recs.map(r => {
-        const { [CONTACT_COMPANY_NAME]: co, ...rest } = r;
+        const { [CONTACT_COMPANY_NAME]: co, [CONTACT_FULL_NAME]: importedName, full_name: legacyName, [RECORD_ID_KEY]: _recordId, ...rest } = r;
         const out: Record<string, any> = { ...rest };
+        // Explicit First/Last Name values win; only split when both are absent.
+        const name = String(importedName ?? legacyName ?? '').trim();
+        if (name && !out.first_name && !out.last_name) {
+          const [first, ...last] = name.split(/\s+/);
+          out.first_name = first;
+          out.last_name = last.join(' ');
+        }
         if (co) { const id = byName.get(normKey(co)); if (id) out.crm_company_id = id; }
         if (out.email) out.email_domain_normalized = String(out.email).split('@')[1]?.toLowerCase() ?? null;
-        if (!out.full_name && (out.first_name || out.last_name)) out.full_name = contactName(out);
         if (mode === 'insert') { out.org_company_id = opts.orgCompanyId; out.created_by = opts.userId; }
         else out.last_modified_by = opts.userId;
         return out;

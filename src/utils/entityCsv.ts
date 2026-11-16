@@ -14,6 +14,8 @@ export interface CsvField {
   example?: string;
   /** Exported but never written on import (e.g. Record ID, Created). */
   readOnly?: boolean;
+  /** Optional virtual input retained for preparation, never a physical column. */
+  importKey?: string;
 }
 
 export interface CsvSchema {
@@ -87,7 +89,11 @@ export function rowToRecord(schema: CsvSchema, row: string[], mapping: Record<nu
     const f = schema.fields.find(x => x.key === key);
     const raw = (row[Number(i)] ?? '').trim();
     if (!f || !raw) return;
-    if (f.readOnly) { if (key === 'id') out[RECORD_ID_KEY] = raw; return; }
+    if (f.readOnly) {
+      if (key === 'id') out[RECORD_ID_KEY] = raw;
+      else if (f.importKey) out[f.importKey] = raw;
+      return;
+    }
     switch (f.kind) {
       case 'number': { const n = toNumber(raw); if (n !== null) out[key] = n; break; }
       case 'integer': { const n = toNumber(raw); if (n !== null) out[key] = Math.round(n); break; }
