@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isoMonthKey, pickMonthlySnapshots } from "@/lib/qboMonthly";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -92,41 +93,17 @@ export function IncomeYTDByEntityCard() {
         .gte("period_start", rangeStart)
         .lte("period_end", rangeEnd);
       if (error) throw error;
-      // Pick the best monthly snapshot per (realm, month): prefer rows whose
-      // period_end falls in the SAME calendar month as period_start (true
-      // monthly P&L) over YTD/quarter aggregates that share the same
-      // period_start. Within that preference, pick the largest period_end and
-      // then the latest fetched_at.
-      const best: Record<string, { sameMonth: boolean; period_end: string; fetched_at: string; row: any }> = {};
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
-        if (!r.period_start || !r.realm_id) continue;
-        if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
-        const d = new Date(r.period_start);
-        const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        const key = `${r.realm_id}::${mKey}`;
-        const pe = r.period_end ?? r.period_start;
-        const fa = r.fetched_at ?? "";
-        const endD = new Date(pe);
-        const sameMonth =
-          endD.getFullYear() === d.getFullYear() && endD.getMonth() === d.getMonth();
-        const prev = best[key];
-        const better =
-          !prev ||
-          (sameMonth && !prev.sameMonth) ||
-          (sameMonth === prev.sameMonth &&
-            (pe > prev.period_end || (pe === prev.period_end && fa > prev.fetched_at)));
-        if (better) {
-          best[key] = { sameMonth, period_end: pe, fetched_at: fa, row: r };
-        }
         if (r.fetched_at && (!lastSync || r.fetched_at > lastSync)) lastSync = r.fetched_at;
       }
+      const best = pickMonthlySnapshots(rows ?? []);
       // monthly[realmId][monthKey] -> { income_total, gross_profit, net_operating_income }
       const monthly: Record<string, Record<string, { income_total: number; gross_profit: number; net_operating_income: number }>> = {};
       for (const e of ENTITIES) monthly[e.realmId] = {};
       for (const key of Object.keys(best)) {
         const [realm, mKey] = key.split("::");
-        const row = best[key].row;
+        const row = best[key];
         if (!monthly[realm]) continue;
         monthly[realm][mKey] = {
           income_total: Number(row.income_total ?? 0),
@@ -148,19 +125,21 @@ export function IncomeYTDByEntityCard() {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("quickbooks_invoices")
-        .select("txn_date, total_amt")
+        .select("realm_id, txn_date, total_amt")
         .in("realm_id", realmIds)
         .gte("txn_date", rangeStart)
         .lte("txn_date", rangeEnd);
       if (error) throw error;
       const totals: Record<string, number> = {};
+      const byRealm: Record<string, Record<string, number>> = {};
       for (const r of rows ?? []) {
-        if (!r.txn_date) continue;
-        const d = new Date(r.txn_date);
-        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        totals[k] = (totals[k] ?? 0) + Number(r.total_amt ?? 0);
+        const k = isoMonthKey(r.txn_date);
+        if (!k || !r.realm_id) continue;
+        const amt = Number(r.total_amt ?? 0);
+        totals[k] = (totals[k] ?? 0) + amt;
+        (byRealm[r.realm_id] ??= {})[k] = (byRealm[r.realm_id][k] ?? 0) + amt;
       }
-      return totals;
+      return { totals, byRealm };
     },
   });
 
@@ -174,7 +153,10 @@ export function IncomeYTDByEntityCard() {
       const row: Record<string, number | string> = { month: mo.label };
       let monthTotal = 0;
       for (const e of ENTITIES) {
-        const amt = monthly?.[e.realmId]?.[mo.key]?.[activeMetric.field] ?? 0;
+        const amt =
+          metric === "revenue"
+            ? invoiceTotals?.byRealm[e.realmId]?.[mo.key] ?? 0
+            : monthly?.[e.realmId]?.[mo.key]?.[activeMetric.field] ?? 0;
         monthTotal += amt;
         if (cumulative) {
           running[e.realmId] += amt;
@@ -184,7 +166,7 @@ export function IncomeYTDByEntityCard() {
         }
       }
       if (useInvoiceTotals) {
-        monthTotal = invoiceTotals?.[mo.key] ?? 0;
+        monthTotal = invoiceTotals?.totals[mo.key] ?? 0;
       }
       if (cumulative) {
         runningTotal += monthTotal;

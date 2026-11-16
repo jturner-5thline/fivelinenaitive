@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isoMonthKey } from "@/lib/qboMonthly";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -95,8 +96,7 @@ export function IncomeYTDMoMVarianceCard() {
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.txn_date || !r.realm_id) continue;
-        const d = new Date(r.txn_date);
-        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const ym = isoMonthKey(r.txn_date)!;
         const k = `${r.realm_id}::${ym}`;
         const amt = Number(r.total_amt ?? 0);
         totals.set(k, (totals.get(k) ?? 0) + amt);
