@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeframeRange } from "./useTimeframeRange";
+import { withDebtPnlRevenue, DEBT_REVENUE_REALM_ID } from "@/lib/qboMonthly";
 
 /**
  * YTD Income: Breakdown by Entity — pie chart showing each entity's
@@ -63,14 +64,24 @@ export function YTDIncomeBreakdownByEntityCard() {
         .gte("txn_date", rangeStart)
         .lte("txn_date", rangeEnd);
       if (error) throw error;
+      // Capital Advisors revenue = QBO P&L Total Income (excludes Ramp), not invoices.
+      const { data: snaps, error: snapErr } = await supabase
+        .from("qbo_pnl_snapshots")
+        .select("realm_id, period_start, period_end, income_total, fetched_at, accounting_method")
+        .eq("realm_id", DEBT_REVENUE_REALM_ID)
+        .gte("period_start", rangeStart)
+        .lte("period_end", rangeEnd);
+      if (snapErr) throw snapErr;
+      const revenueRows = withDebtPnlRevenue(rows ?? [], snaps ?? []);
+      const syncedAt = (rows ?? []).map((r) => r.synced_at).filter(Boolean) as string[];
       const totals: Record<string, number> = {};
       for (const e of ENTITIES) totals[e.realmId] = 0;
       let lastSync: string | null = null;
-      for (const r of rows ?? []) {
+      for (const r of revenueRows) {
         if (!r.realm_id || !r.txn_date) continue;
         totals[r.realm_id] = (totals[r.realm_id] ?? 0) + Number(r.total_amt ?? 0);
-        if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
       }
+      for (const t of syncedAt) if (!lastSync || t > lastSync) lastSync = t;
       return { totals, lastSync };
     },
   });

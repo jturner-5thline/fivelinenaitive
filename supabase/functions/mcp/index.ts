@@ -3502,6 +3502,43 @@ var get_funnel_velocity_default = defineTool47({
 // src/lib/mcp/tools/get-revenue-metrics.ts
 import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z48 } from "npm:zod@^3.23.0";
+
+// src/lib/qboMonthly.ts
+function isoMonthKey(date2) {
+  if (!date2 || !/^\d{4}-\d{2}/.test(date2)) return null;
+  return date2.slice(0, 7);
+}
+function lastDayOfMonth(key) {
+  const [y, m] = key.split("-").map(Number);
+  return `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}
+function pickMonthlySnapshots(rows) {
+  const best = {};
+  for (const r of rows) {
+    if (!r.realm_id) continue;
+    if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
+    const startKey = isoMonthKey(r.period_start);
+    const endKey = isoMonthKey(r.period_end ?? r.period_start);
+    if (!startKey || startKey !== endKey) continue;
+    if (!r.period_start.endsWith("-01") || r.period_end !== lastDayOfMonth(startKey)) continue;
+    const key = `${r.realm_id}::${startKey}`;
+    const prev = best[key];
+    if (!prev || (r.fetched_at ?? "") > (prev.fetched_at ?? "")) best[key] = r;
+  }
+  return best;
+}
+var DEBT_REVENUE_REALM_ID = "193514877331929";
+function withDebtPnlRevenue(invoices, snapshots) {
+  const out = invoices.filter((r) => r.realm_id !== DEBT_REVENUE_REALM_ID);
+  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id === DEBT_REVENUE_REALM_ID));
+  for (const key of Object.keys(best)) {
+    const month = key.split("::")[1];
+    out.push({ realm_id: DEBT_REVENUE_REALM_ID, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
+  }
+  return out;
+}
+
+// src/lib/mcp/tools/get-revenue-metrics.ts
 var get_revenue_metrics_default = defineTool48({
   name: "get_revenue_metrics",
   title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
@@ -3531,7 +3568,7 @@ var get_revenue_metrics_default = defineTool48({
       if (page.length < pageSize) break;
     }
     let pnlQuery = sb.from("qbo_pnl_snapshots").select(
-      "realm_id, period_start, period_end, accounting_method, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income"
+      "realm_id, period_start, period_end, accounting_method, fetched_at, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income"
     ).order("period_start", { ascending: true }).limit(500);
     if (from) pnlQuery = pnlQuery.gte("period_start", from);
     if (to) pnlQuery = pnlQuery.lt("period_end", to);
@@ -3539,6 +3576,8 @@ var get_revenue_metrics_default = defineTool48({
     const { data: pnl, error: pnlError } = await pnlQuery;
     if (pnlError) return errorResult(pnlError.message);
     const amount = (i) => Number(i.total_amt) || 0;
+    const revenueRows = withDebtPnlRevenue(invoices, pnl ?? []);
+    const revAmount = (r) => Number(r.total_amt) || 0;
     const payload = {
       timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
       summary: {
@@ -3551,6 +3590,12 @@ var get_revenue_metrics_default = defineTool48({
       ),
       by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
       by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
+      revenue: {
+        basis: "Debt Advisory (realm 193514877331929) uses QBO P&L Total Income excluding Ramp; other entities use invoices. Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
+        total: sum(revenueRows.map(revAmount)),
+        by_month: groupAggregate(revenueRows, (r) => (r.txn_date ?? "").slice(0, 7) || "unknown", revAmount).sort((a, b) => a.key.localeCompare(b.key)),
+        by_entity: groupAggregate(revenueRows, (r) => r.realm_id ?? "unknown", revAmount)
+      },
       pnl_snapshots: pnl ?? [],
       ...include_invoices ? { invoices } : {}
     };
@@ -6779,7 +6824,7 @@ function fmtDate(d) {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-function lastDayOfMonth(year, monthIdx) {
+function lastDayOfMonth2(year, monthIdx) {
   return new Date(year, monthIdx + 1, 0).getDate();
 }
 function generateOccurrences(entry, rangeStart, rangeEnd) {
@@ -6861,7 +6906,7 @@ function generateOccurrences(entry, rangeStart, rangeEnd) {
         target = new Date(year, month, 1);
         while (target.getDay() !== dow) target.setDate(target.getDate() + 1);
       } else {
-        target = new Date(year, month, lastDayOfMonth(year, month));
+        target = new Date(year, month, lastDayOfMonth2(year, month));
         while (target.getDay() !== dow) target.setDate(target.getDate() - 1);
       }
       if (target >= effectiveStart && target <= effectiveEnd) {
@@ -6877,7 +6922,7 @@ function generateOccurrences(entry, rangeStart, rangeEnd) {
     while (cur <= effectiveEnd) {
       const year = cur.getFullYear();
       const month = cur.getMonth();
-      const lastDay = lastDayOfMonth(year, month);
+      const lastDay = lastDayOfMonth2(year, month);
       const day = Math.min(dom, lastDay);
       const target = new Date(year, month, day);
       if (target >= effectiveStart && target <= effectiveEnd) {

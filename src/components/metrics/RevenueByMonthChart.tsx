@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { QBO_ENTITIES } from '@/config/qboEntities';
+import { withDebtPnlRevenue, DEBT_REVENUE_REALM_ID } from '@/lib/qboMonthly';
 
 // Shared axis / tooltip / legend tokens — mirrors ExecutiveDashboard so the
 // chart looks identical after the move.
@@ -97,7 +98,18 @@ export function RevenueByMonthChart({ height = 240 }: { height?: number }) {
       if (end) q = q.lte('txn_date', end);
       const { data: rows, error } = await q;
       if (error) throw error;
-      return rows ?? [];
+      // Debt Advisory revenue = QBO P&L Total Income (excludes Ramp), not invoices.
+      let sq = supabase
+        .from('qbo_pnl_snapshots')
+        .select('realm_id, period_start, period_end, income_total, fetched_at, accounting_method')
+        .eq('realm_id', DEBT_REVENUE_REALM_ID);
+      if (start) sq = sq.gte('period_start', start.slice(0, 7) + '-01');
+      if (end) sq = sq.lte('period_end', end);
+      const { data: snaps, error: snapErr } = await sq;
+      if (snapErr) throw snapErr;
+      return withDebtPnlRevenue(rows ?? [], snaps ?? []).map(r => ({
+        txn_date: r.txn_date, total_amt: r.total_amt, realm_id: r.realm_id,
+      }));
     },
     enabled: !!user && !!start && !!end,
     staleTime: 30_000,

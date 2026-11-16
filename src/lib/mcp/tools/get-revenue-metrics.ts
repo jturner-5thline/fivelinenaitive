@@ -2,6 +2,7 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 import { groupAggregate, sum } from "../insights";
+import { withDebtPnlRevenue, type RevenueRowLike } from "../../qboMonthly";
 
 type Invoice = {
   id: string;
@@ -51,7 +52,7 @@ export default defineTool({
     let pnlQuery = sb
       .from("qbo_pnl_snapshots")
       .select(
-        "realm_id, period_start, period_end, accounting_method, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income",
+        "realm_id, period_start, period_end, accounting_method, fetched_at, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income",
       )
       .order("period_start", { ascending: true })
       .limit(500);
@@ -62,6 +63,10 @@ export default defineTool({
     if (pnlError) return errorResult(pnlError.message);
 
     const amount = (i: Invoice) => Number(i.total_amt) || 0;
+    // Revenue basis: Capital Advisors (Debt Advisory) = QBO Accrual P&L Total Income
+    // (excludes Ramp Loans / Other Income); other entities = invoiced totals.
+    const revenueRows = withDebtPnlRevenue(invoices, (pnl ?? []) as never[]);
+    const revAmount = (r: RevenueRowLike) => Number(r.total_amt) || 0;
     const payload = {
       timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
       summary: {
@@ -74,6 +79,12 @@ export default defineTool({
       ),
       by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
       by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
+      revenue: {
+        basis: "Debt Advisory (realm 193514877331929) uses QBO P&L Total Income excluding Ramp; other entities use invoices. Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
+        total: sum(revenueRows.map(revAmount)),
+        by_month: groupAggregate(revenueRows, (r) => (r.txn_date ?? "").slice(0, 7) || "unknown", revAmount).sort((a, b) => a.key.localeCompare(b.key)),
+        by_entity: groupAggregate(revenueRows, (r) => r.realm_id ?? "unknown", revAmount),
+      },
       pnl_snapshots: pnl ?? [],
       ...(include_invoices ? { invoices } : {}),
     };

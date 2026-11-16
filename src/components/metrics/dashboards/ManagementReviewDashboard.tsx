@@ -31,6 +31,7 @@ import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, t
 import { TtmRevenueDrilldownBody } from '@/components/metrics/dashboards/qir/TtmRevenueDrilldownBody';
 import { StatDrilldownBody } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
+import { withDebtPnlRevenue, DEBT_REVENUE_REALM_ID } from '@/lib/qboMonthly';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
@@ -2283,6 +2284,26 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const isLoading = qb.isLoading || metrics.isLoading;
   const qbConnected = (qb.rawInvoices?.length ?? 0) > 0 || (qb.rawPayments?.length ?? 0) > 0 || (qb.rawExpenses?.length ?? 0) > 0;
   const qbInvoices = qb.rawInvoices ?? [];
+  // Debt Advisory revenue = QBO Accrual P&L Total Income (excludes Ramp), not invoices.
+  const debtPnlRevenue = useQuery({
+    queryKey: ['management-review-debt-pnl-revenue', company?.id],
+    enabled: !!company?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('qbo_pnl_snapshots')
+        .select('realm_id, period_start, period_end, income_total, fetched_at, accounting_method')
+        .eq('company_id', company!.id)
+        .eq('realm_id', DEBT_REVENUE_REALM_ID)
+        .gte('period_start', '2020-01-01');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const qbRevenueRows = useMemo(
+    () => withDebtPnlRevenue(qbInvoices as any[], (debtPnlRevenue.data ?? []) as any[]) as any[],
+    [qbInvoices, debtPnlRevenue.data],
+  );
   const qbPayments = qb.rawPayments ?? [];
   const qbExpenses = qb.rawExpenses ?? [];
 
@@ -2299,12 +2320,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     return buckets.map((bucket) => ({
       key: bucket.key,
       month: bucket.label,
-      revenue: sumAmountInRange(qbInvoices, bucket, inv => inv.txn_date, inv => inv.total_amt),
+      revenue: sumAmountInRange(qbRevenueRows, bucket, inv => inv.txn_date, inv => inv.total_amt),
       payments: sumAmountInRange(qbPayments, bucket, payment => payment.txn_date, payment => payment.total_amt),
       expenses: sumAmountInRange(qbExpenses, bucket, expense => expense.txn_date, expense => expense.total_amt),
       invoiceCount: countInRange(qbInvoices, bucket, inv => inv.txn_date),
     }));
-  }, [periodRange, qbInvoices, qbPayments, qbExpenses, reportingPeriod?.view]);
+  }, [periodRange, qbInvoices, qbRevenueRows, qbPayments, qbExpenses, reportingPeriod?.view]);
 
   const ytdRange = useMemo<DateRange>(() => ({
     start: startOfDay(new Date(periodRange.end.getFullYear(), 0, 1)),
@@ -2338,16 +2359,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     const buckets = buildMonthBuckets(ytdRange.start, ytdRange.end);
     return buckets.map((bucket) => ({
       month: bucket.label,
-      revenue: sumAmountInRange(qbInvoices, bucket, inv => inv.txn_date, inv => inv.total_amt),
+      revenue: sumAmountInRange(qbRevenueRows, bucket, inv => inv.txn_date, inv => inv.total_amt),
     }));
-  }, [qbInvoices, ytdRange]);
+  }, [qbInvoices, qbRevenueRows, ytdRange]);
 
   const periodRevenue = useMemo(
-    () => sumAmountInRange(qbInvoices, periodRange, inv => inv.txn_date, inv => inv.total_amt),
+    () => sumAmountInRange(qbRevenueRows, periodRange, inv => inv.txn_date, inv => inv.total_amt),
     [qbInvoices, periodRange],
   );
   const previousRevenue = useMemo(
-    () => sumAmountInRange(qbInvoices, previousRange, inv => inv.txn_date, inv => inv.total_amt),
+    () => sumAmountInRange(qbRevenueRows, previousRange, inv => inv.txn_date, inv => inv.total_amt),
     [qbInvoices, previousRange],
   );
   const periodExpenses = useMemo(
@@ -2457,13 +2478,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       (r: any) => r.total_amt,
     );
 
-  const debtRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
-  const debtRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtRevCurr = qbConnected ? sumByRealm(qbRevenueRows, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtRevPrev = qbConnected ? sumByRealm(qbRevenueRows, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
   const debtProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_DEBT_REALM_ID) : null;
   const debtProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_DEBT_REALM_ID) : null;
 
-  const finservRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
-  const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservRevCurr = qbConnected ? sumByRealm(qbRevenueRows, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservRevPrev = qbConnected ? sumByRealm(qbRevenueRows, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
 
@@ -2473,7 +2494,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     const end = endOfMonth(periodRange.end);
     const start = startOfMonth(new Date(end.getFullYear(), end.getMonth() - 2, 1));
     const range = { start, end };
-    const rev = qbConnected ? sumByRealm(qbInvoices, range, KEY_STATS_FINSERV_REALM_ID) : null;
+    const rev = qbConnected ? sumByRealm(qbRevenueRows, range, KEY_STATS_FINSERV_REALM_ID) : null;
     const profit = pnlConnected ? getPnlSnapshotTotal(range, KEY_STATS_FINSERV_REALM_ID) : null;
     const avgRev = rev != null ? rev / 3 : null;
     const avgProfit = profit != null ? profit / 3 : null;
@@ -2494,7 +2515,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       rows,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qbConnected, pnlConnected, qbInvoices, periodRange.end, pnlSnapshots]);
+  }, [qbConnected, pnlConnected, qbInvoices, qbRevenueRows, periodRange.end, pnlSnapshots]);
 
   // Live bank balances (current snapshot) for Key Stats liquidity rows —
   // same source as the Controller dashboard (quickbooks_accounts, Bank type).
@@ -2533,17 +2554,17 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
     return buckets.map((bucket) => ({
       month: bucket.label,
-      revenue: sumAmountInRange(qbInvoices, bucket, inv => inv.txn_date, inv => inv.total_amt),
+      revenue: sumAmountInRange(qbRevenueRows, bucket, inv => inv.txn_date, inv => inv.total_amt),
     }));
-  }, [qbInvoices, ttmRange]);
+  }, [qbInvoices, qbRevenueRows, ttmRange]);
   const ttmRevenue = qbConnected ? ttmSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
 
   const priorTtmRevenue = useMemo(
-    () => qbConnected ? sumAmountInRange(qbInvoices, priorTtmRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    () => qbConnected ? sumAmountInRange(qbRevenueRows, priorTtmRange, inv => inv.txn_date, inv => inv.total_amt) : null,
     [qbConnected, qbInvoices, priorTtmRange],
   );
   const priorYtdRevenue = useMemo(
-    () => qbConnected ? sumAmountInRange(qbInvoices, priorYtdRange, inv => inv.txn_date, inv => inv.total_amt) : null,
+    () => qbConnected ? sumAmountInRange(qbRevenueRows, priorYtdRange, inv => inv.txn_date, inv => inv.total_amt) : null,
     [qbConnected, qbInvoices, priorYtdRange],
   );
 
@@ -2580,7 +2601,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         const end = bucket.end;
         const start = startOfMonth(subMonths(end, 11));
         const revenue = sumAmountInRange(
-          qbInvoices,
+          qbRevenueRows,
           { start, end },
           inv => inv.txn_date,
           inv => inv.total_amt,
@@ -2593,7 +2614,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       const end = bucket.end;
       const start = startOfMonth(subMonths(end, 11));
       const revenue = sumAmountInRange(
-        qbInvoices,
+        qbRevenueRows,
         { start, end },
         inv => inv.txn_date,
         inv => inv.total_amt,
@@ -2606,7 +2627,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         revenue,
       };
     });
-  }, [periodRange, qbInvoices, reportingPeriod?.view]);
+  }, [periodRange, qbInvoices, qbRevenueRows, reportingPeriod?.view]);
   const ttmTrendValues = ttmTrendSeries.map(p => p.revenue);
 
   const pipelineUnavailableReason = isCurrentReportingPeriod
@@ -3034,7 +3055,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     : ttmSeries.map(p => p.month);
   const monthlyTrendValues = isQuarterView
     ? ttmTrendSeries.map(p => sumAmountInRange(
-        qbInvoices,
+        qbRevenueRows,
         { start: startOfQuarter(p.windowEnd), end: p.windowEnd },
         inv => inv.txn_date,
         inv => inv.total_amt,
@@ -3056,19 +3077,19 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         ? endOfQuarter(subQuarters(firstEnd, 1))
         : endOfMonth(subMonths(firstEnd, 1));
       const prevStart = startOfMonth(subMonths(prevEnd, 11));
-      return sumAmountInRange(qbInvoices, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
+      return sumAmountInRange(qbRevenueRows, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
     }
     if (isQuarterView) {
       const firstEnd = ttmTrendSeries[0]?.windowEnd;
       if (!firstEnd) return null;
       const prevQEnd = endOfQuarter(subQuarters(firstEnd, 1));
       const prevQStart = startOfQuarter(prevQEnd);
-      return sumAmountInRange(qbInvoices, { start: prevQStart, end: prevQEnd }, inv => inv.txn_date, inv => inv.total_amt);
+      return sumAmountInRange(qbRevenueRows, { start: prevQStart, end: prevQEnd }, inv => inv.txn_date, inv => inv.total_amt);
     }
     const prevEnd = endOfMonth(subMonths(ttmRange.start, 1));
     const prevStart = startOfMonth(prevEnd);
-    return sumAmountInRange(qbInvoices, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
-  }, [qbConnected, trendMode, isQuarterView, ttmTrendSeries, ttmRange, qbInvoices, activeTrendValues.length]);
+    return sumAmountInRange(qbRevenueRows, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
+  }, [qbConnected, trendMode, isQuarterView, ttmTrendSeries, ttmRange, qbInvoices, qbRevenueRows, activeTrendValues.length]);
   const trendDeltasPct = activeTrendValues.map((v, i) => {
     const prev = i === 0 ? priorFirstValue : activeTrendValues[i - 1];
     if (prev == null || prev === 0) return null;
@@ -3490,7 +3511,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     },
     {
       widget: 'TTM Revenue',
-      dataSource: 'quickbooks_invoices (all entities)',
+      dataSource: 'quickbooks_invoices (Debt Advisory: QBO P&L Total Income)',
       queryParams: `txn_date in ${formatRangeLabel(ttmRange)}`,
       reportingPeriod: periodLabel,
       state: qbConnected ? 'live-query-cached-recomputed' : 'truthful-empty',
@@ -3498,7 +3519,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     },
     {
       widget: 'TTM Revenue Trend chart',
-      dataSource: 'quickbooks_invoices (all entities)',
+      dataSource: 'quickbooks_invoices (Debt Advisory: QBO P&L Total Income)',
       queryParams: chartMode === 'quarter'
         ? `rolling 12-mo windows for each month in ${formatRangeLabel(periodRange)}`
         : `rolling 12-mo windows for 12 months ending ${format(periodRange.end, 'yyyy-MM-dd')}`,
