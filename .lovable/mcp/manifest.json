@@ -4960,7 +4960,7 @@
       {
         "name": "get_per_head_metrics",
         "title": "Get TTM revenue and gross profit per head",
-        "description": "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors ÷ Debt headcount), 'finserv' (5th Line Financial Services ÷ FinServ headcount) or 'firm' (all entities ÷ firm headcount minus the James duplicate). Revenue uses QuickBooks invoices; gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
+        "description": "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors ÷ Debt headcount), 'finserv' (5th Line Financial Services ÷ FinServ headcount) or 'firm' (all entities ÷ firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
