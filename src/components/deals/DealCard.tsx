@@ -1,3 +1,4 @@
+import { finservDisplayAmount } from '@/lib/finservValue';
 import { TimeInStageText } from './TimeInStageBadge';
 import { useDealEngagementOptions } from '@/hooks/useDealEngagementOptions';
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
@@ -443,10 +444,10 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               data-numeric
               className="flex items-baseline gap-1 text-[26px] font-semibold leading-none tracking-tight tabular-nums whitespace-nowrap shrink-0"
               style={{ color: '#f8fbff' }}
-              title={deal.dealClass === 'finserv' ? formatFinServUSD(deal.mrr ?? 0) : formatUSDFromDollars(deal.value)}
+              title={deal.dealClass === 'finserv' ? formatFinServUSD(finservDisplayAmount(deal).amount) : formatUSDFromDollars(deal.value)}
             >
-              {deal.dealClass === 'finserv' ? formatFinServUSD(deal.mrr ?? 0) : formatUSDFromDollars(deal.value)}
-              {deal.dealClass === 'finserv' && (
+              {deal.dealClass === 'finserv' ? formatFinServUSD(finservDisplayAmount(deal).amount) : formatUSDFromDollars(deal.value)}
+              {deal.dealClass === 'finserv' && finservDisplayAmount(deal).recurring && (
                 <span className="text-[13px] font-medium" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
                   /mo
                 </span>

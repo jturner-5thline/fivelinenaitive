@@ -61,3 +61,13 @@ export function warnIfFinServValueMismatch(
     oneTimeRevenue: toNumber(deal.oneTimeRevenue),
   });
 }
+/**
+ * Headline amount for a FinServ deal card / stage total. Recurring deals show
+ * monthly MRR; fixed-fee (one-time) deals with no MRR show their one-time total.
+ */
+export function finservDisplayAmount(deal: Pick<Deal, 'mrr' | 'oneTimeRevenue' | 'value'>) {
+  const mrr = toNumber(deal.mrr);
+  if (mrr > 0) return { amount: mrr, recurring: true };
+  const oneTime = toNumber(deal.oneTimeRevenue) || toNumber(deal.value);
+  return { amount: oneTime, recurring: false };
+}

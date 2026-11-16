@@ -1,3 +1,4 @@
+import { finservDisplayAmount } from '@/lib/finservValue';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
@@ -127,7 +128,7 @@ function DroppableStageColumnImpl({
   });
   const { formatCurrencyValue } = usePreferences();
   const stageTotal = deals.reduce(
-    (sum, d) => sum + (d.dealClass === 'finserv' ? (d.mrr ?? 0) : (d.value ?? 0)),
+    (sum, d) => sum + (d.dealClass === 'finserv' ? finservDisplayAmount(d).amount : (d.value ?? 0)),
     0,
   );
 
@@ -397,7 +398,7 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
     });
 
     const dealAmount = (d: Deal) =>
-      Number((d.dealClass === 'finserv' ? d.mrr : d.value) ?? 0);
+      (d.dealClass === 'finserv' ? finservDisplayAmount(d).amount : Number(d.value ?? 0));
 
     grouped.forEach((stageDeals, stageId) => {
       stageDeals.sort((a, b) => {

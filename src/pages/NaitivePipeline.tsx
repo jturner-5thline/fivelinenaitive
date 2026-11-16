@@ -1,3 +1,4 @@
+import { finservDisplayAmount } from '@/lib/finservValue';
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail, Send, History } from 'lucide-react';
@@ -204,7 +205,7 @@ function StageColumn({
           )}
           <span className="ml-auto flex items-center gap-1 shrink-0">
             <span className="text-xs font-medium tabular-nums text-foreground/80 whitespace-nowrap">
-              {formatCurrencyValue(deals.reduce((sum, d) => sum + (d.dealClass === 'finserv' ? (d.mrr ?? 0) : (d.value ?? 0)), 0))}
+              {formatCurrencyValue(deals.reduce((sum, d) => sum + (d.dealClass === 'finserv' ? finservDisplayAmount(d).amount : (d.value ?? 0)), 0))}
             </span>
             <span className="text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">{deals.length}</span>
           </span>

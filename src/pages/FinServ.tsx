@@ -1,3 +1,4 @@
+import { finservDisplayAmount } from '@/lib/finservValue';
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, FileX, Maximize2, Minimize2 } from 'lucide-react';
@@ -85,7 +86,7 @@ function StageColumn({
   const { setNodeRef } = useDroppable({ id: stage.id });
   const { formatCurrencyValue } = usePreferences();
   const stageTotal = deals.reduce(
-    (sum, d) => sum + (d.dealClass === 'finserv' ? (d.mrr ?? 0) : (d.value ?? 0)),
+    (sum, d) => sum + (d.dealClass === 'finserv' ? finservDisplayAmount(d).amount : (d.value ?? 0)),
     0,
   );
 
