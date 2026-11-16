@@ -12,7 +12,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeframeRange } from "./useTimeframeRange";
-import { withDebtPnlRevenue, DEBT_REVENUE_REALM_ID } from "@/lib/qboMonthly";
+import { withDebtPnlRevenue, PNL_REVENUE_REALM_IDS } from "@/lib/qboMonthly";
 
 /**
  * YTD Income: Breakdown by Entity — pie chart showing each entity's
@@ -68,7 +68,7 @@ export function YTDIncomeBreakdownByEntityCard() {
       const { data: snaps, error: snapErr } = await supabase
         .from("qbo_pnl_snapshots")
         .select("realm_id, period_start, period_end, income_total, fetched_at, accounting_method")
-        .eq("realm_id", DEBT_REVENUE_REALM_ID)
+        .in("realm_id", [...PNL_REVENUE_REALM_IDS])
         .gte("period_start", rangeStart)
         .lte("period_end", rangeEnd);
       if (snapErr) throw snapErr;

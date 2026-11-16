@@ -3528,12 +3528,23 @@ function pickMonthlySnapshots(rows) {
   return best;
 }
 var DEBT_REVENUE_REALM_ID = "193514877331929";
-function withDebtPnlRevenue(invoices, snapshots) {
-  const out = invoices.filter((r) => r.realm_id !== DEBT_REVENUE_REALM_ID);
-  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id === DEBT_REVENUE_REALM_ID));
+var PNL_REVENUE_REALM_IDS = [
+  DEBT_REVENUE_REALM_ID,
+  // Capital Advisors
+  "9341451968897660",
+  // Financial Services
+  "9130350272677286",
+  // Technologies
+  "123146077561874"
+  // Parent
+];
+function withPnlRevenue(invoices, snapshots) {
+  const pnlRealms = new Set(PNL_REVENUE_REALM_IDS);
+  const out = invoices.filter((r) => !r.realm_id || !pnlRealms.has(r.realm_id));
+  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id && pnlRealms.has(s.realm_id)));
   for (const key of Object.keys(best)) {
-    const month = key.split("::")[1];
-    out.push({ realm_id: DEBT_REVENUE_REALM_ID, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
+    const [realm, month] = key.split("::");
+    out.push({ realm_id: realm, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
   }
   return out;
 }
@@ -3576,7 +3587,7 @@ var get_revenue_metrics_default = defineTool48({
     const { data: pnl, error: pnlError } = await pnlQuery;
     if (pnlError) return errorResult(pnlError.message);
     const amount = (i) => Number(i.total_amt) || 0;
-    const revenueRows = withDebtPnlRevenue(invoices, pnl ?? []);
+    const revenueRows = withPnlRevenue(invoices, pnl ?? []);
     const revAmount = (r) => Number(r.total_amt) || 0;
     const payload = {
       timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
@@ -3591,7 +3602,7 @@ var get_revenue_metrics_default = defineTool48({
       by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
       by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
       revenue: {
-        basis: "Debt Advisory (realm 193514877331929) uses QBO P&L Total Income excluding Ramp; other entities use invoices. Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
+        basis: "All entities use QBO Accrual P&L Total Income (Debt Advisory excludes Ramp). Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
         total: sum(revenueRows.map(revAmount)),
         by_month: groupAggregate(revenueRows, (r) => (r.txn_date ?? "").slice(0, 7) || "unknown", revAmount).sort((a, b) => a.key.localeCompare(b.key)),
         by_entity: groupAggregate(revenueRows, (r) => r.realm_id ?? "unknown", revAmount)
@@ -7770,20 +7781,11 @@ var get_per_head_metrics_default = defineTool59({
     const [ly, lm] = last.split("-").map(Number);
     const end = new Date(Date.UTC(ly, lm, 0)).toISOString().slice(0, 10);
     try {
-      const [invoices, hcRows, pnl] = await Promise.all([
-        loadAll((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms.filter((r) => r !== DEBT_REALM).length ? realms.filter((r) => r !== DEBT_REALM) : ["__none__"]).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
+      const [hcRows, pnl] = await Promise.all([
         loadAll((a, b) => sb.from("monthly_entity_headcount").select("realm_id, month, headcount").eq("company_id", WORKSPACE_ID).in("realm_id", realms).gte("month", start).lte("month", end).order("month").range(a, b)),
         monthlyPnl(sb, realms, start, end)
       ]);
-      const revenue = {};
-      if (realms.includes(DEBT_REALM)) {
-        const debtPnl = await monthlyPnl(sb, [DEBT_REALM], start, end);
-        for (const [k, v] of Object.entries(debtPnl)) revenue[k] = (revenue[k] ?? 0) + v.revenue;
-      }
-      for (const i of invoices) {
-        const k = i.txn_date.slice(0, 7);
-        revenue[k] = (revenue[k] ?? 0) + (Number(i.total_amt) || 0);
-      }
+      const revenue = Object.fromEntries(Object.entries(pnl).map(([k, v]) => [k, v.revenue]));
       const gp = Object.fromEntries(Object.entries(pnl).map(([k, v]) => [k, v.gross_profit]));
       const per = /* @__PURE__ */ new Map();
       for (const r of hcRows) {

@@ -31,7 +31,7 @@ import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, t
 import { TtmRevenueDrilldownBody } from '@/components/metrics/dashboards/qir/TtmRevenueDrilldownBody';
 import { StatDrilldownBody } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
-import { withDebtPnlRevenue, DEBT_REVENUE_REALM_ID } from '@/lib/qboMonthly';
+import { withDebtPnlRevenue, PNL_REVENUE_REALM_IDS } from '@/lib/qboMonthly';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
@@ -2294,7 +2294,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         .from('qbo_pnl_snapshots')
         .select('realm_id, period_start, period_end, income_total, fetched_at, accounting_method')
         .eq('company_id', company!.id)
-        .eq('realm_id', DEBT_REVENUE_REALM_ID)
+        .in('realm_id', [...PNL_REVENUE_REALM_IDS])
         .gte('period_start', '2020-01-01');
       if (error) throw error;
       return data ?? [];

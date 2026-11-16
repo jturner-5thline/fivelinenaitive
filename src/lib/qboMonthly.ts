@@ -42,8 +42,20 @@ export function pickMonthlySnapshots<T extends PnlSnapshotLike>(rows: T[]): Reco
   return best;
 }
 
-/** Capital Advisors (Debt Advisory) realm: revenue = QBO P&L Total Income, never invoices. */
+/** Capital Advisors (Debt Advisory) realm. */
 export const DEBT_REVENUE_REALM_ID = "193514877331929";
+
+/**
+ * Every 5th Line entity reports revenue as QBO Accrual P&L Total Income
+ * (Debt excludes Ramp / Other Income automatically). Invoices remain a
+ * billing/customer view only.
+ */
+export const PNL_REVENUE_REALM_IDS: readonly string[] = [
+  DEBT_REVENUE_REALM_ID, // Capital Advisors
+  "9341451968897660", // Financial Services
+  "9130350272677286", // Technologies
+  "123146077561874", // Parent
+];
 
 export interface RevenueRowLike {
   realm_id: string | null;
@@ -52,20 +64,24 @@ export interface RevenueRowLike {
 }
 
 /**
- * Replaces Capital Advisors invoice rows with one synthetic row per calendar
- * month carrying that month's Accrual P&L Total Income (dated the 1st), so
- * any invoice-sum revenue widget reports QBO revenue for Debt Advisory.
- * Other realms' invoices pass through unchanged.
+ * Replaces invoice rows of every P&L-revenue entity with one synthetic row per
+ * calendar month carrying that month's Accrual P&L Total Income (dated the 1st),
+ * so invoice-sum revenue widgets report QBO revenue. Invoices of any other
+ * realm pass through unchanged.
  */
-export function withDebtPnlRevenue<T extends RevenueRowLike>(
+export function withPnlRevenue<T extends RevenueRowLike>(
   invoices: T[],
   snapshots: (PnlSnapshotLike & { income_total: number | null })[],
 ): RevenueRowLike[] {
-  const out: RevenueRowLike[] = invoices.filter((r) => r.realm_id !== DEBT_REVENUE_REALM_ID);
-  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id === DEBT_REVENUE_REALM_ID));
+  const pnlRealms = new Set(PNL_REVENUE_REALM_IDS);
+  const out: RevenueRowLike[] = invoices.filter((r) => !r.realm_id || !pnlRealms.has(r.realm_id));
+  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id && pnlRealms.has(s.realm_id)));
   for (const key of Object.keys(best)) {
-    const month = key.split("::")[1];
-    out.push({ realm_id: DEBT_REVENUE_REALM_ID, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
+    const [realm, month] = key.split("::");
+    out.push({ realm_id: realm, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
   }
   return out;
 }
+
+/** @deprecated use withPnlRevenue (now covers every entity). */
+export const withDebtPnlRevenue = withPnlRevenue;

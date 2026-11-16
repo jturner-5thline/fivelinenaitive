@@ -43,3 +43,23 @@ describe("withDebtPnlRevenue", () => {
     expect(rows.find((r) => r.realm_id === "fs")?.total_amt).toBe(100);
   });
 });
+
+import { withPnlRevenue } from "../qboMonthly";
+describe("withPnlRevenue covers every entity", () => {
+  it("uses FinServ and Technologies P&L income instead of invoices", () => {
+    const rows = withPnlRevenue(
+      [
+        { realm_id: "9341451968897660", txn_date: "2025-12-01", total_amt: 33991.4 },
+        { realm_id: "9130350272677286", txn_date: "2026-06-01", total_amt: 400 },
+      ],
+      [
+        { realm_id: "9341451968897660", period_start: "2025-12-01", period_end: "2025-12-31", income_total: 34645.49, fetched_at: "a" },
+        { realm_id: "9130350272677286", period_start: "2026-06-01", period_end: "2026-06-30", income_total: 731.12, fetched_at: "a" },
+      ] as never[],
+    );
+    expect(rows).toEqual([
+      { realm_id: "9341451968897660", txn_date: "2025-12-01", total_amt: 34645.49 },
+      { realm_id: "9130350272677286", txn_date: "2026-06-01", total_amt: 731.12 },
+    ]);
+  });
+});

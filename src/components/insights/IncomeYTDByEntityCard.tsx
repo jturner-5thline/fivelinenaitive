@@ -49,7 +49,6 @@ const METRICS: {
   { key: "operating_profit", label: "Operating Profit", field: "net_operating_income" },
 ];
 
-const DEBT_REVENUE_REALM = "193514877331929";
 
 function isoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -154,11 +153,9 @@ export function IncomeYTDByEntityCard() {
       const row: Record<string, number | string> = { month: mo.label };
       let monthTotal = 0;
       for (const e of ENTITIES) {
-        // Capital Advisors revenue = QBO P&L Total Income (excludes Ramp Loans / Other Income).
+        // Revenue = QBO P&L Total Income for every entity (Debt excludes Ramp / Other Income).
         const amt =
-          metric === "revenue" && e.realmId !== DEBT_REVENUE_REALM
-            ? invoiceTotals?.byRealm[e.realmId]?.[mo.key] ?? 0
-            : metric === "revenue"
+          metric === "revenue"
             ? monthly?.[e.realmId]?.[mo.key]?.income_total ?? 0
             : monthly?.[e.realmId]?.[mo.key]?.[activeMetric.field] ?? 0;
         monthTotal += amt;

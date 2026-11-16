@@ -33,14 +33,8 @@ export function useTtmPerHead(multiplier = 1, active = true, metric: TtmNumerato
       const [amounts, rawHeadcount] = await Promise.all([
         metric === 'gross_profit'
           ? Promise.all(realms.map(r => loadGrossProfitMonths(companyId, start, end, r))).then(a => a.flat())
-          : Promise.all([
-            // Debt Advisory revenue = QBO P&L Total Income (excludes Ramp Loans / Other Income).
-            realms.includes(TTM_REVENUE_REALM_ID) ? loadPnlMonths(companyId, start, end, TTM_REVENUE_REALM_ID, 'income_total') : Promise.resolve([]),
-            realms.some(r => r !== TTM_REVENUE_REALM_ID)
-              ? loadAllTtmRows((from, to) => supabase.from('quickbooks_invoices').select('txn_date, total_amt')
-                .in('realm_id', realms.filter(r => r !== TTM_REVENUE_REALM_ID)).gte('txn_date', start).lte('txn_date', end).order('id').range(from, to))
-              : Promise.resolve([]),
-          ]).then(a => a.flat()),
+          // Revenue = QBO P&L Total Income for every entity (Debt excludes Ramp / Other Income).
+          : Promise.all(realms.map(r => loadPnlMonths(companyId, start, end, r, 'income_total'))).then(a => a.flat()),
         loadAllTtmRows((from, to) => supabase.from('monthly_entity_headcount').select('month, headcount')
           .eq('company_id', HEADCOUNT_COMPANY_ID).in('realm_id', realms)
           .gte('month', start).lte('month', end).order('id').range(from, to)),

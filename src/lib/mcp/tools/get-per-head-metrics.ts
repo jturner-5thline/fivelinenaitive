@@ -29,17 +29,12 @@ export default defineTool({
     const [ly, lm] = last.split("-").map(Number);
     const end = new Date(Date.UTC(ly, lm, 0)).toISOString().slice(0, 10);
     try {
-      const [invoices, hcRows, pnl] = await Promise.all([
-        loadAll<{ txn_date: string; total_amt: number | null }>((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms.filter((r) => r !== DEBT_REALM).length ? realms.filter((r) => r !== DEBT_REALM) : ["__none__"]).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
+      const [hcRows, pnl] = await Promise.all([
         loadAll<HcRow>((a, b) => sb.from("monthly_entity_headcount").select("realm_id, month, headcount").eq("company_id", WORKSPACE_ID).in("realm_id", realms).gte("month", start).lte("month", end).order("month").range(a, b)),
         monthlyPnl(sb, realms, start, end),
       ]);
-      const revenue: Record<string, number> = {};
-      if (realms.includes(DEBT_REALM)) {
-        const debtPnl = await monthlyPnl(sb, [DEBT_REALM], start, end);
-        for (const [k, v] of Object.entries(debtPnl)) revenue[k] = (revenue[k] ?? 0) + v.revenue;
-      }
-      for (const i of invoices) { const k = i.txn_date.slice(0, 7); revenue[k] = (revenue[k] ?? 0) + (Number(i.total_amt) || 0); }
+      // Revenue = QBO P&L Total Income for every entity in scope.
+      const revenue: Record<string, number> = Object.fromEntries(Object.entries(pnl).map(([k, v]) => [k, v.revenue]));
       const gp: Record<string, number> = Object.fromEntries(Object.entries(pnl).map(([k, v]) => [k, v.gross_profit]));
       const per = new Map<string, Array<number | null>>();
       for (const r of hcRows) { const k = r.month.slice(0, 7); const v = r.headcount == null ? null : Number(r.headcount); per.set(k, [...(per.get(k) ?? []), v]); }
