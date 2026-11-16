@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
 import { useHarvestData } from '@/hooks/useHarvest';
+import { InsightsDrilldownDrawer } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 /**
  * Utilization KPI widget for the FinServ Financial Metrics tab.
@@ -60,6 +61,7 @@ export function UtilizationWidget({
   const qc = useQueryClient();
   const [actualsOpen, setActualsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [drillOpen, setDrillOpen] = useState(false);
   const harvest = useHarvestData();
 
   const { data, isLoading } = useQuery({
@@ -170,7 +172,7 @@ export function UtilizationWidget({
             <p className="text-sm font-medium">{harvestSource ? 'No Harvest hours for this period' : 'No utilization entered'}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 cursor-pointer" onClick={() => setDrillOpen(true)} title="Click for monthly detail">
             {perPerson.map((p) => (
               <PersonCard
                 key={p.slug}
@@ -190,6 +192,22 @@ export function UtilizationWidget({
           </div>
         )}
       </CardContent>
+
+      <InsightsDrilldownDrawer
+        open={drillOpen}
+        onClose={() => setDrillOpen(false)}
+        context={{ sourceId: 'finserv:utilization', sourceLabel: 'Utilization', selection: badge }}
+        columns={[
+          { key: 'month', label: 'Month' },
+          ...perPerson.map((p) => ({ key: p.slug, label: p.name, align: 'right' as const })),
+          { key: 'blended', label: 'Blended', align: 'right' as const },
+        ]}
+        rows={monthKeys.map((mk, i) => ({
+          month: monthLabels[i] ?? mk,
+          ...Object.fromEntries(perPerson.map((p) => [p.slug, fmtPct(p.series[i]?.pct ?? null)])),
+          blended: fmtPct(blended.series[i]?.pct ?? null),
+        }))}
+      />
 
       <UtilizationActualsDialog
         open={actualsOpen}

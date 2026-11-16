@@ -252,12 +252,14 @@ function FinServSnapshotCard({
   subtitle,
   format,
   isLoading,
+  onClick,
 }: {
   label: string;
   value: number;
   subtitle?: string;
   format?: 'currency' | 'number';
   isLoading?: boolean;
+  onClick?: () => void;
 }) {
   const display = isLoading
     ? '—'
@@ -265,7 +267,14 @@ function FinServSnapshotCard({
       ? fmtCurrencyFull(value)
       : value.toLocaleString();
   return (
-    <Card className="glass-module">
+    <Card
+      className={`glass-module ${onClick ? 'cursor-pointer transition hover:brightness-110' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `Drill into ${label}` : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {label}
@@ -786,6 +795,7 @@ function PerHourWidget({
   monthLabels,
   badge,
   numeratorByMonth,
+  onDrill,
 }: {
   title: string;
   /** Short label for the numerator, e.g. "Revenue" or "Profit". */
@@ -794,6 +804,7 @@ function PerHourWidget({
   monthLabels: string[];
   badge: string;
   numeratorByMonth: Record<string, number>;
+  onDrill?: (title: string, rows: Array<{ month: string; numerator: number; hours: number; rate: number | null }>, selection: string) => void;
 }) {
   const [view, setView] = useState<'monthly' | 'avg'>('monthly');
   const [showTrend, setShowTrend] = useState(false);
@@ -895,7 +906,7 @@ function PerHourWidget({
           </div>
         ) : view === 'avg' ? (
           <div className="flex flex-col items-center justify-center py-10">
-            <div className="text-4xl font-semibold tabular-nums text-foreground">
+            <div className="text-4xl font-semibold tabular-nums text-foreground cursor-pointer" onClick={() => onDrill?.(title, chartData, badge)}>
               {totals.rate != null ? fmtCurrencyPrecise(totals.rate) : '—'}
               <span className="text-sm font-normal text-muted-foreground ml-1">/ hr</span>
             </div>
@@ -907,7 +918,7 @@ function PerHourWidget({
         ) : (
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
-              <div className="text-2xl font-semibold tabular-nums">
+              <div className="text-2xl font-semibold tabular-nums cursor-pointer" onClick={() => onDrill?.(title, chartData, badge)}>
                 {totals.rate != null ? fmtCurrencyPrecise(totals.rate) : '—'}
                 <span className="text-xs font-normal text-muted-foreground ml-1">/ hr</span>
               </div>
@@ -957,6 +968,8 @@ function PerHourWidget({
                     dataKey="rate"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
+                    cursor="pointer"
+                    onClick={(d: any) => onDrill?.(title, chartData.filter((r) => r.monthKey === d?.monthKey), d?.month ?? '')}
                   >
                     <LabelList
                       dataKey="rate"
@@ -1126,6 +1139,22 @@ function FinServFinancialMetricsDashboardInner() {
       ],
     });
   };
+
+  const openRows = (sourceLabel: string, selection: string, columns: DrilldownColumn[], rows: Array<Record<string, unknown>>) =>
+    setDrill({ context: { sourceId: `finserv:${sourceLabel}`, sourceLabel, selection, periodLabel: selectedQuarter.label }, columns, rows });
+  const openPerHour = (title: string, rows: Array<{ month: string; numerator: number; hours: number; rate: number | null }>, selection: string) =>
+    openRows(title, selection, [
+      { key: 'month', label: 'Month' },
+      { key: 'numerator', label: 'Numerator (QBO)', align: 'right' },
+      { key: 'hours', label: 'Billable hrs (Harvest)', align: 'right' },
+      { key: 'rate', label: '$ / hr', align: 'right' },
+    ], rows.map((r) => ({ month: r.month, numerator: fmtCurrencyFull(r.numerator), hours: r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 }), rate: r.rate == null ? '—' : fmtCurrencyPrecise(r.rate) })));
+  const openNewMrr = (sourceLabel: string) =>
+    openRows(sourceLabel, selectedQuarter.label, [
+      { key: 'company', label: 'Deal' },
+      { key: 'entered', label: 'Entered Active Client' },
+      { key: 'mrr', label: 'MRR', align: 'right', sortable: true, sortAccessor: (r: any) => r._mrr },
+    ], newMrr.deals.map((d) => ({ company: d.company, entered: d.entered_at?.slice(0, 10), mrr: fmtCurrencyFull(d.mrr), _mrr: d.mrr, deal_id: d.deal_id })));
 
   // Data hooks
   const totalRev = useFinServTotalRevenue(selectedPeriod, range.granularity);
@@ -1311,6 +1340,7 @@ function FinServFinancialMetricsDashboardInner() {
           value={pipelineSnapshot.data?.totalClients ?? 0}
           subtitle='Deals currently in "Active Client" stage'
           isLoading={pipelineSnapshot.isLoading}
+          onClick={() => openDrill({ kind: 'active-clients', sourceLabel: 'Total Clients', selection: range.resolved.label, period: resolveBucket(undefined), granularity: range.granularity })}
         />
         <FinServSnapshotCard
           label="Total MRR"
@@ -1318,6 +1348,7 @@ function FinServFinancialMetricsDashboardInner() {
           format="currency"
           subtitle="Sum of MRR across active FinServ pipeline deals"
           isLoading={pipelineSnapshot.isLoading}
+          onClick={() => openSinglePoint('Total MRR', range.resolved.label, 'Total MRR', pipelineSnapshot.data?.totalMrr ?? 0, fmtCurrencyFull, [{ metric: 'Definition', value: 'Sum of MRR on FinServ deals not churned, lost or in development' }])}
         />
         <FinServSnapshotCard
           label="Avg. Revenue / Client"
@@ -1329,6 +1360,7 @@ function FinServFinancialMetricsDashboardInner() {
           format="currency"
           subtitle={`${periodBadge} revenue ÷ active clients`}
           isLoading={pipelineSnapshot.isLoading || totalRev.isLoading}
+          onClick={() => openDrill({ kind: 'avg-revenue', sourceLabel: 'Avg. Revenue / Client', selection: range.resolved.label, period: resolveBucket(undefined), granularity: range.granularity })}
         />
         <FinServSnapshotCard
           label="Total OPEX"
@@ -1336,18 +1368,21 @@ function FinServFinancialMetricsDashboardInner() {
           format="currency"
           subtitle={`Total operating expenses · QBO 5th Line Financial Services · ${periodBadge}`}
           isLoading={totalRev.isLoading}
+          onClick={() => openDrill({ kind: 'pnl', metric: 'operating_profit', sourceLabel: 'Total OPEX', selection: range.resolved.label, period: resolveBucket(undefined), granularity: range.granularity })}
         />
         <FinServSnapshotCard
           label="Current Pipeline"
           value={pipelineSnapshot.data?.currentPipeline ?? 0}
           subtitle="Qualification → Negotiation"
           isLoading={pipelineSnapshot.isLoading}
+          onClick={() => openSinglePoint('Current Pipeline', range.resolved.label, 'Deals in pipeline', pipelineSnapshot.data?.currentPipeline ?? 0, (v) => String(v), [{ metric: 'Stages', value: 'Qualification → Negotiation' }])}
         />
         <FinServSnapshotCard
           label="FinServ Clients Signed"
           value={newMrr.deals.length}
           subtitle={`Entered "Active Client" · ${periodBadge}`}
           isLoading={newMrr.isLoading}
+          onClick={() => openNewMrr('FinServ Clients Signed')}
         />
         <FinServSnapshotCard
           label="MRR Signed"
@@ -1355,6 +1390,7 @@ function FinServFinancialMetricsDashboardInner() {
           format="currency"
           subtitle={`MRR of deals entering "Active Client" · ${periodBadge}`}
           isLoading={newMrr.isLoading}
+          onClick={() => openNewMrr('MRR Signed')}
         />
         <Card className="glass-module">
           <CardHeader className="pb-2">
@@ -1908,6 +1944,14 @@ function FinServFinancialMetricsDashboardInner() {
                       stackId="income"
                       fill={cat.color}
                       name={cat.label}
+                      cursor="pointer"
+                      onClick={(d: any) => openRows('Income by Product/Service', d?.month ?? '', [
+                        { key: 'category', label: 'Product / Service' },
+                        { key: 'amount', label: 'Income', align: 'right' },
+                      ], [
+                        ...FINSERV_STACKED_CATEGORIES.map((c) => ({ category: c.label, amount: fmtCurrencyFull(Number(d?.[c.key] ?? 0)) })),
+                        { category: 'Total', amount: fmtCurrencyFull(Number(d?.totalRevenue ?? 0)) },
+                      ])}
                       shape={createGlassBarShape({
                         radius: 4,
                         topSegmentKey: FINSERV_STACKED_CATEGORIES[FINSERV_STACKED_CATEGORIES.length - 1].key,
@@ -1934,9 +1978,9 @@ function FinServFinancialMetricsDashboardInner() {
             <WidgetError />
           ) : (
             <div className="space-y-1">
-              <p className="text-3xl font-semibold tabular-nums text-foreground">
+              <button type="button" onClick={() => openNewMrr('New MRR Added')} className="text-3xl font-semibold tabular-nums text-foreground hover:underline underline-offset-4">
                 {fmtCurrencyFull(newMrr.total)}
-              </p>
+              </button>
               <p className="text-xs text-muted-foreground">
                 {newMrr.deals.length} deal{newMrr.deals.length === 1 ? '' : 's'} entered Active Client
               </p>
@@ -1961,6 +2005,7 @@ function FinServFinancialMetricsDashboardInner() {
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}
           numeratorByMonth={monthlyRevenueByKey}
+          onDrill={openPerHour}
         />
         <PerHourWidget
           title="Profit per Hour"
@@ -1969,6 +2014,7 @@ function FinServFinancialMetricsDashboardInner() {
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}
           numeratorByMonth={monthlyProfitByKey}
+          onDrill={openPerHour}
         />
       </div>
 
