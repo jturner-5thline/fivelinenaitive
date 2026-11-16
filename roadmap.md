@@ -1,5 +1,11 @@
 # Roadmap
 
+## Harvest FinServ integration
+- [ ] Connect Harvest securely and verify read access.
+- [ ] Add tenant-scoped January 2024 onward sync, status and manual refresh.
+- [ ] Wire FinServ billable-hours ratios, monthly tracking and team utilization.
+- [ ] Test calculations, access boundaries and dashboard interactions without communications or unrelated live-data changes.
+
 ## Monthly entity headcount
 - [x] Add tenant-scoped monthly unit headcount storage and Insights editor with year navigation, totals, save/discard and fractional values.
 - [x] Verified calculations, editor access boundaries and save/failure interactions with automated tests; signed-in 1280x1800 and 390x844 preview checked save, refresh/reopen and year navigation using intercepted writes only. Database schema/policies verified read-only; no live records changed.
