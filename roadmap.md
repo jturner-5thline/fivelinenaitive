@@ -1,10 +1,10 @@
 # Roadmap
 
 ## Harvest FinServ integration
-- [ ] Connect Harvest securely and verify read access.
-- [ ] Add tenant-scoped January 2024 onward sync, status and manual refresh.
-- [ ] Wire FinServ billable-hours ratios, monthly tracking and team utilization.
-- [ ] Test calculations, access boundaries and dashboard interactions without communications or unrelated live-data changes.
+- [x] Connect Harvest securely and verify read access.
+- [x] Add tenant-scoped January 2024 onward sync, status and manual refresh; 11,746 entries imported and status persisted after refresh.
+- [x] Wire FinServ billable-hours ratios, monthly tracking, details and logged-hour team utilization; remove placeholder Harvest chart data.
+- [x] Eight Vitest and two Deno tests passed; new-file lint and automatic build passed. Signed-in desktop/phone charts and entry drawer verified; broader suite retains 18 unrelated failures and existing affected-file lint errors. No communications or unrelated records changed. Manual refresh only; published app and cross-tenant live sessions unverified. Details in docs/harvest-finserv.md.
 
 ## Monthly entity headcount
 - [x] Add tenant-scoped monthly unit headcount storage and Insights editor with year navigation, totals, save/discard and fractional values.

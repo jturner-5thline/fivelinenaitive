@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MetricManualInputDialog } from './MetricManualInputDialog';
 import { supabase } from '@/integrations/supabase/client';
-import { useCompany } from '@/hooks/useCompany';
 import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -38,6 +36,9 @@ import { buildBuckets } from '@/lib/insightsTimeRange';
 import { UtilizationWidget } from '@/components/metrics/finserv-charts/UtilizationWidget';
 import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import { TtmPerHeadChart } from './TtmPerHeadChart';
+import { useHarvestData } from '@/hooks/useHarvest';
+import { HarvestFinServTracking } from './HarvestFinServTracking';
+import { harvestRate } from '@/lib/harvest';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -794,38 +795,17 @@ function PerHourWidget({
   badge: string;
   numeratorByMonth: Record<string, number>;
 }) {
-  const [open, setOpen] = useState(false);
   const [view, setView] = useState<'monthly' | 'avg'>('monthly');
   const [showTrend, setShowTrend] = useState(false);
-  const { company } = useCompany();
-  const companyId = company?.id ?? null;
-
-  const { data: hoursByMonth = {}, isLoading } = useQuery({
-    queryKey: ['rev-per-hour-hours', companyId, monthKeys.join('|'), open],
-    queryFn: async () => {
-      if (monthKeys.length === 0) return {} as Record<string, number>;
-      let q = supabase
-        .from('metric_manual_inputs')
-        .select('month_key, value')
-        .eq('metric_key', 'revenue_per_hour_hours')
-        .in('month_key', monthKeys);
-      q = companyId ? q.eq('company_id', companyId) : q.is('company_id', null);
-      const { data, error } = await q;
-      if (error) throw error;
-      const out: Record<string, number> = {};
-      for (const r of data ?? []) {
-        const v = (r as any).value;
-        if (v != null) out[(r as any).month_key as string] = Number(v);
-      }
-      return out;
-    },
-  });
+  const harvest = useHarvestData();
+  const isLoading = harvest.isLoading;
+  const hoursByMonth = useMemo(() => Object.fromEntries(Object.entries(harvest.months).map(([key, m]) => [key, m.billableHours])), [harvest.months]);
 
   const chartData = useMemo(() => {
     const rows = monthKeys.map((k, i) => {
       const numerator = Number(numeratorByMonth[k] ?? 0);
       const hours = Number(hoursByMonth[k] ?? 0);
-      const rate = hours > 0 ? numerator / hours : null;
+      const rate = harvestRate(numerator, hours);
       return {
         month: monthLabels[i] ?? k,
         monthKey: k,
@@ -848,7 +828,7 @@ function PerHourWidget({
   const totals = useMemo(() => {
     const numerator = chartData.reduce((s, d) => s + d.numerator, 0);
     const hours = chartData.reduce((s, d) => s + d.hours, 0);
-    const rate = hours > 0 ? numerator / hours : null;
+    const rate = harvestRate(numerator, hours);
     return { numerator, hours, rate };
   }, [chartData]);
 
@@ -899,28 +879,19 @@ function PerHourWidget({
                 Trend
               </button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 -mr-1 -mt-1"
-              aria-label="Input monthly hours"
-              title="Input monthly hours"
-              onClick={() => setOpen(true)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
+            <Badge variant="outline" className="text-xs">Harvest · Billable</Badge>
           </div>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <WidgetLoading subtitle="Loading hours…" />
+        ) : harvest.error ? (
+          <WidgetError message={harvest.error.message} />
         ) : !hasAnyHours ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
             <Clock className="h-8 w-8 mb-2 opacity-40" />
-            <p className="text-sm font-medium">No hours entered</p>
-            <p className="text-xs mt-1 opacity-60">Click the pencil to input monthly hours</p>
+            <p className="text-sm font-medium">No synced billable hours for this period</p>
           </div>
         ) : view === 'avg' ? (
           <div className="flex flex-col items-center justify-center py-10">
@@ -1059,15 +1030,6 @@ function PerHourWidget({
           </div>
         )}
       </CardContent>
-      <MetricManualInputDialog
-        open={open}
-        onOpenChange={setOpen}
-        metricKey="revenue_per_hour_hours"
-        title="Hours by Month"
-        unitLabel="Hours"
-        monthKeys={monthKeys}
-        monthLabels={monthLabels}
-      />
     </Card>
   );
 }
@@ -2011,8 +1973,10 @@ function FinServFinancialMetricsDashboardInner() {
       </div>
 
       {/* ── Row 9: Utilization (Scott / Siddhi / Kris / Blended) — full width ── */}
+      <HarvestFinServTracking />
       <div className="w-full">
         <UtilizationWidget
+          harvestSource
           monthKeys={monthlyKeys}
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}

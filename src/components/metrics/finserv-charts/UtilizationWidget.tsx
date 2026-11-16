@@ -13,6 +13,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
+import { useHarvestData } from '@/hooks/useHarvest';
 
 /**
  * Utilization KPI widget for the FinServ Financial Metrics tab.
@@ -48,16 +49,19 @@ export function UtilizationWidget({
   monthKeys,
   monthLabels,
   badge,
+  harvestSource = false,
 }: {
   monthKeys: string[];
   monthLabels: string[];
   badge: string;
+  harvestSource?: boolean;
 }) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const qc = useQueryClient();
   const [actualsOpen, setActualsOpen] = useState(false);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const harvest = useHarvestData();
 
   const { data, isLoading } = useQuery({
     queryKey: ['utilization-widget', companyId, monthKeys.join('|')],
@@ -90,7 +94,10 @@ export function UtilizationWidget({
       const pcts = data?.[`util_pct_${p.slug}`] ?? {};
       const goals = data?.[`util_goal_${p.slug}`] ?? {};
       const series = monthKeys.map((mk, i) => {
-        const raw = pcts[mk];
+        const matching = Object.entries(harvest.months[mk]?.people ?? {}).filter(([name]) => name.toLowerCase().split(' ')[0] === p.slug);
+        const logged = matching.reduce((s, [, person]) => s + person.hours, 0);
+        const billable = matching.reduce((s, [, person]) => s + person.billableHours, 0);
+        const raw = harvestSource ? (logged > 0 ? billable / logged * 100 : null) : pcts[mk];
         const pct = raw == null ? null : Number(raw);
         return { month: monthLabels[i] ?? mk, monthKey: mk, pct };
       });
@@ -99,7 +106,7 @@ export function UtilizationWidget({
       const goal = avg(goalVals.filter((v): v is number => v != null));
       return { ...p, series, headline, goal };
     });
-  }, [data, monthKeys, monthLabels]);
+  }, [data, monthKeys, monthLabels, harvestSource, harvest.months]);
 
   const blended = useMemo(() => {
     const series = monthKeys.map((mk, i) => {
@@ -136,7 +143,7 @@ export function UtilizationWidget({
             >
               <Settings className="h-3.5 w-3.5" />
             </Button>
-            <Button
+            {!harvestSource && <Button
               type="button"
               variant="ghost"
               size="icon"
@@ -146,12 +153,12 @@ export function UtilizationWidget({
               onClick={() => setActualsOpen(true)}
             >
               <Pencil className="h-3.5 w-3.5" />
-            </Button>
+            </Button>}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {harvestSource && harvest.error ? <p className="text-sm text-destructive">{harvest.error.message}</p> : (isLoading || (harvestSource && harvest.isLoading)) ? (
           <div className="space-y-3">
             <Skeleton className="h-10 w-32" />
             <Skeleton className="h-4 w-full" />
@@ -161,10 +168,7 @@ export function UtilizationWidget({
         ) : !hasAny ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <Users className="h-8 w-8 mb-2 opacity-40" />
-            <p className="text-sm font-medium">No utilization entered</p>
-            <p className="text-xs mt-1 opacity-60">
-              Click the pencil to enter monthly utilization %
-            </p>
+            <p className="text-sm font-medium">{harvestSource ? 'No Harvest hours for this period' : 'No utilization entered'}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

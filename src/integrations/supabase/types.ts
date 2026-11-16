@@ -16827,6 +16827,118 @@ export type Database = {
         }
         Relationships: []
       }
+      harvest_sync_state: {
+        Row: {
+          account_id: string
+          active_run: string | null
+          company_id: string
+          last_error: string | null
+          last_synced_at: string | null
+          next_page: number
+          pending_run: string | null
+          sync_through: string | null
+          total_entries: number
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string
+          active_run?: string | null
+          company_id: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          next_page?: number
+          pending_run?: string | null
+          sync_through?: string | null
+          total_entries?: number
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          active_run?: string | null
+          company_id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          next_page?: number
+          pending_run?: string | null
+          sync_through?: string | null
+          total_entries?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harvest_sync_state_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      harvest_time_entries: {
+        Row: {
+          billable: boolean
+          billable_rate: number | null
+          client_id: number | null
+          client_name: string | null
+          company_id: string
+          currency: string | null
+          harvest_id: number
+          hours: number
+          notes: string | null
+          project_id: number | null
+          project_name: string | null
+          spent_date: string
+          sync_run: string
+          task_name: string | null
+          user_id: number | null
+          user_name: string | null
+        }
+        Insert: {
+          billable: boolean
+          billable_rate?: number | null
+          client_id?: number | null
+          client_name?: string | null
+          company_id: string
+          currency?: string | null
+          harvest_id: number
+          hours: number
+          notes?: string | null
+          project_id?: number | null
+          project_name?: string | null
+          spent_date: string
+          sync_run: string
+          task_name?: string | null
+          user_id?: number | null
+          user_name?: string | null
+        }
+        Update: {
+          billable?: boolean
+          billable_rate?: number | null
+          client_id?: number | null
+          client_name?: string | null
+          company_id?: string
+          currency?: string | null
+          harvest_id?: number
+          hours?: number
+          notes?: string | null
+          project_id?: number | null
+          project_name?: string | null
+          spent_date?: string
+          sync_run?: string
+          task_name?: string | null
+          user_id?: number | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "harvest_time_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       help_articles: {
         Row: {
           body_html: string

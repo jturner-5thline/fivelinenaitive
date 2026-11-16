@@ -44,6 +44,8 @@ import { CalendarSyncSettingsModal } from "@/components/integrations/CalendarSyn
 import { AsanaSetupModal } from "@/components/integrations/AsanaSetupModal";
 import { AsanaSyncSettingsModal } from "@/components/integrations/asana/AsanaSyncSettingsModal";
 import { useCanSeeFlexSync } from "@/hooks/useCanSeeFlexSync";
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+import { HarvestIntegrationCard } from '@/components/integrations/HarvestIntegrationCard';
 
 const COMING_SOON_INTEGRATIONS = [
   { key: "docusign", name: "DocuSign", icon: PenTool, description: "Send and manage e-signature envelopes directly from deals" },
@@ -60,6 +62,7 @@ export default function Integrations() {
   const canSeeNaitiveApi = user?.email?.toLowerCase() === "jturner@5thline.co";
   const { company, isAdmin: isCompanyAdmin } = useCompany();
   const { canSeeFlexSync } = useCanSeeFlexSync();
+  const { hasAccess: hasHarvestAccess } = useNaitivePipelineAccess();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Modals
@@ -598,6 +601,7 @@ export default function Integrations() {
         </header>
 
         {canSeeNaitiveApi && <NaitiveApiAccessCard />}
+        {hasHarvestAccess && <HarvestIntegrationCard />}
 
         {/* 1 — Connected (primary) */}
         <section className="space-y-3">

@@ -1,4 +1,5 @@
 - FLEx integration is permanently disconnected: FLEx edge functions are inert stubs and DB sync triggers are dropped — never re-add outbound/inbound FLEx calls (user decision).
+- Harvest calls use the linked server-side connector and authenticated workspace membership; bounded imports publish a complete snapshot only at the last page, so partial syncs cannot replace dashboard totals.
 - Contact company linking uses the shared CompanySearchModal with tenant-scoped server search and pagination by name and domain; why: a locally filtered initial page hides matches in large company directories.
 
 - KB export: `kb-export-pull` (x-export-key auth, verify_jwt=false) calls three service_role-only RPCs `fn_kb_export_*` with the tenant hardcoded in SQL — why: the tenant must never be caller-controlled and no browser/user role may read the export.

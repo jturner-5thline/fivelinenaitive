@@ -547,6 +547,13 @@
       "when": 1794676804914,
       "tag": "0077_sync_contact_type_from_legacy",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794787706231,
+      "tag": "0078_harvest_finserv_cache",
+      "breakpoints": true
     }
   ]
 }
