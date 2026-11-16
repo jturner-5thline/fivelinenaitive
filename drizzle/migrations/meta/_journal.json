@@ -561,6 +561,13 @@
       "when": 1794849204787,
       "tag": "0079_restrict_admin_delete_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1794849359379,
+      "tag": "0080_lender_audit_transfer_merge_only",
+      "breakpoints": true
     }
   ]
 }
