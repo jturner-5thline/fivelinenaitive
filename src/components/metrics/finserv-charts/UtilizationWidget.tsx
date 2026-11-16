@@ -18,8 +18,8 @@ import { useHarvestData } from '@/hooks/useHarvest';
 /**
  * Utilization KPI widget for the FinServ Financial Metrics tab.
  *
- * Displays a Blended utilization headline (average of the 3 people's %) and
- * compact per-person rows for Scott, Siddhi, and Kris. A single actual %
+ * Displays a Blended utilization headline (average of the 2 people's %) and
+ * compact per-person rows for Scott and Kris. A single actual %
  * per person per month is entered via the pencil dialog, and a per-person
  * goal % is set via the gear dialog. Persisted in `metric_manual_inputs`.
  *
@@ -28,11 +28,10 @@ import { useHarvestData } from '@/hooks/useHarvest';
  *   util_goal_<slug>   goal utilization %            (month_key = YYYY-MM)
  */
 
-type PersonSlug = 'scott' | 'siddhi' | 'kris';
+type PersonSlug = 'scott' | 'kris';
 
 const PEOPLE: Array<{ slug: PersonSlug; name: string }> = [
   { slug: 'scott', name: 'Scott' },
-  { slug: 'siddhi', name: 'Siddhi' },
   { slug: 'kris', name: 'Kris' },
 ];
 
@@ -171,7 +170,7 @@ export function UtilizationWidget({
             <p className="text-sm font-medium">{harvestSource ? 'No Harvest hours for this period' : 'No utilization entered'}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {perPerson.map((p) => (
               <PersonCard
                 key={p.slug}
