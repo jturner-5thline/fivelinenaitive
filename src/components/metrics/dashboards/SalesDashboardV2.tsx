@@ -3768,7 +3768,7 @@ function MetricDrilldownDialog({
                     : salesCallsError
                       ? 'Could not load qualifying calendar events. The metric is unavailable until the calendar scan succeeds.'
                       : pipelineVariant === 'finserv'
-                        ? 'No qualifying "5th Line <> [Company] Financial Review" events in this period.'
+                        ? 'No qualifying "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro" events in this period.'
                         : 'No qualifying "[Company] <> 5th Line Financing Review" events in this period.'}
                 </div>
               ) : (

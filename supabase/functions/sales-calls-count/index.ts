@@ -32,8 +32,9 @@ function domainOf(email?: string | null): string | null {
 const DEBT_FINANCING_RE = /5\s*th\s*line[\s\S]{0,80}\bfinancing\s+review\b/i;
 const TITLE_RE_DEBT =
   /^\s*(.+?)\s*(?:<>|[-–—|:/])\s*5\s*th\s+line\s+financing\s+review\s*$/i;
+// FinServ also counts "[Company] <> 5th Line: Intro" (added alongside, not replacing).
 const TITLE_RE_FINSERV =
-  /^\s*5\s*th\s+line\s*(?:<>|[-–—|:/])\s*(.+?)\s+financial\s+review\s*$/i;
+  /^\s*(?:5\s*th\s+line\s*(?:<>|[-–—|:/])\s*(.+?)\s+financial\s+review|(.+?)\s*(?:<>|[-–—|/])\s*5\s*th\s+line\s*[:\-–—]?\s*intro)\s*$/i;
 
 function normalizeCompany(raw: string): string {
   return raw
@@ -143,7 +144,7 @@ async function fetchForGrant(
         if (excludeTitleRe?.test(title)) continue;
         const m = titleRe.exec(title);
         if (!m) continue;
-        const companyRaw = (m[1] || "").trim();
+        const companyRaw = (m[1] || m[2] || "").trim();
         const companyNorm = normalizeCompany(companyRaw);
         if (!companyNorm || companyNorm === "5th line") continue;
 

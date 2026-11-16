@@ -7,7 +7,7 @@ export default defineTool({
   name: "get_sales_calls_weekly",
   title: "Get weekly sales call counts",
   description:
-    "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\". Defaults to the last 12 weeks ending today.",
+    "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\" or \"[Company] <> 5th Line: Intro\". Defaults to the last 12 weeks ending today.",
   inputSchema: {
     weeks: z.number().int().min(1).max(53).default(12).describe("Number of weeks back from end_date."),
     end_date: z.string().trim().max(30).optional().describe("ISO date (YYYY-MM-DD) to end on; defaults to today."),
