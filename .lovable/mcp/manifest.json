@@ -4759,7 +4759,7 @@
       {
         "name": "get_sales_calls_weekly",
         "title": "Get weekly sales call counts",
-        "description": "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\". Defaults to the last 12 weeks ending today.",
+        "description": "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\" or \"[Company] <> 5th Line: Intro\". Defaults to the last 12 weeks ending today.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
