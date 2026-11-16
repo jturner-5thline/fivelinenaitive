@@ -29,7 +29,8 @@ describe('TTM read boundaries', () => {
     expect(options.enabled).toBe(true);
     expect(options.queryKey).toContain('caller');
     expect(options.queryKey).toContain(FIFTH_LINE_COMPANY_ID);
-    expect(fromMock.mock.calls.map(call => call[0])).toEqual(['quickbooks_invoices', 'weekly_time_entries']);
+    expect(fromMock.mock.calls.map(call => call[0])).toEqual(expect.arrayContaining(['qbo_pnl_snapshots', 'weekly_time_entries']));
+    expect(fromMock.mock.calls.map(call => call[0])).not.toContain('quickbooks_invoices');
     expect(chain.eq).toHaveBeenCalledWith('realm_id', '193514877331929');
     expect(chain.eq).toHaveBeenCalledWith('deals.company_id', FIFTH_LINE_COMPANY_ID);
     expect(chain.in).toHaveBeenCalledWith('deals.pipeline_id', ['b78ad452-b489-4c89-8a91-789347c05f79', '40b17dfb-9122-49e0-bf7c-5aa993d5d615']);

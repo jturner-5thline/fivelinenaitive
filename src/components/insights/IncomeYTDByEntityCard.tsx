@@ -49,6 +49,8 @@ const METRICS: {
   { key: "operating_profit", label: "Operating Profit", field: "net_operating_income" },
 ];
 
+const DEBT_REVENUE_REALM = "193514877331929";
+
 function isoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -148,14 +150,16 @@ export function IncomeYTDByEntityCard() {
     const running: Record<string, number> = {};
     for (const e of ENTITIES) running[e.realmId] = 0;
     let runningTotal = 0;
-    const useInvoiceTotals = viewMode === "total" && metric === "revenue";
     return months.map((mo) => {
       const row: Record<string, number | string> = { month: mo.label };
       let monthTotal = 0;
       for (const e of ENTITIES) {
+        // Capital Advisors revenue = QBO P&L Total Income (excludes Ramp Loans / Other Income).
         const amt =
-          metric === "revenue"
+          metric === "revenue" && e.realmId !== DEBT_REVENUE_REALM
             ? invoiceTotals?.byRealm[e.realmId]?.[mo.key] ?? 0
+            : metric === "revenue"
+            ? monthly?.[e.realmId]?.[mo.key]?.income_total ?? 0
             : monthly?.[e.realmId]?.[mo.key]?.[activeMetric.field] ?? 0;
         monthTotal += amt;
         if (cumulative) {
@@ -164,9 +168,6 @@ export function IncomeYTDByEntityCard() {
         } else {
           row[e.label] = amt;
         }
-      }
-      if (useInvoiceTotals) {
-        monthTotal = invoiceTotals?.totals[mo.key] ?? 0;
       }
       if (cumulative) {
         runningTotal += monthTotal;

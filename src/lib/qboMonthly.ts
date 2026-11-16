@@ -20,6 +20,11 @@ export interface PnlSnapshotLike {
  * Multi-month (YTD/quarter) aggregates are ignored entirely so they can
  * never be counted as a monthly figure. Latest fetched_at wins.
  */
+function lastDayOfMonth(key: string): string {
+  const [y, m] = key.split("-").map(Number);
+  return `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}
+
 export function pickMonthlySnapshots<T extends PnlSnapshotLike>(rows: T[]): Record<string, T> {
   const best: Record<string, T> = {};
   for (const r of rows) {
@@ -28,6 +33,8 @@ export function pickMonthlySnapshots<T extends PnlSnapshotLike>(rows: T[]): Reco
     const startKey = isoMonthKey(r.period_start);
     const endKey = isoMonthKey(r.period_end ?? r.period_start);
     if (!startKey || startKey !== endKey) continue;
+    // Full calendar months only: partial month-to-date fetches are not monthly totals.
+    if (!r.period_start!.endsWith("-01") || r.period_end !== lastDayOfMonth(startKey)) continue;
     const key = `${r.realm_id}::${startKey}`;
     const prev = best[key];
     if (!prev || (r.fetched_at ?? "") > (prev.fetched_at ?? "")) best[key] = r;

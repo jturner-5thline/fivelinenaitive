@@ -41,12 +41,8 @@ export function useTtmRevenuePerDealHour(multiplier = 1, active = true, metric: 
       // Invoice RLS authorizes company-member access; fixed realm isolates Capital Advisors.
       // All reads are paged and ordered, with no sync or write side effects.
       const [invoices, entries] = await Promise.all([
-        metric === 'gross_profit' ? loadGrossProfitMonths(companyId, start, end) :
-        loadAllTtmRows((from, to) => supabase.from('quickbooks_invoices')
-          .select('txn_date, total_amt')
-          .eq('realm_id', TTM_REVENUE_REALM_ID)
-          .gte('txn_date', start).lte('txn_date', end)
-          .order('id').range(from, to)),
+        // Debt Advisory revenue = QBO P&L Total Income (excludes Other Income such as Ramp Loans).
+        loadPnlMonths(companyId, start, end, TTM_REVENUE_REALM_ID, metric === 'gross_profit' ? 'gross_profit' : 'income_total'),
         loadAllTtmRows((from, to) => supabase.from('weekly_time_entries')
           .select('deal_id, week_start_date, hours, deals!inner(company, company_id, pipeline_id)')
           .eq('deals.company_id', companyId)
@@ -66,7 +62,12 @@ export function useTtmRevenuePerDealHour(multiplier = 1, active = true, metric: 
   return { ...query, hasAccess, view };
 }
 /** Monthly QBO P&L "Gross Profit" for Capital Advisors, shaped like dated amounts. */
-export async function loadGrossProfitMonths(companyId: string, start: string, end: string, realmId: string = TTM_REVENUE_REALM_ID) {
+export function loadGrossProfitMonths(companyId: string, start: string, end: string, realmId: string = TTM_REVENUE_REALM_ID) {
+  return loadPnlMonths(companyId, start, end, realmId, 'gross_profit');
+}
+
+/** One latest-fetched full-month Accrual P&L value per month, shaped like dated amounts. */
+export async function loadPnlMonths(companyId: string, start: string, end: string, realmId: string, field: 'gross_profit' | 'income_total') {
   const months = monthPeriods(start, end);
   try {
     await ensureFinServPnlSnapshots(companyId, months, realmId);
@@ -74,12 +75,24 @@ export async function loadGrossProfitMonths(companyId: string, start: string, en
     console.warn('[ttm-gross-profit] snapshot refresh failed; using stored months', err);
   }
   const rows = await loadAllTtmRows((from, to) => supabase.from('qbo_pnl_snapshots')
-    .select('period_start, period_end, gross_profit')
+    .select('period_start, period_end, gross_profit, income_total, fetched_at')
     .eq('company_id', companyId).eq('realm_id', realmId).eq('accounting_method', 'Accrual')
     .gte('period_start', start).lte('period_end', end)
     .order('id').range(from, to));
   const wanted = new Set(months.map(m => `${m.start_date}_${m.end_date}`));
-  return (rows as { period_start: string; period_end: string; gross_profit: number | null }[])
-    .filter(r => wanted.has(`${r.period_start}_${r.period_end}`))
-    .map(r => ({ txn_date: r.period_start, total_amt: r.gross_profit }));
+  return latestPerMonth(rows as PnlMonthRow[], wanted)
+    .map(r => ({ txn_date: r.period_start, total_amt: r[field] }));
+}
+
+type PnlMonthRow = { period_start: string; period_end: string; gross_profit: number | null; income_total: number | null; fetched_at: string | null };
+/** Keeps only the most recently fetched snapshot for each wanted full month (older fetches can be stale). */
+export function latestPerMonth<T extends { period_start: string; period_end: string; fetched_at: string | null }>(rows: T[], wanted: Set<string>): T[] {
+  const best = new Map<string, T>();
+  for (const r of rows) {
+    const k = `${r.period_start}_${r.period_end}`;
+    if (!wanted.has(k)) continue;
+    const prev = best.get(k);
+    if (!prev || (r.fetched_at ?? '') > (prev.fetched_at ?? '')) best.set(k, r);
+  }
+  return [...best.values()];
 }

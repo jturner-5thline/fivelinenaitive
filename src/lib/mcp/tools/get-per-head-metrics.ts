@@ -7,7 +7,7 @@ import { loadAll, monthlyPnl } from "./_workforceLoad";
 export default defineTool({
   name: "get_per_head_metrics",
   title: "Get TTM revenue and gross profit per head",
-  description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors ÷ Debt headcount), 'finserv' (5th Line Financial Services ÷ FinServ headcount) or 'firm' (all entities ÷ firm headcount minus the James duplicate). Revenue uses QuickBooks invoices; gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
+  description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors ÷ Debt headcount), 'finserv' (5th Line Financial Services ÷ FinServ headcount) or 'firm' (all entities ÷ firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
   inputSchema: {
     scope: z.enum(["debt", "finserv", "firm"]).default("debt"),
     end_month: z.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
@@ -30,11 +30,15 @@ export default defineTool({
     const end = new Date(Date.UTC(ly, lm, 0)).toISOString().slice(0, 10);
     try {
       const [invoices, hcRows, pnl] = await Promise.all([
-        loadAll<{ txn_date: string; total_amt: number | null }>((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
+        loadAll<{ txn_date: string; total_amt: number | null }>((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms.filter((r) => r !== DEBT_REALM).length ? realms.filter((r) => r !== DEBT_REALM) : ["__none__"]).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
         loadAll<HcRow>((a, b) => sb.from("monthly_entity_headcount").select("realm_id, month, headcount").eq("company_id", WORKSPACE_ID).in("realm_id", realms).gte("month", start).lte("month", end).order("month").range(a, b)),
         monthlyPnl(sb, realms, start, end),
       ]);
       const revenue: Record<string, number> = {};
+      if (realms.includes(DEBT_REALM)) {
+        const debtPnl = await monthlyPnl(sb, [DEBT_REALM], start, end);
+        for (const [k, v] of Object.entries(debtPnl)) revenue[k] = (revenue[k] ?? 0) + v.revenue;
+      }
       for (const i of invoices) { const k = i.txn_date.slice(0, 7); revenue[k] = (revenue[k] ?? 0) + (Number(i.total_amt) || 0); }
       const gp: Record<string, number> = Object.fromEntries(Object.entries(pnl).map(([k, v]) => [k, v.gross_profit]));
       const per = new Map<string, Array<number | null>>();

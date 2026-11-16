@@ -7552,7 +7552,7 @@ async function loadAll(page) {
   }
 }
 async function monthlyPnl(sb, realmIds, from, to) {
-  const rows = await loadAll((a, b) => sb.from("qbo_pnl_snapshots").select("realm_id, period_start, period_end, accounting_method, income_total, gross_profit, operating_expenses, net_operating_income").in("realm_id", realmIds).gte("period_start", from).lte("period_end", to).order("period_start").range(a, b));
+  const rows = await loadAll((a, b) => sb.from("qbo_pnl_snapshots").select("realm_id, fetched_at, period_start, period_end, accounting_method, income_total, gross_profit, operating_expenses, net_operating_income").in("realm_id", realmIds).gte("period_start", from).lte("period_end", to).order("period_start").range(a, b));
   const pick = /* @__PURE__ */ new Map();
   for (const r of rows) {
     const s = /* @__PURE__ */ new Date(r.period_start + "T00:00:00Z");
@@ -7560,7 +7560,8 @@ async function monthlyPnl(sb, realmIds, from, to) {
     if (!r.period_start.endsWith("-01") || r.period_end !== e) continue;
     const key = `${r.realm_id}:${r.period_start.slice(0, 7)}`;
     const prev = pick.get(key);
-    if (!prev || r.accounting_method === "Accrual" && prev.accounting_method !== "Accrual") pick.set(key, r);
+    const acc = (x) => x.accounting_method === "Accrual";
+    if (!prev || acc(r) && !acc(prev) || acc(r) === acc(prev) && (r.fetched_at ?? "") > (prev.fetched_at ?? "")) pick.set(key, r);
   }
   const out = {};
   for (const [key, r] of pick) {
@@ -7699,7 +7700,7 @@ import { z as z59 } from "npm:zod@^3.23.0";
 var get_per_head_metrics_default = defineTool59({
   name: "get_per_head_metrics",
   title: "Get TTM revenue and gross profit per head",
-  description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors \xF7 Debt headcount), 'finserv' (5th Line Financial Services \xF7 FinServ headcount) or 'firm' (all entities \xF7 firm headcount minus the James duplicate). Revenue uses QuickBooks invoices; gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
+  description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors \xF7 Debt headcount), 'finserv' (5th Line Financial Services \xF7 FinServ headcount) or 'firm' (all entities \xF7 firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
   inputSchema: {
     scope: z59.enum(["debt", "finserv", "firm"]).default("debt"),
     end_month: z59.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
@@ -7725,11 +7726,15 @@ var get_per_head_metrics_default = defineTool59({
     const end = new Date(Date.UTC(ly, lm, 0)).toISOString().slice(0, 10);
     try {
       const [invoices, hcRows, pnl] = await Promise.all([
-        loadAll((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
+        loadAll((a, b) => sb.from("quickbooks_invoices").select("txn_date, total_amt").in("realm_id", realms.filter((r) => r !== DEBT_REALM).length ? realms.filter((r) => r !== DEBT_REALM) : ["__none__"]).gte("txn_date", start).lte("txn_date", end).order("id").range(a, b)),
         loadAll((a, b) => sb.from("monthly_entity_headcount").select("realm_id, month, headcount").eq("company_id", WORKSPACE_ID).in("realm_id", realms).gte("month", start).lte("month", end).order("month").range(a, b)),
         monthlyPnl(sb, realms, start, end)
       ]);
       const revenue = {};
+      if (realms.includes(DEBT_REALM)) {
+        const debtPnl = await monthlyPnl(sb, [DEBT_REALM], start, end);
+        for (const [k, v] of Object.entries(debtPnl)) revenue[k] = (revenue[k] ?? 0) + v.revenue;
+      }
       for (const i of invoices) {
         const k = i.txn_date.slice(0, 7);
         revenue[k] = (revenue[k] ?? 0) + (Number(i.total_amt) || 0);

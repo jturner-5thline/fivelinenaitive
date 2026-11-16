@@ -8,11 +8,11 @@ export async function loadAll<T>(page: (from: number, to: number) => PromiseLike
     if ((data ?? []).length < 1000) return out;
   }
 }
-type Pnl = { period_start: string; period_end: string; accounting_method: string | null; income_total: number | null; gross_profit: number | null; operating_expenses: number | null; net_operating_income: number | null };
+type Pnl = { fetched_at?: string | null; period_start: string; period_end: string; accounting_method: string | null; income_total: number | null; gross_profit: number | null; operating_expenses: number | null; net_operating_income: number | null };
 /** Monthly P&L snapshots (one per calendar month, Accrual preferred) keyed by YYYY-MM. */
 export async function monthlyPnl(sb: SupabaseClient, realmIds: string[], from: string, to: string) {
   const rows = await loadAll<Pnl & { realm_id: string }>((a, b) => sb.from("qbo_pnl_snapshots")
-    .select("realm_id, period_start, period_end, accounting_method, income_total, gross_profit, operating_expenses, net_operating_income")
+    .select("realm_id, fetched_at, period_start, period_end, accounting_method, income_total, gross_profit, operating_expenses, net_operating_income")
     .in("realm_id", realmIds).gte("period_start", from).lte("period_end", to).order("period_start").range(a, b));
   const pick = new Map<string, Pnl & { realm_id: string }>();
   for (const r of rows) {
@@ -21,7 +21,8 @@ export async function monthlyPnl(sb: SupabaseClient, realmIds: string[], from: s
     if (!r.period_start.endsWith("-01") || r.period_end !== e) continue;
     const key = `${r.realm_id}:${r.period_start.slice(0, 7)}`;
     const prev = pick.get(key);
-    if (!prev || (r.accounting_method === "Accrual" && prev.accounting_method !== "Accrual")) pick.set(key, r);
+    const acc = (x: Pnl) => x.accounting_method === "Accrual";
+    if (!prev || (acc(r) && !acc(prev)) || (acc(r) === acc(prev) && (r.fetched_at ?? "") > (prev.fetched_at ?? ""))) pick.set(key, r);
   }
   const out: Record<string, { revenue: number; gross_profit: number; operating_profit: number }> = {};
   for (const [key, r] of pick) {
