@@ -28,7 +28,7 @@ export default defineTool({
       const years = new Map<string, typeof months>();
       for (const m of months) years.set(m.month.slice(0, 4), [...(years.get(m.month.slice(0, 4)) ?? []), m]);
       const avg = (xs: Array<number | null>) => { const v = xs.filter((x): x is number => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
-      const yearly = [...years].map(([year, ms]) => ({ year, ...Object.fromEntries(UNITS.map((u) => [`${u.label}_avg`, avg(ms.map((m) => (m as Record<string, number | null>)[u.label]))])), firm_total_avg: avg(ms.map((m) => m.firm_total)) }));
+      const yearly = [...years].map(([year, ms]) => ({ year, ...Object.fromEntries(UNITS.map((u) => [`${u.label}_avg`, avg(ms.map((m) => (m as Record<string, unknown>)[u.label] as number | null))])), firm_total_avg: avg(ms.map((m) => m.firm_total)) }));
       const payload = { units: UNITS, note: DUPLICATE_NOTE, month_count: months.length, months, yearly };
       return textResult(payload, payload as unknown as Record<string, unknown>);
     } catch (e) { return errorResult(e instanceof Error ? e.message : "Headcount read failed"); }
