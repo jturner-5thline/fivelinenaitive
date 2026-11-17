@@ -1,3 +1,4 @@
+import { isFinServActiveClientAt } from '@/lib/finservActiveAt';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -651,7 +652,7 @@ export function useFinServActiveClients(
       // "stage at point in time" for each deal at the end of each bucket.
       const { data: deals, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, stage, created_at, updated_at')
+        .select('id, stage, created_at, updated_at, contract_start_date, stage_entered_at')
         .eq('company_id', company.id)
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (dealsErr) throw dealsErr;
@@ -674,28 +675,6 @@ export function useFinServActiveClients(
         historyByDeal.set(h.deal_id, arr);
       }
 
-      // Returns the stage of `deal` at the given timestamp `t`, or null if the
-      // deal did not yet exist.
-      const stageAt = (
-        deal: { id: string; stage: string | null; created_at: string },
-        t: Date,
-      ): string | null => {
-        const created = new Date(deal.created_at);
-        if (created > t) return null;
-        const hist = historyByDeal.get(deal.id);
-        if (hist && hist.length > 0) {
-          let last: string | null = null;
-          for (const h of hist) {
-            if (new Date(h.changed_at) <= t) last = h.to_stage;
-            else break;
-          }
-          if (last !== null) return last;
-          // No history entry <= t — fall through to current stage assumption.
-        }
-        // No (applicable) history rows — assume the deal has been in its
-        // current stage since creation.
-        return deal.stage ?? null;
-      };
 
       // Current count = deals whose stage is currently "Active Client".
       const currentCount = dealList.filter(d => d.stage === ACTIVE_CLIENT_STAGE).length;
@@ -719,7 +698,7 @@ export function useFinServActiveClients(
         // Client stage. Uses deal_stage_history to reconstruct the point-in-
         // time stage; falls back to the current stage for deals with no
         // history (see stageAt).
-        const rawCount = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
+        const rawCount = dealList.filter(d => isFinServActiveClientAt(d, historyByDeal.get(d.id), effectiveEnd)).length;
         const count = applyActiveClientOverride(effectiveEnd, rawCount);
         return { month: b.label, monthKey: b.key, count, variance: 0 };
       });

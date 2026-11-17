@@ -1,3 +1,4 @@
+import { isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
 /**
  * Live KPI metric resolver.
  *
@@ -391,7 +392,7 @@ export function useInsightsLiveMetricValue(
     queryFn: async () => {
       const { data: deals, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, stage, mrr, created_at')
+        .select('id, stage, mrr, created_at, contract_start_date, stage_entered_at')
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (dealsErr) throw dealsErr;
       const dealList = (deals ?? []) as Array<{
@@ -399,6 +400,8 @@ export function useInsightsLiveMetricValue(
         stage: string | null;
         mrr: number | string | null;
         created_at: string;
+        contract_start_date: string | null;
+        stage_entered_at: string | null;
       }>;
       const TERMINAL = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
 
@@ -430,27 +433,12 @@ export function useInsightsLiveMetricValue(
       const endBound = parseISO(`${period.end}T23:59:59`);
       const today = new Date();
       const effective = endBound > today ? today : endBound;
-      const stageAt = (d: { id: string; stage: string | null; created_at: string }) => {
-        const created = new Date(d.created_at);
-        if (created > effective) return null;
-        const hist = historyByDeal.get(d.id);
-        if (hist && hist.length > 0) {
-          let last: string | null = null;
-          for (const h of hist) {
-            if (new Date(h.changed_at) <= effective) last = h.to_stage;
-            else break;
-          }
-          if (last !== null) return last;
-        }
-        return d.stage ?? null;
-      };
       let totalClients = 0;
       let totalMrr = 0;
       for (const d of dealList) {
-        const stage = stageAt(d);
-        if (!stage) continue;
-        if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
-        if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
+        const hist = historyByDeal.get(d.id);
+        if (isFinServActiveClientAt(d, hist, effective)) totalClients += 1;
+        if (countsTowardFinServMrrAt(d, hist, effective)) totalMrr += Number(d.mrr ?? 0);
       }
       return { totalClients: applyActiveClientOverride(effective, totalClients), totalMrr };
     },

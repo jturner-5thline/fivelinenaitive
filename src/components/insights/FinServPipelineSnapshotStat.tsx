@@ -1,3 +1,4 @@
+import { isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
 import { useQuery } from "@tanstack/react-query";
 import { StatWidgetContent } from "@/components/metrics/SortableMetricWidget";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,7 +60,7 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
     queryFn: async () => {
       let dealsQ = supabase
         .from("deals")
-        .select("id, stage, mrr, created_at")
+        .select("id, stage, mrr, created_at, contract_start_date, stage_entered_at")
         .eq("pipeline_id", FINSERV_PIPELINE_ID);
       if (company?.id) dealsQ = dealsQ.eq("company_id", company.id);
       const { data: deals, error: dealsErr } = await dealsQ;
@@ -69,6 +70,8 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
         stage: string | null;
         mrr: number | string | null;
         created_at: string;
+        contract_start_date: string | null;
+        stage_entered_at: string | null;
       }>;
 
       // Current snapshot (no period → matches source dashboard exactly).
@@ -104,28 +107,13 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
       const today = new Date();
       const effective = t > today ? today : t;
 
-      const stageAt = (deal: { id: string; stage: string | null; created_at: string }) => {
-        const created = new Date(deal.created_at);
-        if (created > effective) return null;
-        const hist = historyByDeal.get(deal.id);
-        if (hist && hist.length > 0) {
-          let last: string | null = null;
-          for (const h of hist) {
-            if (new Date(h.changed_at) <= effective) last = h.to_stage;
-            else break;
-          }
-          if (last !== null) return last;
-        }
-        return deal.stage ?? null;
-      };
 
       let totalClients = 0;
       let totalMrr = 0;
       for (const d of dealList) {
-        const stage = stageAt(d);
-        if (!stage) continue;
-        if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
-        if (!TERMINAL_STAGES.has(stage)) totalMrr += Number(d.mrr ?? 0);
+        const hist = historyByDeal.get(d.id);
+        if (isFinServActiveClientAt(d, hist, effective)) totalClients += 1;
+        if (countsTowardFinServMrrAt(d, hist, effective)) totalMrr += Number(d.mrr ?? 0);
       }
       totalClients = applyActiveClientOverride(effective, totalClients);
       return { totalClients, totalMrr };
