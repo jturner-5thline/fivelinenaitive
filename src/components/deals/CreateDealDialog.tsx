@@ -72,6 +72,8 @@ export interface CreateDealInitialValues {
   narrative?: string;
   referralName?: string;
   referralEmail?: string;
+  /** Prefilled "Sourced via" value; defaults to Referral when a referral source is prefilled */
+  sourcedVia?: string;
   dealManager?: string;
   dealOwner?: string;
   dealStage?: string;
@@ -197,7 +199,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       ? [{ name: initialValues?.referralName || '', email: initialValues?.referralEmail || '' }]
       : [],
   );
-  const [sourcedVia, setSourcedVia] = useState('');
+  const [sourcedVia, setSourcedVia] = useState(
+    initialValues?.sourcedVia ||
+      (initialValues?.referralName?.trim() || initialValues?.referralEmail?.trim() ? 'Referral' : ''),
+  );
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const { options: engagementOpts } = useDealEngagementOptions();
   const [engagementType, setEngagementType] = useState('');
