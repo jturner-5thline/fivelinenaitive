@@ -1,4 +1,4 @@
-import { isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
+import { finservClientKey, isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
 import { useQuery } from "@tanstack/react-query";
 import { StatWidgetContent } from "@/components/metrics/SortableMetricWidget";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,6 @@ import { useCompany } from "@/hooks/useCompany";
 import {
   FINSERV_PIPELINE_ID,
   ACTIVE_CLIENT_STAGE,
-  applyActiveClientOverride,
 } from "@/hooks/useFinServFinancialMetrics";
 import { getTimePeriodRange, getTimePeriodLabel } from "@/lib/timePeriodUtils";
 import type { TimePeriod } from "@/contexts/MetricsWidgetsContext";
@@ -60,7 +59,7 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
     queryFn: async () => {
       let dealsQ = supabase
         .from("deals")
-        .select("id, stage, mrr, created_at, contract_start_date, stage_entered_at")
+        .select("id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at")
         .eq("pipeline_id", FINSERV_PIPELINE_ID);
       if (company?.id) dealsQ = dealsQ.eq("company_id", company.id);
       const { data: deals, error: dealsErr } = await dealsQ;
@@ -71,19 +70,22 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
         mrr: number | string | null;
         created_at: string;
         contract_start_date: string | null;
+        contract_end_date: string | null;
+        company: string | null;
+        crm_company_id: string | null;
         stage_entered_at: string | null;
       }>;
 
       // Current snapshot (no period → matches source dashboard exactly).
       if (!endIso) {
-        let totalClients = 0;
+        const clientKeys = new Set<string>();
         let totalMrr = 0;
         for (const d of dealList) {
           const stage = d.stage ?? "";
-          if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+          if (stage === ACTIVE_CLIENT_STAGE) clientKeys.add(finservClientKey(d));
           if (!TERMINAL_STAGES.has(stage)) totalMrr += Number(d.mrr ?? 0);
         }
-        return { totalClients, totalMrr };
+        return { totalClients: clientKeys.size, totalMrr };
       }
 
       // Period-aware: reconstruct stage at end-of-period from history.
@@ -108,15 +110,14 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
       const effective = t > today ? today : t;
 
 
-      let totalClients = 0;
+      const clientKeys = new Set<string>();
       let totalMrr = 0;
       for (const d of dealList) {
         const hist = historyByDeal.get(d.id);
-        if (isFinServActiveClientAt(d, hist, effective)) totalClients += 1;
+        if (isFinServActiveClientAt(d, hist, effective)) clientKeys.add(finservClientKey(d));
         if (countsTowardFinServMrrAt(d, hist, effective)) totalMrr += Number(d.mrr ?? 0);
       }
-      totalClients = applyActiveClientOverride(effective, totalClients);
-      return { totalClients, totalMrr };
+      return { totalClients: clientKeys.size, totalMrr };
     },
   });
 }

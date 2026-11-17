@@ -1,4 +1,4 @@
-import { isFinServActiveClientAt, countsTowardFinServMrrAt, type FinServDealLike, type StageHistoryRow } from '@/lib/finservActiveAt';
+import { finservClientKey, isFinServActiveClientAt, countsTowardFinServMrrAt, type FinServDealLike, type StageHistoryRow } from '@/lib/finservActiveAt';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,7 @@ import {
   useFinServCashflow,
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
-import { FINSERV_PIPELINE_ID, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
+import { FINSERV_PIPELINE_ID } from '@/hooks/useFinServFinancialMetrics';
 import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
 import { useFinServNrr } from '@/hooks/useFinServNrr';
 import { FinServNrrDrillSheet } from './FinServNrrDrillSheet';
@@ -1179,7 +1179,7 @@ function FinServFinancialMetricsDashboardInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, stage, mrr, created_at, contract_start_date, stage_entered_at')
+        .select('id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at')
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (error) throw error;
       const rows = (data ?? []) as Array<FinServDealLike & { mrr: number | string | null }>;
@@ -1203,19 +1203,18 @@ function FinServFinancialMetricsDashboardInner() {
         'fs-qualification', 'fs-discovery', 'fs-qualified',
         'fs-scoping', 'fs-proposal-sent', 'fs-negotiation',
       ]);
-      let totalClients = 0;
+      const clientKeys = new Set<string>();
       let totalMrr = 0;
       let currentPipeline = 0;
       for (const r of rows) {
         const stage = r.stage ?? '';
         const h = historyByDeal.get(r.id);
         // Point-in-time at the selected period end (pre-May-2026 contract-start rule included).
-        if (isFinServActiveClientAt(r, h, effClamped)) totalClients += 1;
+        if (isFinServActiveClientAt(r, h, effClamped)) clientKeys.add(finservClientKey(r));
         if (CURRENT_PIPELINE_STAGES.has(stage)) currentPipeline += 1;
         if (countsTowardFinServMrrAt(r, h, effClamped)) totalMrr += Number(r.mrr ?? 0);
       }
-      const overriddenClients = applyActiveClientOverride(effClamped, totalClients);
-      return { totalClients: overriddenClients, totalMrr, currentPipeline };
+      return { totalClients: clientKeys.size, totalMrr, currentPipeline };
     },
     staleTime: 60_000,
   });

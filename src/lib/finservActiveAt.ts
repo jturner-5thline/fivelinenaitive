@@ -6,7 +6,9 @@
  *  - its stage at that moment was the Active Client stage, OR
  *  - its contract start date is on/before the period end AND it had not exited
  *    the Active Client stage (or dropped out to a terminal stage) by then.
- * From May 2026 onward only the point-in-time stage counts.
+ * From May 2026 onward only the point-in-time stage counts. A contract end
+ * date on/before the period end stops the contract-start rule. Counts are
+ * distinct clients (engagements grouped by finservClientKey).
  */
 export const FINSERV_ACTIVE_STAGE = 'fs-closed-won';
 export const FINSERV_TERMINAL_STAGES = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
@@ -17,6 +19,9 @@ export interface FinServDealLike {
   stage: string | null;
   created_at: string;
   contract_start_date?: string | null;
+  contract_end_date?: string | null;
+  company?: string | null;
+  crm_company_id?: string | null;
   stage_entered_at?: string | null;
 }
 export interface StageHistoryRow { to_stage: string | null; changed_at: string }
@@ -64,6 +69,8 @@ export function isFinServActiveClientAt(deal: FinServDealLike, hist: StageHistor
   if (stageAtTime(deal, hist, t) === FINSERV_ACTIVE_STAGE) return true;
   if (t >= CONTRACT_START_RULE_CUTOFF || !deal.contract_start_date) return false;
   if (parseDateOnly(deal.contract_start_date) > t) return false;
+  // A recorded contract end date on/before the period end means the engagement had ended.
+  if (deal.contract_end_date && parseDateOnly(deal.contract_end_date) <= t) return false;
   return !exitedBy(deal, hist, t);
 }
 
@@ -74,14 +81,29 @@ export function countsTowardFinServMrrAt(deal: FinServDealLike, hist: StageHisto
   return !!s && !FINSERV_TERMINAL_STAGES.has(s);
 }
 
-/** Manual correction used by the dashboards: June 2026 period ends show 7 active clients. */
-export function finservActiveClientOverride(t: Date, count: number): number {
-  return t.getFullYear() === 2026 && t.getMonth() === 5 ? 7 : count;
+const CLIENT_NAME_NOISE = new Set(['inc','llc','co','corp','ltd','the','and','cfo','advisory','finops','bookkeeping','back','office','expansion','m','a','diligence','support']);
+
+/**
+ * Distinct-client key: FinServ deals are engagements, and one client can hold
+ * several. Uses the linked CRM company when present, else the client name
+ * with service-line words and corporate suffixes removed (first two words).
+ */
+export function finservClientKey(deal: { id: string; company?: string | null; crm_company_id?: string | null }): string {
+  if (deal.crm_company_id) return `crm:${deal.crm_company_id}`;
+  const words = (deal.company ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter((w) => w && !CLIENT_NAME_NOISE.has(w));
+  return words.length ? `name:${words.slice(0, 2).join(' ')}` : `deal:${deal.id}`;
+}
+
+/** Number of distinct clients with at least one active engagement at t. */
+export function countFinServActiveClientsAt<T extends FinServDealLike>(deals: T[], historyByDeal: Map<string, StageHistoryRow[]>, t: Date): number {
+  const keys = new Set<string>();
+  for (const d of deals) if (isFinServActiveClientAt(d, historyByDeal.get(d.id), t)) keys.add(finservClientKey(d));
+  return keys.size;
 }
 
 export interface FinServSnapshot {
   active_clients: number;
-  active_clients_raw: number;
+  active_engagements: number;
   total_mrr: number;
   clients: Array<{ id: string; company: string | null; mrr: number }>;
 }
@@ -92,16 +114,19 @@ export function finservSnapshotAt(
   historyByDeal: Map<string, StageHistoryRow[]>,
   t: Date,
 ): FinServSnapshot {
-  let raw = 0;
+  let engagements = 0;
   let mrr = 0;
-  const clients: FinServSnapshot['clients'] = [];
+  const byClient = new Map<string, FinServSnapshot['clients'][number]>();
   for (const d of deals) {
     const h = historyByDeal.get(d.id);
     if (isFinServActiveClientAt(d, h, t)) {
-      raw += 1;
-      clients.push({ id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
+      engagements += 1;
+      const key = finservClientKey(d);
+      const prev = byClient.get(key);
+      if (prev) prev.mrr += Number(d.mrr ?? 0);
+      else byClient.set(key, { id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
     }
     if (countsTowardFinServMrrAt(d, h, t)) mrr += Number(d.mrr ?? 0);
   }
-  return { active_clients: finservActiveClientOverride(t, raw), active_clients_raw: raw, total_mrr: mrr, clients };
+  return { active_clients: byClient.size, active_engagements: engagements, total_mrr: mrr, clients: [...byClient.values()] };
 }

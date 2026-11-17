@@ -598,6 +598,7 @@ function isFinServActiveClientAt(deal, hist, t) {
   if (stageAtTime(deal, hist, t) === FINSERV_ACTIVE_STAGE) return true;
   if (t >= CONTRACT_START_RULE_CUTOFF || !deal.contract_start_date) return false;
   if (parseDateOnly(deal.contract_start_date) > t) return false;
+  if (deal.contract_end_date && parseDateOnly(deal.contract_end_date) <= t) return false;
   return !exitedBy(deal, hist, t);
 }
 function countsTowardFinServMrrAt(deal, hist, t) {
@@ -605,22 +606,28 @@ function countsTowardFinServMrrAt(deal, hist, t) {
   const s = stageAtTime(deal, hist, t);
   return !!s && !FINSERV_TERMINAL_STAGES.has(s);
 }
-function finservActiveClientOverride(t, count) {
-  return t.getFullYear() === 2026 && t.getMonth() === 5 ? 7 : count;
+var CLIENT_NAME_NOISE = /* @__PURE__ */ new Set(["inc", "llc", "co", "corp", "ltd", "the", "and", "cfo", "advisory", "finops", "bookkeeping", "back", "office", "expansion", "m", "a", "diligence", "support"]);
+function finservClientKey(deal) {
+  if (deal.crm_company_id) return `crm:${deal.crm_company_id}`;
+  const words = (deal.company ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((w) => w && !CLIENT_NAME_NOISE.has(w));
+  return words.length ? `name:${words.slice(0, 2).join(" ")}` : `deal:${deal.id}`;
 }
 function finservSnapshotAt(deals, historyByDeal, t) {
-  let raw = 0;
+  let engagements = 0;
   let mrr = 0;
-  const clients = [];
+  const byClient = /* @__PURE__ */ new Map();
   for (const d of deals) {
     const h = historyByDeal.get(d.id);
     if (isFinServActiveClientAt(d, h, t)) {
-      raw += 1;
-      clients.push({ id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
+      engagements += 1;
+      const key = finservClientKey(d);
+      const prev = byClient.get(key);
+      if (prev) prev.mrr += Number(d.mrr ?? 0);
+      else byClient.set(key, { id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
     }
     if (countsTowardFinServMrrAt(d, h, t)) mrr += Number(d.mrr ?? 0);
   }
-  return { active_clients: finservActiveClientOverride(t, raw), active_clients_raw: raw, total_mrr: mrr, clients };
+  return { active_clients: byClient.size, active_engagements: engagements, total_mrr: mrr, clients: [...byClient.values()] };
 }
 
 // src/lib/mcp/tools/get-finserv-client-metrics.ts
@@ -662,7 +669,7 @@ var get_finserv_client_metrics_default = defineTool2({
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    const { data: deals, error } = await sb.from("deals").select("id, company, stage, mrr, created_at, contract_start_date, stage_entered_at").eq("pipeline_id", FINSERV_PIPELINE_ID);
+    const { data: deals, error } = await sb.from("deals").select("id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at").eq("pipeline_id", FINSERV_PIPELINE_ID);
     if (error) return errorResult(error.message);
     const { data: hist, error: he } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", FINSERV_PIPELINE_ID).order("changed_at", { ascending: true });
     if (he) return errorResult(he.message);
@@ -681,7 +688,7 @@ var get_finserv_client_metrics_default = defineTool2({
         period: label,
         as_of: eff.toISOString(),
         active_clients: s.active_clients,
-        active_clients_before_override: s.active_clients_raw,
+        active_engagements: s.active_engagements,
         total_mrr: s.total_mrr,
         ...include_clients ? { clients: s.clients } : {}
       };

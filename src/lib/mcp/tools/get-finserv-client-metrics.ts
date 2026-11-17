@@ -44,7 +44,7 @@ export default defineTool({
     const sb = supabaseForUser(ctx);
     const { data: deals, error } = await sb
       .from("deals")
-      .select("id, company, stage, mrr, created_at, contract_start_date, stage_entered_at")
+      .select("id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at")
       .eq("pipeline_id", FINSERV_PIPELINE_ID);
     if (error) return errorResult(error.message);
     const { data: hist, error: he } = await sb
@@ -68,7 +68,7 @@ export default defineTool({
         period: label,
         as_of: eff.toISOString(),
         active_clients: s.active_clients,
-        active_clients_before_override: s.active_clients_raw,
+        active_engagements: s.active_engagements,
         total_mrr: s.total_mrr,
         ...(include_clients ? { clients: s.clients } : {}),
       };

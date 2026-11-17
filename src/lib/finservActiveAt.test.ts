@@ -38,7 +38,21 @@ describe('finservSnapshotAt', () => {
     expect(s.active_clients).toBe(2);
     expect(s.total_mrr).toBe(7800);
   });
-  it('applies the June 2026 seven-client correction', () => {
-    expect(finservSnapshotAt([], new Map(), end(2026, 6, 30)).active_clients).toBe(7);
+  it('counts two engagements for the same client as one client with combined MRR', () => {
+    const deals = [
+      { id: 'a', company: 'WealthCentral, Inc.', stage: 'fs-closed-won', mrr: 2000, created_at: '2025-01-01T00:00:00Z' },
+      { id: 'b', company: 'WealthCentral Bookkeeping', stage: 'fs-closed-won', mrr: 500, created_at: '2025-01-01T00:00:00Z' },
+      { id: 'c', company: 'i-Genie', stage: 'fs-closed-won', mrr: 1000, created_at: '2025-01-01T00:00:00Z' },
+      { id: 'd', company: 'I-Genie CFO Advisory Expansion', stage: 'fs-closed-won', mrr: 300, created_at: '2025-01-01T00:00:00Z' },
+    ];
+    const s = finservSnapshotAt(deals, new Map(), end(2026, 6, 30));
+    expect(s.active_clients).toBe(2);
+    expect(s.active_engagements).toBe(4);
+    expect(s.clients.find((c) => c.id === 'a')?.mrr).toBe(2500);
+  });
+  it('stops counting a contract-start client after its contract end date', () => {
+    const deal = { id: 'l', company: 'Laura Shin Media FinOps', stage: 'fs-churned', mrr: 800, created_at: '2026-05-12T00:00:00Z', contract_start_date: '2024-01-05', contract_end_date: '2026-01-16', stage_entered_at: '2026-05-27T00:00:00Z' };
+    expect(finservSnapshotAt([deal], new Map(), end(2025, 12, 31)).active_clients).toBe(1);
+    expect(finservSnapshotAt([deal], new Map(), end(2026, 2, 28)).active_clients).toBe(0);
   });
 });

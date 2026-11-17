@@ -1,4 +1,4 @@
-import { isFinServActiveClientAt } from '@/lib/finservActiveAt';
+import { countFinServActiveClientsAt } from '@/lib/finservActiveAt';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,22 +22,6 @@ export const FINSERV_PIPELINE_ID = '6907be5e-b17c-4a95-a7c2-fd977c94e179';
 // (Stage labelled "Active Client" in deal_pipelines is persisted as `fs-closed-won`.)
 export const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 
-// ────────────────────────────────────────────────────────────
-// Manual overrides for the FinServ Active Client count.
-// The pipeline-derived count for June 2026 (and therefore Q2 2026, which
-// closes at end of June) came in at 10 due to stale/duplicate deals in the
-// pipeline. Product-of-record for that period is 7. Override any bucket
-// whose effective end date lands inside June 2026.
-// ────────────────────────────────────────────────────────────
-export function applyActiveClientOverride(
-  effectiveEnd: Date,
-  count: number,
-): number {
-  if (effectiveEnd.getFullYear() === 2026 && effectiveEnd.getMonth() === 5) {
-    return 7;
-  }
-  return count;
-}
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -652,7 +636,7 @@ export function useFinServActiveClients(
       // "stage at point in time" for each deal at the end of each bucket.
       const { data: deals, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, stage, created_at, updated_at, contract_start_date, stage_entered_at')
+        .select('id, company, crm_company_id, stage, created_at, updated_at, contract_start_date, contract_end_date, stage_entered_at')
         .eq('company_id', company.id)
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (dealsErr) throw dealsErr;
@@ -698,8 +682,7 @@ export function useFinServActiveClients(
         // Client stage. Uses deal_stage_history to reconstruct the point-in-
         // time stage; falls back to the current stage for deals with no
         // history (see stageAt).
-        const rawCount = dealList.filter(d => isFinServActiveClientAt(d, historyByDeal.get(d.id), effectiveEnd)).length;
-        const count = applyActiveClientOverride(effectiveEnd, rawCount);
+        const count = countFinServActiveClientsAt(dealList, historyByDeal, effectiveEnd);
         return { month: b.label, monthKey: b.key, count, variance: 0 };
       });
 

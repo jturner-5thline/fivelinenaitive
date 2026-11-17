@@ -1,4 +1,4 @@
-import { isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
+import { finservClientKey, isFinServActiveClientAt, countsTowardFinServMrrAt } from '@/lib/finservActiveAt';
 /**
  * Live KPI metric resolver.
  *
@@ -38,7 +38,6 @@ import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
 import {
   FINSERV_PIPELINE_ID,
   ACTIVE_CLIENT_STAGE,
-  applyActiveClientOverride,
   useFinServTotalRevenue,
 } from '@/hooks/useFinServFinancialMetrics';
 import { useCompany } from '@/hooks/useCompany';
@@ -392,7 +391,7 @@ export function useInsightsLiveMetricValue(
     queryFn: async () => {
       const { data: deals, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, stage, mrr, created_at, contract_start_date, stage_entered_at')
+        .select('id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at')
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (dealsErr) throw dealsErr;
       const dealList = (deals ?? []) as Array<{
@@ -401,20 +400,23 @@ export function useInsightsLiveMetricValue(
         mrr: number | string | null;
         created_at: string;
         contract_start_date: string | null;
+        contract_end_date: string | null;
+        company: string | null;
+        crm_company_id: string | null;
         stage_entered_at: string | null;
       }>;
       const TERMINAL = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
 
       // No period → current snapshot (matches source dashboard exactly).
       if (!period?.end) {
-        let totalClients = 0;
+        const clientKeys = new Set<string>();
         let totalMrr = 0;
         for (const d of dealList) {
           const stage = d.stage ?? '';
-          if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+          if (stage === ACTIVE_CLIENT_STAGE) clientKeys.add(finservClientKey(d));
           if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
         }
-        return { totalClients: applyActiveClientOverride(new Date(), totalClients), totalMrr };
+        return { totalClients: clientKeys.size, totalMrr };
       }
 
       // Period-aware: reconstruct stage at period end via deal_stage_history.
@@ -433,14 +435,14 @@ export function useInsightsLiveMetricValue(
       const endBound = parseISO(`${period.end}T23:59:59`);
       const today = new Date();
       const effective = endBound > today ? today : endBound;
-      let totalClients = 0;
+      const clientKeys = new Set<string>();
       let totalMrr = 0;
       for (const d of dealList) {
         const hist = historyByDeal.get(d.id);
-        if (isFinServActiveClientAt(d, hist, effective)) totalClients += 1;
+        if (isFinServActiveClientAt(d, hist, effective)) clientKeys.add(finservClientKey(d));
         if (countsTowardFinServMrrAt(d, hist, effective)) totalMrr += Number(d.mrr ?? 0);
       }
-      return { totalClients: applyActiveClientOverride(effective, totalClients), totalMrr };
+      return { totalClients: clientKeys.size, totalMrr };
     },
   });
 
