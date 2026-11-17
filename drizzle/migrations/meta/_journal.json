@@ -568,6 +568,13 @@
       "when": 1794849359379,
       "tag": "0080_lender_audit_transfer_merge_only",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1794936740536,
+      "tag": "0081_isolate_dynamic_sql_definer_functions",
+      "breakpoints": true
     }
   ]
 }
