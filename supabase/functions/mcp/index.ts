@@ -1800,6 +1800,501 @@ async function loadReferralClassification(sb, companyId, userId) {
   return { classified, contacts, companyNames };
 }
 
+// src/lib/dashboardTiles/debtStageEntry.ts
+var DEBT_ACTIVE_PIPELINE_ID = "b78ad452-b489-4c89-8a91-789347c05f79";
+var DEBT_IN_DEVELOPMENT_PIPELINE_ID = "40b17dfb-9122-49e0-bf7c-5aa993d5d615";
+var DEBT_REALM_ID = "193514877331929";
+var STAGE_LABEL_VARIANTS = {
+  "funded-invoiced": ["funded-invoiced", "Funded/Invoiced", "Funded / Invoiced", "Closed & Funded"],
+  "closed-won": ["closed-won", "Closed Won"],
+  "proposal-issued": ["proposal-issued", "Proposal Issued"],
+  "terms-issued": ["terms-issued", "Terms Issued"],
+  "final-credit-items": ["final-credit-items", "Final Credit Items"],
+  "in-due-diligence": ["in-due-diligence", "In Due Diligence"],
+  "ndaneeds-list-sent": ["ndaneeds-list-sent", "NDA/Needs List Sent"],
+  "submitted-to-lenders": ["submitted-to-lenders", "Submitted to Lenders"],
+  "lenders-in-review": ["lenders-in-review", "Lenders in Review"],
+  "pre-credit-needs": ["pre-credit-needs", "Pre-Credit Needs"],
+  "proposal-in-development": ["proposal-in-development", "Proposal in Development"],
+  "fs-active-client": ["fs-active-client", "Active Client"]
+};
+var STAGE_LABEL_LOOKUP = (() => {
+  const map = /* @__PURE__ */ new Map();
+  for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
+    for (const v of variants) map.set(v.toLowerCase(), slug);
+  }
+  return map;
+})();
+var CLOSED_STAGE_SLUGS = /* @__PURE__ */ new Set(["funded-invoiced", "closed-won"]);
+var CLOSED_STAGE_LABEL_FOR_SLUG = {
+  "funded-invoiced": "Funded/Invoiced",
+  "closed-won": "Closed Won"
+};
+function expandStageLabels(slugs) {
+  const out = /* @__PURE__ */ new Set();
+  for (const slug of slugs) {
+    out.add(slug);
+    for (const v of STAGE_LABEL_VARIANTS[slug] ?? []) {
+      out.add(v);
+      out.add(v.toUpperCase());
+    }
+  }
+  return Array.from(out);
+}
+function normalizeStageSlug(toStage, _toStageId) {
+  if (!toStage) return null;
+  return STAGE_LABEL_LOOKUP.get(toStage.toLowerCase()) ?? null;
+}
+function isActivePipelineFundedOnlyMetric(slugs, pipelineId) {
+  return pipelineId === DEBT_ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === "funded-invoiced";
+}
+function expandMetricStageLabels(slugs, pipelineId) {
+  const out = new Set(expandStageLabels(slugs));
+  if (isActivePipelineFundedOnlyMetric(slugs, pipelineId)) {
+    for (const variant of expandStageLabels(["closed-won"])) out.add(variant);
+  }
+  return Array.from(out);
+}
+function normalizeMetricStageSlug(toStage, toStageId, pipelineId, targetStages) {
+  const normalized = normalizeStageSlug(toStage, toStageId);
+  if (isActivePipelineFundedOnlyMetric(targetStages, pipelineId) && normalized === "closed-won") return "funded-invoiced";
+  return normalized;
+}
+async function fetchClosedDealsAsSyntheticRows(sb, pipelineId, targetStages, startIso, endIso) {
+  if (!pipelineId) return [];
+  const closedTargets = targetStages.filter((s) => CLOSED_STAGE_SLUGS.has(s));
+  if (closedTargets.length === 0) return [];
+  const { data, error } = await sb.from("deals").select("id, company, value, manager, stage, pipeline_id, status, mrr, closing_date").eq("pipeline_id", pipelineId).in("stage", closedTargets).gte("closing_date", startIso.slice(0, 10)).lte("closing_date", endIso.slice(0, 10)).order("closing_date", { ascending: true });
+  if (error) {
+    console.warn("[stage-entry closed-fallback] query failed", error);
+    return [];
+  }
+  return (data ?? []).map((d) => ({
+    deal_id: d.id,
+    changed_at: `${d.closing_date}T12:00:00.000Z`,
+    to_stage: CLOSED_STAGE_LABEL_FOR_SLUG[d.stage] ?? d.stage,
+    to_stage_id: null,
+    from_stage_id: null,
+    deals: { company: d.company, value: d.value, manager: d.manager, stage: d.stage, pipeline_id: d.pipeline_id, status: d.status, mrr: d.mrr }
+  }));
+}
+async function fetchValueUpdatedEvents(sb, dealIds, sinceIso) {
+  const map = /* @__PURE__ */ new Map();
+  if (dealIds.length === 0) return map;
+  const { data, error } = await sb.from("activity_logs").select("deal_id, created_at, metadata").eq("activity_type", "value_updated").in("deal_id", dealIds).gte("created_at", sinceIso).order("created_at", { ascending: true });
+  if (error) {
+    console.warn("[stage-entry value-history] query failed", error);
+    return map;
+  }
+  for (const row of data ?? []) {
+    const m = row.metadata ?? {};
+    const oldV = Number(m.oldValue);
+    const newV = Number(m.newValue);
+    if (!Number.isFinite(oldV) || !Number.isFinite(newV)) continue;
+    const arr2 = map.get(row.deal_id) ?? [];
+    arr2.push({ ts: row.created_at, oldValue: oldV, newValue: newV });
+    map.set(row.deal_id, arr2);
+  }
+  return map;
+}
+function valueAsOf(currentValue, events, asOfIso) {
+  if (!events || events.length === 0) return currentValue;
+  let v = currentValue;
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (events[i].ts > asOfIso) {
+      if (!(Number(events[i].oldValue) === 0 && Number(events[i].newValue) > 0)) v = events[i].oldValue;
+    }
+  }
+  return v;
+}
+async function applyHistoricalValuesToRows(sb, rows) {
+  if (rows.length === 0) return;
+  const dealIds = Array.from(new Set(rows.map((r) => r.deal_id).filter(Boolean)));
+  const earliest = rows.reduce((acc, r) => !acc || r.changed_at && r.changed_at < acc ? r.changed_at : acc, "");
+  if (!earliest) return;
+  const events = await fetchValueUpdatedEvents(sb, dealIds, earliest);
+  for (const row of rows) {
+    const deal = row.deals;
+    if (!deal) continue;
+    const current = Number(deal.value) || 0;
+    const historical = valueAsOf(current, events.get(row.deal_id), row.changed_at);
+    if (historical !== current) deal.value = historical;
+  }
+}
+function stageEntryFetchWindow(startDate, endDate, options) {
+  return {
+    start: options?.calendarYearDedupe ? `${startDate.slice(0, 4)}-01-01` : startDate,
+    end: endDate
+  };
+}
+async function fetchStageEntryRows(sb, targetStages, window, pipelineIds, options) {
+  const primaryPipelineId = pipelineIds?.[0];
+  const queryStages = options?.exactStageLabels ?? expandMetricStageLabels(targetStages, primaryPipelineId);
+  const build = () => {
+    let query = sb.from("deal_stage_history").select(`deal_id, changed_at, to_stage, to_stage_id, from_stage_id, changed_by, pipeline_id,
+        deals!inner ( company, value, manager, stage, pipeline_id, status, mrr, deal_owner )`).eq("event_type", "stage_enter").in("to_stage", queryStages);
+    if (!options?.firstEverInWindow) {
+      query = query.gte("changed_at", window.start).lte("changed_at", window.end + "T23:59:59.999Z");
+    }
+    if (pipelineIds && pipelineIds.length === 1) query = query.eq("pipeline_id", pipelineIds[0]);
+    else if (pipelineIds && pipelineIds.length > 1) query = query.in("pipeline_id", pipelineIds);
+    return query.order("changed_at", { ascending: true });
+  };
+  let rows = [];
+  if (options?.paginate) {
+    const size = 1e3;
+    for (let from = 0; ; from += size) {
+      const { data, error } = await build().order("deal_id", { ascending: true }).range(from, from + size - 1);
+      if (error) throw error;
+      const page2 = data ?? [];
+      rows.push(...page2);
+      if (page2.length < size) break;
+    }
+  } else {
+    const { data, error } = await build();
+    if (error) throw error;
+    rows = data ?? [];
+  }
+  const synthetic = await fetchClosedDealsAsSyntheticRows(
+    sb,
+    primaryPipelineId,
+    targetStages,
+    `${window.start}T00:00:00.000Z`,
+    `${window.end}T23:59:59.999Z`
+  );
+  const merged = [...rows, ...synthetic];
+  await applyHistoricalValuesToRows(sb, merged);
+  return merged;
+}
+function computeStageEntryMetric(rows, targetStages, period, pipelineIds, options, rowWindow) {
+  const primaryPipelineId = pipelineIds?.[0];
+  const firstEverInWindow = !!options?.firstEverInWindow;
+  const calendarYearDedupe = !!options?.calendarYearDedupe;
+  const windowStartMs = (/* @__PURE__ */ new Date(period.startDate + "T00:00:00.000Z")).getTime();
+  const windowEndMs = (/* @__PURE__ */ new Date(period.endDate + "T23:59:59.999Z")).getTime();
+  const rwStart = rowWindow && !firstEverInWindow ? `${rowWindow.start}T00:00:00.000Z` : null;
+  const rwEnd = rowWindow && !firstEverInWindow ? `${rowWindow.end}T23:59:59.999Z` : null;
+  const excludedOwners = new Set((options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()));
+  const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
+  const historyPipelines = options?.historyPipelineIds ? new Set(options.historyPipelineIds) : null;
+  const seen = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (rwStart && rwEnd) {
+      const ts = String(row.changed_at ?? "");
+      const tsMs = new Date(ts).getTime();
+      if (!(tsMs >= new Date(rwStart).getTime() && tsMs <= new Date(rwEnd).getTime())) continue;
+    }
+    if (seen.has(row.deal_id)) continue;
+    const deal = row.deals;
+    if (!deal) continue;
+    if (historyPipelines && row.pipeline_id && !historyPipelines.has(String(row.pipeline_id))) continue;
+    if (excludedOwners.size > 0) {
+      const owner = String(deal.deal_owner ?? "").toLowerCase().trim();
+      if (owner && excludedOwners.has(owner)) continue;
+    }
+    if (excludedChangedBy.size > 0) {
+      const changedBy = String(row.changed_by ?? "");
+      if (changedBy && excludedChangedBy.has(changedBy)) continue;
+    }
+    if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
+    const stageSlug = normalizeMetricStageSlug(row.to_stage, row.to_stage_id, primaryPipelineId, targetStages);
+    if (!stageSlug || !targetStages.includes(stageSlug)) continue;
+    if (firstEverInWindow) {
+      const enteredMs = new Date(row.changed_at).getTime();
+      if (enteredMs < windowStartMs || enteredMs > windowEndMs) {
+        seen.set(row.deal_id, null);
+        continue;
+      }
+    }
+    seen.set(row.deal_id, {
+      deal_id: row.deal_id,
+      company: deal.company ?? "\u2014",
+      value: Number(deal.value) || 0,
+      manager: deal.manager ?? null,
+      current_stage: deal.stage,
+      entered_at: row.changed_at,
+      pipeline_id: deal.pipeline_id,
+      mrr: Number(deal.mrr) || 0,
+      to_stage: row.to_stage ?? null
+    });
+  }
+  const rawDeals = Array.from(seen.values()).filter((d) => !!d).filter((d) => !isExcludedDealName2(d.company));
+  const byName = /* @__PURE__ */ new Map();
+  for (const d of rawDeals) {
+    const name = (d.company ?? "").toLowerCase().trim();
+    const key = calendarYearDedupe && name ? `${String(d.entered_at).slice(0, 4)}|${name}` : name;
+    if (!key) {
+      byName.set(d.deal_id, d);
+      continue;
+    }
+    const existing = byName.get(key);
+    if (!existing || new Date(d.entered_at).getTime() < new Date(existing.entered_at).getTime()) byName.set(key, d);
+  }
+  let deals = Array.from(byName.values());
+  if (calendarYearDedupe) {
+    deals = deals.filter((d) => {
+      const t = new Date(d.entered_at).getTime();
+      return t >= windowStartMs && t <= windowEndMs;
+    });
+  }
+  return {
+    count: deals.length,
+    dollarVolume: deals.reduce((s, d) => s + d.value, 0),
+    mrr: deals.reduce((s, d) => s + (d.mrr ?? 0), 0),
+    deals
+  };
+}
+function rollingMonthsWindow(anchorEnd, monthCount) {
+  const [y, m] = anchorEnd.split("-").map(Number);
+  const s = new Date(Date.UTC(y, m - 1 - (monthCount - 1), 1));
+  return { startDate: `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-01`, endDate: anchorEnd };
+}
+function rollingAnchor(periodEnd, now = /* @__PURE__ */ new Date()) {
+  const nowEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  const [y, m, d] = periodEnd.split("-").map(Number);
+  const pe = new Date(Date.UTC(y, m - 1, d));
+  const a = pe < nowEnd ? pe : nowEnd;
+  const last = new Date(Date.UTC(a.getUTCFullYear(), a.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${a.getUTCFullYear()}-${String(a.getUTCMonth() + 1).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+}
+async function fetchInvoiceRows(sb, realmId, start, end) {
+  const out = [];
+  for (let from = 0; ; from += 1e3) {
+    const { data, error } = await sb.from("quickbooks_invoices").select("id, txn_date, total_amt").eq("realm_id", realmId).gte("txn_date", start).lte("txn_date", end).order("id", { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    for (const r of data ?? []) out.push({ txn_date: String(r.txn_date), total_amt: Number(r.total_amt) || 0 });
+    if ((data ?? []).length < 1e3) break;
+  }
+  return out;
+}
+async function fetchEligibleHourRows(sb, pipelineIds, start, end) {
+  const rows = [];
+  for (let from = 0; ; from += 1e3) {
+    const { data, error } = await sb.from("weekly_time_entries").select("id, hours, deal_id, week_start_date").gte("week_start_date", start).lte("week_start_date", end).order("id", { ascending: true }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data ?? []);
+    if ((data ?? []).length < 1e3) break;
+  }
+  const dealIds = Array.from(new Set(rows.map((r) => r.deal_id).filter(Boolean)));
+  const eligible = /* @__PURE__ */ new Set();
+  for (let i = 0; i < dealIds.length; i += 200) {
+    const { data: deals, error } = await sb.from("deals").select("id, pipeline_id, company").in("id", dealIds.slice(i, i + 200));
+    if (error) throw error;
+    for (const d of deals ?? []) {
+      if (d.pipeline_id && pipelineIds.includes(d.pipeline_id) && !isExcludedDealName2(d.company ?? "")) eligible.add(d.id);
+    }
+  }
+  return rows.filter((r) => r.deal_id && eligible.has(r.deal_id)).map((r) => ({ week_start_date: String(r.week_start_date), hours: Number(r.hours) || 0 }));
+}
+function sumInWindow(rows, dateOf, amountOf, start, end) {
+  return rows.reduce((s, r) => {
+    const d = dateOf(r);
+    return d >= start && d <= end ? s + amountOf(r) : s;
+  }, 0);
+}
+
+// src/lib/mcp/debtAdvisoryTiles.ts
+var DEBT_PIPES = [DEBT_ACTIVE_PIPELINE_ID, DEBT_IN_DEVELOPMENT_PIPELINE_ID];
+var NDA_LABELS = ["ndaneeds-list-sent", "NDA/Needs List Sent", "NDA / Needs List Sent", "NDA/NEEDS LIST SENT", "NDA / NEEDS LIST SENT"];
+var SIGNED = ["final-credit-items", "terms-issued", "in-due-diligence", "funded-invoiced"];
+var TZ = "Period boundaries are UTC calendar dates (00:00:00Z start \u2192 23:59:59.999Z end), as on the dashboard.";
+var TEST = `test deals (Test-Niki's Store, Example Deal, names starting "test ") excluded`;
+var SPECS = {
+  onBoard: { stages: ["ndaneeds-list-sent"], pipes: DEBT_PIPES, opts: {
+    excludeDealOwners: ["John Moffitt"],
+    excludeChangedByUserIds: ["2e65a4b1-bd94-46ef-87c6-9afe697b3180"],
+    historyPipelineIds: [DEBT_ACTIVE_PIPELINE_ID],
+    exactStageLabels: NDA_LABELS,
+    calendarYearDedupe: true
+  } },
+  proposals: { stages: ["proposal-issued"], pipes: DEBT_PIPES, opts: { exactStageLabels: ["proposal-issued", "Proposal Issued"], calendarYearDedupe: true } },
+  signed: { stages: SIGNED, pipes: DEBT_PIPES, opts: { firstEverInWindow: true, historyPipelineIds: [DEBT_ACTIVE_PIPELINE_ID] } },
+  termsIssued: { stages: ["terms-issued"], pipes: DEBT_PIPES, opts: {} },
+  termsSigned: { stages: ["in-due-diligence"], pipes: DEBT_PIPES, opts: {} },
+  closedOnly: { stages: ["funded-invoiced"], pipes: [DEBT_ACTIVE_PIPELINE_ID], opts: {} },
+  closedAny: { stages: ["funded-invoiced", "closed-won"], pipes: [DEBT_ACTIVE_PIPELINE_ID], opts: {} }
+};
+var minStr = (xs) => xs.reduce((a, b) => b < a ? b : a);
+var maxStr = (xs) => xs.reduce((a, b) => b > a ? b : a);
+async function debtAdvisoryTiles(sb, periods, inc, off, lim, now = /* @__PURE__ */ new Date()) {
+  const windows = periods.map((p) => {
+    const anchor = rollingAnchor(p.end, now);
+    return { p, anchor, six: rollingMonthsWindow(anchor, 6), twelve: rollingMonthsWindow(anchor, 12) };
+  });
+  const allStarts = windows.flatMap((w) => [stageEntryFetchWindow(w.p.start, w.p.end, { calendarYearDedupe: true }).start, w.six.startDate, w.twelve.startDate]);
+  const allEnds = windows.flatMap((w) => [w.p.end, w.anchor]);
+  const wide = { start: minStr(allStarts), end: maxStr(allEnds) };
+  const keys = Object.keys(SPECS);
+  const fetched = await Promise.all([
+    ...keys.map((k) => fetchStageEntryRows(sb, SPECS[k].stages, wide, SPECS[k].pipes, { ...SPECS[k].opts, paginate: true }))
+  ]);
+  const rowsBy = Object.fromEntries(keys.map((k, i) => [k, fetched[i]]));
+  const twelveStart = minStr(windows.map((w) => w.twelve.startDate));
+  const anchorEnd = maxStr(windows.map((w) => w.anchor));
+  const [invoices, hours] = await Promise.all([
+    fetchInvoiceRows(sb, DEBT_REALM_ID, twelveStart, anchorEnd),
+    fetchEligibleHourRows(sb, DEBT_PIPES, twelveStart, anchorEnd)
+  ]);
+  const metric = (k, startDate, endDate) => {
+    const spec = SPECS[k];
+    return computeStageEntryMetric(
+      rowsBy[k],
+      spec.stages,
+      { startDate, endDate },
+      spec.pipes,
+      spec.opts,
+      stageEntryFetchWindow(startDate, endDate, spec.opts)
+    );
+  };
+  const drill = (deals) => {
+    const rows = deals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, stage_entered: d.to_stage, entered_at: d.entered_at, current_stage: d.current_stage }));
+    return inc ? { rows: rows.slice(off, off + lim), rows_total: rows.length } : {};
+  };
+  const avg = (num3, den) => den > 0 ? num3 / den : null;
+  return windows.map(({ p, anchor, six, twelve }) => {
+    const onBoard = metric("onBoard", p.start, p.end);
+    const proposals = metric("proposals", p.start, p.end);
+    const signed = metric("signed", p.start, p.end);
+    const termsIssued = metric("termsIssued", p.start, p.end);
+    const termsSigned = metric("termsSigned", p.start, p.end);
+    const closed = metric("closedOnly", p.start, p.end);
+    const signed6 = metric("signed", six.startDate, six.endDate);
+    const signed12 = metric("signed", twelve.startDate, twelve.endDate);
+    const closed6 = metric("closedAny", six.startDate, six.endDate);
+    const closed12 = metric("closedAny", twelve.startDate, twelve.endDate);
+    const rev12 = sumInWindow(invoices, (r) => r.txn_date, (r) => r.total_amt, twelve.startDate, twelve.endDate);
+    const hrs12 = sumInWindow(hours, (r) => r.week_start_date, (r) => r.hours, twelve.startDate, twelve.endDate);
+    const ttm = `trailing window ${twelve.startDate} \u2192 ${twelve.endDate}`;
+    const six6 = `trailing window ${six.startDate} \u2192 ${six.endDate}`;
+    const anchorNote = `Rolling windows end at the last day of the period's end month, capped at the current month (${anchor}).`;
+    const countTile = (key, label, m, subtitle, definition) => ({
+      tile_key: key,
+      tile_label: label,
+      value: m.count,
+      unit: "count",
+      subtitle: `${subtitle} \xB7 $${Math.round(m.dollarVolume).toLocaleString("en-US")}`,
+      definition,
+      details: { dollars: m.dollarVolume },
+      ...drill(m.deals)
+    });
+    const avgTile = (key, label, v, unit, subtitle, definition, details, reason) => ({
+      tile_key: key,
+      tile_label: label,
+      value: v,
+      unit,
+      subtitle,
+      definition,
+      details,
+      ...v == null ? { no_data_reason: reason } : {}
+    });
+    const tiles = [
+      countTile(
+        "deals_on_the_board",
+        "Deals on the Board",
+        onBoard,
+        "entered NDA / Needs List Sent",
+        `First stage_enter per deal into NDA / Needs List Sent (exact spellings ${NDA_LABELS.join(", ")}) logged while the deal was on the Active Pipeline, for deals now on the Active or In Development pipeline; excludes entries on deals owned by John Moffitt or authored by him and ${TEST}; collapsed by company name per calendar year keeping the earliest entry; $ = deal value at the time of entry. ${TZ}`
+      ),
+      countTile(
+        "proposals_issued",
+        "Proposals Issued",
+        proposals,
+        "entered Proposal Issued",
+        `First stage_enter per deal into Proposal Issued ("proposal-issued"/"Proposal Issued") on the Active or In Development pipelines; ${TEST}; collapsed by company name per calendar year keeping the earliest entry; $ = deal value at the time of entry. ${TZ}`
+      ),
+      countTile(
+        "debt_deals_signed",
+        "Debt Deals Signed",
+        signed,
+        "first entered a signed stage",
+        `Deals whose first-ever stage_enter into any signed stage (Final Credit Items, Terms Issued, In Due Diligence or Funded / Invoiced, any stored spelling) falls in the period, counting only entries logged while the deal was on the Active Pipeline and deals now on the Active or In Development pipeline; a deal whose first signed entry predates the period is excluded; ${TEST}; collapsed by company name keeping the earliest entry; $ (Dollars Signed) = deal value at the time of that entry. ${TZ}`
+      ),
+      countTile(
+        "terms_issued",
+        "Terms Issued",
+        termsIssued,
+        "entered Terms Issued",
+        `First stage_enter per deal within the period into Terms Issued (any stored spelling) on the Active or In Development pipelines; ${TEST}; collapsed by company name keeping the earliest entry; $ = deal value at the time of entry. ${TZ}`
+      ),
+      countTile(
+        "terms_signed",
+        "Terms Signed",
+        termsSigned,
+        "entered In Due Diligence",
+        `First stage_enter per deal within the period into In Due Diligence (any stored spelling) on the Active or In Development pipelines; ${TEST}; collapsed by company name keeping the earliest entry; $ = deal value at the time of entry. ${TZ}`
+      ),
+      countTile(
+        "deals_closed",
+        "Deals Closed",
+        closed,
+        "entered Funded / Invoiced",
+        `First stage_enter per deal within the period into Funded / Invoiced or Closed Won (any stored spelling) on the Active Pipeline only, plus Active Pipeline deals currently in those stages whose closing_date falls in the period but lack a history row; ${TEST}; collapsed by company name keeping the earliest entry; $ (Dollars Funded) = deal value at the time of entry. ${TZ}`
+      ),
+      avgTile(
+        "average_deal_on_the_board",
+        "Average Deal on the Board",
+        avg(onBoard.dollarVolume, onBoard.count),
+        "usd",
+        "selected period \xB7 $ on the Board \xF7 Deals on the Board",
+        "Dollars on the Board \xF7 Deals on the Board for the selected period (same deals as the Deals on the Board tile, including $0-value deals).",
+        { numerator: onBoard.dollarVolume, denominator: onBoard.count },
+        "no_deals_on_board_in_period"
+      ),
+      avgTile(
+        "average_deal_signed",
+        "Average Deal Signed",
+        avg(signed6.dollarVolume, signed6.count),
+        "usd",
+        `trailing 6 months (${six6})`,
+        `Dollars Signed \xF7 Debt Deals Signed over the trailing 6 calendar months, using the Debt Deals Signed calculation. ${anchorNote}`,
+        { numerator: signed6.dollarVolume, denominator: signed6.count, window: six },
+        "no_signed_deals_in_trailing_6_months"
+      ),
+      avgTile(
+        "average_revenue_per_deal_signed",
+        "Average Revenue per Deal Signed",
+        avg(rev12, signed12.count),
+        "usd",
+        `trailing 12 months (${ttm})`,
+        `Sum of 5th Line Capital Advisors QuickBooks invoice totals (txn_date in the window) \xF7 Debt Deals Signed over the same trailing 12 calendar months. ${anchorNote}`,
+        { revenue: rev12, signed_deals: signed12.count, window: twelve },
+        "no_signed_deals_in_trailing_12_months"
+      ),
+      avgTile(
+        "average_deal_closed",
+        "Average Deal Closed",
+        avg(closed6.dollarVolume, closed6.count),
+        "usd",
+        `trailing 6 months (${six6})`,
+        `Deal value \xF7 count of deals with a first stage_enter into Funded / Invoiced or Closed Won on the Active Pipeline over the trailing 6 calendar months (closing_date fallback, ${TEST}, collapsed by company name). ${anchorNote}`,
+        { numerator: closed6.dollarVolume, denominator: closed6.count, window: six },
+        "no_closed_deals_in_trailing_6_months"
+      ),
+      avgTile(
+        "average_revenue_per_deal_closed",
+        "Average Revenue per Deal Closed",
+        avg(rev12, closed12.count),
+        "usd",
+        `trailing 12 months (${ttm})`,
+        `Sum of 5th Line Capital Advisors QuickBooks invoice totals \xF7 count of deals with a first stage_enter into Funded / Invoiced or Closed Won on the Active Pipeline over the same trailing 12 calendar months. ${anchorNote}`,
+        { revenue: rev12, closed_deals: closed12.count, window: twelve },
+        "no_closed_deals_in_trailing_12_months"
+      ),
+      avgTile(
+        "revenue_per_deal_hour",
+        "Revenue per Deal Hour",
+        avg(rev12, hrs12),
+        "usd_per_hour",
+        `trailing 12 months (${ttm})`,
+        `Sum of 5th Line Capital Advisors QuickBooks invoice totals \xF7 hours in weekly_time_entries (week_start_date in the window) on non-test deals currently on the Active or In Development pipeline, over the same trailing 12 calendar months. ${anchorNote}`,
+        { revenue: rev12, hours: hrs12, window: twelve },
+        "no_deal_hours_in_trailing_12_months"
+      )
+    ];
+    return { period: p.period, start: p.start, end: p.end, tiles };
+  });
+}
+
 // src/lib/mcp/tools/get-dashboard-tile-values.ts
 var SALES_BD_TZ = "America/Chicago";
 function page(rows, include, offset, limit) {
@@ -1851,7 +2346,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
   const propDeals = sumBy(prop.byMonthKey, p.months);
   const fsDobDeals = sumBy(fsDob.byMonthKey, p.months);
   const fsPropDeals = sumBy(fsProp.byMonthKey, p.months);
-  const TZ = "Period boundaries are UTC calendar months.";
+  const TZ2 = "Period boundaries are UTC calendar months.";
   const tiles = [
     {
       tile_key: "sales_calls",
@@ -1859,7 +2354,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: debtCalls.length,
       unit: "count",
       subtitle: "Debt variant",
-      definition: `Deduped synced calendar events whose title contains "5th Line \u2026 Financing Review" across connected teammate calendars, bucketed by event start month. ${TZ}`,
+      definition: `Deduped synced calendar events whose title contains "5th Line \u2026 Financing Review" across connected teammate calendars, bucketed by event start month. ${TZ2}`,
       ...page(debtCalls.map((e) => ({ start: e.start, title: e.title, company: e.company, host: e.user_name ?? null })), inc, off, lim)
     },
     {
@@ -1868,7 +2363,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: dobDeals.length,
       unit: "count",
       subtitle: "entered NDA / Needs List Sent",
-      definition: `Distinct deals with a deal_stage_history stage_enter into NDA / Needs List Sent (any stored spelling) on the Active Pipeline, excluding John Moffitt-owned/authored entries and test deals, deduped by company name keeping the earliest entry within the fetched calendar years. ${TZ}`,
+      definition: `Distinct deals with a deal_stage_history stage_enter into NDA / Needs List Sent (any stored spelling) on the Active Pipeline, excluding John Moffitt-owned/authored entries and test deals, deduped by company name keeping the earliest entry within the fetched calendar years. ${TZ2}`,
       ...page(dobDeals.map((d) => ({ deal_id: d.id, company: d.company, value: d.value, entered_at: d.created_at, current_stage: d.stage })), inc, off, lim)
     },
     {
@@ -1877,7 +2372,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: propDeals.length,
       unit: "count",
       subtitle: "entered Proposal Issued",
-      definition: `First stage_enter per deal into Proposal Issued ("proposal-issued"/"Proposal Issued") on the Active and In Development pipelines, test deals excluded, collapsed by company name. ${TZ}`,
+      definition: `First stage_enter per deal into Proposal Issued ("proposal-issued"/"Proposal Issued") on the Active and In Development pipelines, test deals excluded, collapsed by company name. ${TZ2}`,
       ...page(propDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
     },
     {
@@ -1896,7 +2391,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: fsCalls.length,
       unit: "count",
       subtitle: "FinServ variant",
-      definition: `Deduped calendar events titled "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro" (never a Debt financing review). ${TZ} The dashboard only loads this tile after the KPI toggle is switched to FinServ; with the default Debt toggle it shows the Debt figure.`,
+      definition: `Deduped calendar events titled "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro" (never a Debt financing review). ${TZ2} The dashboard only loads this tile after the KPI toggle is switched to FinServ; with the default Debt toggle it shows the Debt figure.`,
       ...page(fsCalls.map((e) => ({ start: e.start, title: e.title, company: e.company, host: e.user_name ?? null })), inc, off, lim)
     },
     {
@@ -1905,7 +2400,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: fsDobDeals.length,
       unit: "count",
       subtitle: "entered Qualification",
-      definition: `First stage_enter per deal into Qualification ("fs-qualification"/"Qualification") on the FinServ pipeline, test deals excluded. ${TZ}`,
+      definition: `First stage_enter per deal into Qualification ("fs-qualification"/"Qualification") on the FinServ pipeline, test deals excluded. ${TZ2}`,
       ...page(fsDobDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
     },
     {
@@ -1914,7 +2409,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       value: fsPropDeals.length,
       unit: "count",
       subtitle: "entered Proposal Sent",
-      definition: `First stage_enter per deal into Proposal Sent ("fs-proposal-sent"/"Proposal Sent") on the FinServ pipeline, test deals excluded. ${TZ}`,
+      definition: `First stage_enter per deal into Proposal Sent ("fs-proposal-sent"/"Proposal Sent") on the FinServ pipeline, test deals excluded. ${TZ2}`,
       ...page(fsPropDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
     }
   ];
@@ -1976,7 +2471,7 @@ var lenMap = (m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.l
 async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
   const start = zonedTime(p.start, "00:00:00", SALES_BD_TZ);
   const end = zonedTime(p.end, "23:59:59", SALES_BD_TZ);
-  const TZ = `Period boundaries are ${p.start} 00:00:00 \u2192 ${p.end} 23:59:59 ${SALES_BD_TZ} (the dashboard uses the viewer's browser time zone).`;
+  const TZ2 = `Period boundaries are ${p.start} 00:00:00 \u2192 ${p.end} 23:59:59 ${SALES_BD_TZ} (the dashboard uses the viewer's browser time zone).`;
   const [meetings, exclusionsRes, newSourcesRes, classification, onBoard, pipelineIds] = await Promise.all([
     loadReferralSourceMeetings(sb, companyId, start.toISOString(), end.toISOString()),
     sb.from("referral_meeting_exclusions").select("meeting_id").eq("company_id", companyId),
@@ -2014,7 +2509,7 @@ async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
       value: visible.length,
       unit: "count",
       subtitle: "meetings held in selected timeframe",
-      definition: `Synced calendar meetings (calendar-meetings-all, approved team calendars) in the period, excluding sales calls ("<> 5th Line"), deal syncs, blocks, attendee-less holds, internal-only meetings, meetings whose title names a client deal or funding source, meetings with client or funding-source attendee domains, and manual removals in referral_meeting_exclusions. ${TZ}`,
+      definition: `Synced calendar meetings (calendar-meetings-all, approved team calendars) in the period, excluding sales calls ("<> 5th Line"), deal syncs, blocks, attendee-less holds, internal-only meetings, meetings whose title names a client deal or funding source, meetings with client or funding-source attendee domains, and manual removals in referral_meeting_exclusions. ${TZ2}`,
       details: { removed_by_exclusion: meetings.length - visible.length },
       ...page(visible.map((m) => ({
         id: m.id,
@@ -2033,7 +2528,7 @@ async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
       value: newSources.length,
       unit: "count",
       subtitle: "added in selected timeframe",
-      definition: `referral_sources rows for the company with created_at in the period, keeping only sources still in the Nurturing stage (names already at Tier 3/2/1 are excluded). "Added" = referral_sources.created_at. ${TZ}`,
+      definition: `referral_sources rows for the company with created_at in the period, keeping only sources still in the Nurturing stage (names already at Tier 3/2/1 are excluded). "Added" = referral_sources.created_at. ${TZ2}`,
       ...page(newSources.map((s) => ({ id: s.id, name: s.name || s.contact_name, company: s.company, added_at: s.created_at })), inc, off, lim)
     },
     {
@@ -2042,7 +2537,7 @@ async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
       value: onBoard.length,
       unit: "count",
       subtitle: `entered NDA / Needs List Sent \xB7 $${Math.round(totalValue).toLocaleString("en-US")}`,
-      definition: `Referral-sourced deals (Referred by set, or Sourced Via starts with "Referral") with a stage_enter into ndaneeds-list-sent on the Active Pipeline in the period, excluding John Moffitt-owned/authored entries and test deals, deduped by deal and company name. ${TZ}`,
+      definition: `Referral-sourced deals (Referred by set, or Sourced Via starts with "Referral") with a stage_enter into ndaneeds-list-sent on the Active Pipeline in the period, excluding John Moffitt-owned/authored entries and test deals, deduped by deal and company name. ${TZ2}`,
       details: { dollars: totalValue },
       ...page(onBoard.map((d) => ({ deal_id: d.id, company: d.company, value: d.value, stage: d.stage, referred_by: d.referred_by, entered_at: d.created_at })), inc, off, lim)
     },
@@ -2147,9 +2642,9 @@ async function finservMetrics(sb, companyId, p, inc, off, lim) {
 var get_dashboard_tile_values_default = defineTool3({
   name: "get_dashboard_tile_values",
   title: "Get Insights dashboard tile values",
-  description: "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
+  description: "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue), consolidated-debt-pipeline = Debt Advisory Metrics SALES section (Deals on the Board, Proposals Issued, Debt Deals Signed / Dollars Signed, Terms Issued, Terms Signed, Deals Closed, Average Deal on the Board, Average Deal Signed, Average Revenue per Deal Signed, Average Deal Closed, Average Revenue per Deal Closed, Revenue per Deal Hour; Owner = All / Manager = All). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
   inputSchema: {
-    dashboard_id: z3.enum(["sales-bd-page", "sales-dashboard-v2", "finserv-financial-metrics"]),
+    dashboard_id: z3.enum(["sales-bd-page", "sales-dashboard-v2", "finserv-financial-metrics", "consolidated-debt-pipeline"]),
     view: z3.enum(["month", "quarter", "custom"]).default("month"),
     period: z3.string().trim().max(10).optional().describe('"YYYY-MM" (month view) or "YYYY-QN" (quarter view).'),
     periods: z3.array(z3.string().trim().max(10)).max(60).optional().describe("Several periods in one call; overrides period."),
@@ -2176,6 +2671,11 @@ var get_dashboard_tile_values_default = defineTool3({
         if (wrong) return errorResult(`Period ${wrong.period} does not match view "${view}".`);
       }
       const sb = supabaseForUser(ctx);
+      if (dashboard_id === "consolidated-debt-pipeline") {
+        const debtOut = await debtAdvisoryTiles(sb, resolved, include_rows, rows_offset, rows_limit);
+        const payload2 = { dashboard_id, view, time_zone: "UTC", periods: debtOut };
+        return textResult(payload2, payload2);
+      }
       const companyId = await companyIdFor(sb, ctx);
       const out = [];
       for (const p of resolved) {

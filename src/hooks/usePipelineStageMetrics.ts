@@ -20,263 +20,38 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
  * overloaded use of `to_stage_id='closed-won'` and must never be counted as a
  * real Closed Won event (see mem://technical/pipeline-stage-id-overloading).
  */
-const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
-  'funded-invoiced': ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
-  'closed-won': ['closed-won', 'Closed Won'],
-  // Active Pipeline canonical stages — `deal_stage_history.to_stage` is
-  // written in mixed slug/label forms across historical and current rows
-  // (slug, Title Case, and UPPERCASE all appear in the historical import).
-  // Matching in `normalizeStageSlug` is case-insensitive, but the SQL `.in()`
-  // filter is exact-match — so `expandStageLabels` must emit every observed
-  // casing. `expandStageLabels` handles the casing expansion below.
-  'proposal-issued': ['proposal-issued', 'Proposal Issued'],
-  'terms-issued': ['terms-issued', 'Terms Issued'],
-  'final-credit-items': ['final-credit-items', 'Final Credit Items'],
-  'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
-  'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
-  'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders'],
-  'lenders-in-review': ['lenders-in-review', 'Lenders in Review'],
-  'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
-  'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
-  'fs-active-client': ['fs-active-client', 'Active Client'],
-};
+import {
+  expandStageLabels,
+  normalizeStageSlug,
+  expandMetricStageLabels,
+  normalizeMetricStageSlug,
+  fetchClosedDealsAsSyntheticRows as fetchClosedDealsAsSyntheticRowsShared,
+  applyHistoricalValuesToRows as applyHistoricalValuesToRowsShared,
+  fetchStageEntryRows,
+  computeStageEntryMetric,
+  stageEntryFetchWindow,
+  fetchInvoiceRevenueTotal,
+  fetchDealHoursTotal,
+} from '@/lib/dashboardTiles/debtStageEntry';
 
-// Build a case-insensitive reverse-lookup once. Keys are lowercase.
-const STAGE_LABEL_LOOKUP: Map<string, string> = (() => {
-  const map = new Map<string, string>();
-  for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
-    for (const v of variants) map.set(v.toLowerCase(), slug);
-  }
-  return map;
-})();
+export { expandStageLabels, normalizeStageSlug, expandMetricStageLabels, normalizeMetricStageSlug };
 
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
-/**
- * Closed-stage slugs that represent a funded/closed deal in the Active
- * Pipeline. When any of these are targeted, we augment the stage-history
- * query with a fallback pulled from `deals.closing_date` — many historical
- * closed deals were imported without a matching `stage_enter` history row
- * (or with one written under the wrong pipeline_id), so relying on
- * deal_stage_history alone under-reports Dollars Funded / Deals Closed.
- */
-const CLOSED_STAGE_SLUGS = new Set(['funded-invoiced', 'closed-won']);
-const CLOSED_STAGE_LABEL_FOR_SLUG: Record<string, string> = {
-  'funded-invoiced': 'Funded/Invoiced',
-  'closed-won': 'Closed Won',
-};
-
-/**
- * Fetch deals in `pipelineId` whose current stage is a closed slug in
- * `targetStages` and whose `closing_date` falls between `startIso` and
- * `endIso`. Returns synthetic rows shaped like `deal_stage_history` rows so
- * they can be merged into the existing aggregation pipeline. The real
- * stage-history rows always win the per-deal dedupe (append synthetic rows
- * AFTER real ones at the call site).
- */
-async function fetchClosedDealsAsSyntheticRows(
+// Stage-label normalization, closed-deal fallback and historical deal values
+// live in src/lib/dashboardTiles/debtStageEntry.ts so the MCP connector
+// computes identical Debt Advisory Metrics values.
+function fetchClosedDealsAsSyntheticRows(
   pipelineId: string | undefined,
   targetStages: string[],
   startIso: string,
   endIso: string,
 ): Promise<Array<Record<string, any>>> {
-  if (!pipelineId) return [];
-  const closedTargets = targetStages.filter((s) => CLOSED_STAGE_SLUGS.has(s));
-  if (closedTargets.length === 0) return [];
-
-  const startDate = startIso.slice(0, 10);
-  const endDate = endIso.slice(0, 10);
-
-  const { data, error } = await supabase
-    .from('deals')
-    .select('id, company, value, manager, stage, pipeline_id, status, mrr, closing_date')
-    .eq('pipeline_id', pipelineId)
-    .in('stage', closedTargets)
-    .gte('closing_date', startDate)
-    .lte('closing_date', endDate)
-    .order('closing_date', { ascending: true });
-
-  if (error) {
-    console.warn('[stage-entry closed-fallback] query failed', error);
-    return [];
-  }
-
-  return (data ?? []).map((d: any) => ({
-    deal_id: d.id,
-    // Anchor at midday UTC so bucket boundaries (00:00Z) treat the row as
-    // belonging to the correct calendar day.
-    changed_at: `${d.closing_date}T12:00:00.000Z`,
-    to_stage: CLOSED_STAGE_LABEL_FOR_SLUG[d.stage] ?? d.stage,
-    to_stage_id: null,
-    from_stage_id: null,
-    deals: {
-      company: d.company,
-      value: d.value,
-      manager: d.manager,
-      stage: d.stage,
-      pipeline_id: d.pipeline_id,
-      status: d.status,
-      mrr: d.mrr,
-    },
-  }));
+  return fetchClosedDealsAsSyntheticRowsShared(supabase, pipelineId, targetStages, startIso, endIso);
 }
 
-/**
- * Fetch `value_updated` activity_log events for the given deals so we can
- * reconstruct each deal's `value` AS OF an earlier stage-entry timestamp.
- * Users often revise the deal value after it advances a stage (e.g. Censys
- * entered Final Credit Items at $10MM, then was later dropped to $3.8MM) —
- * the metric should reflect the value at time of stage entry, not the
- * latest edit.
- */
-async function fetchValueUpdatedEvents(
-  dealIds: string[],
-  sinceIso: string,
-): Promise<Map<string, Array<{ ts: string; oldValue: number; newValue: number }>>> {
-  const map = new Map<string, Array<{ ts: string; oldValue: number; newValue: number }>>();
-  if (dealIds.length === 0) return map;
-
-  const { data, error } = await supabase
-    .from('activity_logs')
-    .select('deal_id, created_at, metadata')
-    .eq('activity_type', 'value_updated')
-    .in('deal_id', dealIds)
-    .gte('created_at', sinceIso)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.warn('[stage-entry value-history] query failed', error);
-    return map;
-  }
-
-  for (const row of data ?? []) {
-    const m = (row.metadata ?? {}) as Record<string, unknown>;
-    const oldV = Number(m.oldValue);
-    const newV = Number(m.newValue);
-    if (!Number.isFinite(oldV) || !Number.isFinite(newV)) continue;
-    const arr = map.get(row.deal_id as string) ?? [];
-    arr.push({ ts: row.created_at as string, oldValue: oldV, newValue: newV });
-    map.set(row.deal_id as string, arr);
-  }
-
-  return map;
-}
-
-/**
- * Given a deal's current value and its ordered value_updated events, return
- * the value it had at `asOfIso`. Any event AFTER asOfIso is rolled back
- * (walking latest → earliest) so the returned number matches what was
- * shown when the stage-entry event was recorded.
- */
-function valueAsOf(
-  currentValue: number,
-  events: Array<{ ts: string; oldValue: number; newValue: number }> | undefined,
-  asOfIso: string,
-): number {
-  if (!events || events.length === 0) return currentValue;
-  let v = currentValue;
-  for (let i = events.length - 1; i >= 0; i--) {
-    if (events[i].ts > asOfIso) {
-      // Treat "0 → X" events as initial data entry, not a real drop from
-      // zero. Rolling back would produce a misleading $0 for periods
-      // BEFORE the value was first recorded (e.g. OpConnect entered "In
-      // Due Diligence" in 2025 while the system still had value=0; the
-      // real amount ($10MM) was backfilled in Feb 2026 as 0 → 10MM).
-      // Skip the rollback so the earliest positive value wins.
-      if (!(Number(events[i].oldValue) === 0 && Number(events[i].newValue) > 0)) {
-        v = events[i].oldValue;
-      }
-    }
-  }
-  return v;
-}
-
-/**
- * Mutate each row's inner `deals.value` in place so that it reflects the
- * deal's value at the row's `changed_at` timestamp. Downstream aggregators
- * read `deal.value` directly, so this is the smallest safe change.
- */
-async function applyHistoricalValuesToRows(
-  rows: Array<Record<string, any>>,
-): Promise<void> {
-  if (rows.length === 0) return;
-  const dealIds = Array.from(new Set(rows.map((r) => r.deal_id).filter(Boolean)));
-  // Only need events that happened after the earliest entry we're looking at.
-  const earliest = rows.reduce<string>(
-    (acc, r) => (!acc || (r.changed_at && r.changed_at < acc) ? r.changed_at : acc),
-    '',
-  );
-  if (!earliest) return;
-  const events = await fetchValueUpdatedEvents(dealIds, earliest);
-  for (const row of rows) {
-    const deal = row.deals as Record<string, any> | null;
-    if (!deal) continue;
-    const current = Number(deal.value) || 0;
-    const historical = valueAsOf(current, events.get(row.deal_id), row.changed_at);
-    if (historical !== current) {
-      deal.value = historical;
-    }
-  }
-}
-
-function isActivePipelineFundedOnlyMetric(slugs: string[], pipelineId?: string): boolean {
-  return pipelineId === ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === 'funded-invoiced';
-}
-
-export function expandMetricStageLabels(slugs: string[], pipelineId?: string): string[] {
-  const out = new Set(expandStageLabels(slugs));
-
-  if (isActivePipelineFundedOnlyMetric(slugs, pipelineId)) {
-    for (const variant of expandStageLabels(['closed-won'])) out.add(variant);
-  }
-
-  return Array.from(out);
-}
-
-export function normalizeMetricStageSlug(
-  toStage: string | null | undefined,
-  toStageId: string | null | undefined,
-  pipelineId: string | undefined,
-  targetStages: string[],
-): string | null {
-  const normalized = normalizeStageSlug(toStage, toStageId);
-
-  if (
-    isActivePipelineFundedOnlyMetric(targetStages, pipelineId)
-    && normalized === 'closed-won'
-  ) {
-    return 'funded-invoiced';
-  }
-
-  return normalized;
-}
-
-/** Expand canonical slugs → full list of `to_stage` text values to filter on. */
-export function expandStageLabels(slugs: string[]): string[] {
-  const out = new Set<string>();
-  for (const slug of slugs) {
-    out.add(slug);
-    for (const v of STAGE_LABEL_VARIANTS[slug] ?? []) {
-      out.add(v);
-      // Historical imports store labels in UPPERCASE ("FINAL CREDIT ITEMS",
-      // "IN DUE DILIGENCE", etc.). Emit both the original casing and an
-      // UPPERCASE variant so the exact-match `.in()` filter catches every row.
-      out.add(v.toUpperCase());
-    }
-  }
-  return Array.from(out);
-}
-
-/**
- * Normalize an observed `to_stage` text value back to a canonical slug.
- * The `to_stage_id` column is intentionally ignored — it's empty on live rows
- * AND is overloaded in the In Development pipeline (where 'closed-won' means
- * "Indication of Interest", NOT "Closed Won"). The text label is the only
- * unambiguous identifier.
- */
-export function normalizeStageSlug(toStage: string | null | undefined, _toStageId?: string | null): string | null {
-  if (!toStage) return null;
-  return STAGE_LABEL_LOOKUP.get(toStage.toLowerCase()) ?? null;
+function applyHistoricalValuesToRows(rows: Array<Record<string, any>>): Promise<void> {
+  return applyHistoricalValuesToRowsShared(supabase, rows);
 }
 
 export interface StageEntryDeal {
@@ -887,15 +662,7 @@ function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): Reven
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['qb-revenue-total-for-period', realmId, period.value],
     queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('total_amt')
-        .eq('realm_id', realmId)
-        .gte('txn_date', period.startDate)
-        .lte('txn_date', period.endDate);
-
-      if (error) throw error;
-      return (rows ?? []).reduce((sum, row) => sum + (Number(row.total_amt) || 0), 0);
+      return fetchInvoiceRevenueTotal(supabase, realmId, period.startDate, period.endDate);
     },
     enabled: !!user && !!realmId && !!period.startDate && !!period.endDate,
     staleTime: 30_000,
@@ -954,36 +721,7 @@ function useDealHoursInPeriod(
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['deal-hours-in-period', pipelineIds.slice().sort().join(','), period.value],
     queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('weekly_time_entries')
-        .select('hours, deal_id, week_start_date')
-        .gte('week_start_date', period.startDate)
-        .lte('week_start_date', period.endDate);
-      if (error) throw error;
-
-      const dealIds = Array.from(
-        new Set((rows ?? []).map((r: { deal_id: string | null }) => r.deal_id).filter(Boolean) as string[]),
-      );
-      if (dealIds.length === 0) return 0;
-
-      // Filter to deals whose pipeline_id is in the requested set.
-      const { data: deals, error: dealsErr } = await supabase
-        .from('deals')
-        .select('id, pipeline_id, company')
-        .in('id', dealIds);
-      if (dealsErr) throw dealsErr;
-
-      const eligible = new Set(
-        (deals ?? [])
-          .filter(d => d.pipeline_id && pipelineIds.includes(d.pipeline_id))
-          .filter(d => !isExcludedDealName(d.company ?? ''))
-          .map(d => d.id),
-      );
-      return (rows ?? []).reduce(
-        (sum, r: { deal_id: string | null; hours: number | string | null }) =>
-          r.deal_id && eligible.has(r.deal_id) ? sum + (Number(r.hours) || 0) : sum,
-        0,
-      );
+      return fetchDealHoursTotal(supabase, pipelineIds, period.startDate, period.endDate);
     },
     enabled: !!user && !!period.startDate && !!period.endDate && pipelineIds.length > 0,
     staleTime: 30_000,
@@ -1059,64 +797,8 @@ function useStageEntryMetric(
       exactKey,
     ],
     queryFn: async () => {
-      const startDate = calendarYearDedupe ? `${quarter.startDate.slice(0, 4)}-01-01` : quarter.startDate;
-      const endDate = quarter.endDate;
-
-      // Source of truth: deal_stage_history (stage_enter events).
-      // NO `source` filter — manual_bulk_update rows MUST be included so bulk
-      // backfills (e.g. the 46 Closed Won + 101 Closed Lost moves) flow into
-      // stage-velocity, funnel, Deals Closed and Dollars Funded metrics.
-      let query = supabase
-        .from('deal_stage_history')
-        .select(`
-          deal_id,
-          changed_at,
-          to_stage,
-          to_stage_id,
-          from_stage_id,
-          changed_by,
-          pipeline_id,
-          deals!inner (
-            company,
-            value,
-            manager,
-            stage,
-            pipeline_id,
-            status,
-            mrr,
-            deal_owner
-          )
-        `)
-        .eq('event_type', 'stage_enter')
-        .in('to_stage', queryStages);
-      if (!firstEverInWindow) {
-        query = query
-          .gte('changed_at', startDate)
-          .lte('changed_at', endDate + 'T23:59:59.999Z');
-      }
-
-      if (pipelineIds && pipelineIds.length === 1) {
-        query = query.eq('pipeline_id', pipelineIds[0]);
-      } else if (pipelineIds && pipelineIds.length > 1) {
-        query = query.in('pipeline_id', pipelineIds);
-      }
-
-      const { data: rows, error } = await query
-        .order('changed_at', { ascending: true });
-
-      if (error) throw error;
-      if ((rows?.length ?? 0) === 0) {
-        console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineIds, startDate, endDate });
-      }
-      const synthetic = await fetchClosedDealsAsSyntheticRows(
-        primaryPipelineId,
-        targetStages,
-        `${startDate}T00:00:00.000Z`,
-        `${endDate}T23:59:59.999Z`,
-      );
-      const merged = [...(rows ?? []), ...synthetic];
-      await applyHistoricalValuesToRows(merged);
-      return merged;
+      const window = stageEntryFetchWindow(quarter.startDate, quarter.endDate, options);
+      return fetchStageEntryRows(supabase, targetStages, window, pipelineIds, options);
     },
     enabled: !!user,
   });
@@ -1125,101 +807,15 @@ function useStageEntryMetric(
     const loading = isLoading || isFetching;
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
 
-    const windowStartMs = new Date(quarter.startDate + 'T00:00:00.000Z').getTime();
-    const windowEndMs = new Date(quarter.endDate + 'T23:59:59.999Z').getTime();
-
-    const excludedOwners = new Set(
-      (options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()),
+    const r = computeStageEntryMetric(
+      data,
+      targetStages,
+      { startDate: quarter.startDate, endDate: quarter.endDate },
+      pipelineIds,
+      options,
     );
-    const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
-    const historyPipelines = options?.historyPipelineIds ? new Set(options.historyPipelineIds) : null;
-    // Deduplicate: first entry per deal_id only
-    const seen = new Map<string, StageEntryDeal>();
-    for (const row of data) {
-      if (seen.has(row.deal_id)) continue;
-      const deal = row.deals as any;
-      if (!deal) continue;
-      // Only count entries logged while the deal sat in an allowed pipeline
-      // (e.g. 'ndaneeds-list-sent' in In Development means "Client Paused Deal").
-      if (historyPipelines && (row as any).pipeline_id && !historyPipelines.has(String((row as any).pipeline_id))) continue;
-      // Excluded deal_owner filter (e.g. remove NDA entries authored under
-      // former team member John Moffitt's ownership).
-      if (excludedOwners.size > 0) {
-        const owner = String(deal.deal_owner ?? '').toLowerCase().trim();
-        if (owner && excludedOwners.has(owner)) continue;
-      }
-      // Excluded changed_by filter: skip stage entries authored by specific
-      // users (e.g. former team member John Moffitt), regardless of current
-      // deal_owner. This catches deals that were reassigned after Moffitt
-      // originally logged the NDA / Needs List Sent entry.
-      if (excludedChangedBy.size > 0) {
-        const changedBy = String((row as any).changed_by ?? '');
-        if (changedBy && excludedChangedBy.has(changedBy)) continue;
-      }
-      // If pipelineId filter specified but inner join didn't filter (safety)
-        if (pipelineIds && !pipelineIds.includes(deal.pipeline_id)) continue;
-        const stageSlug = normalizeMetricStageSlug(
-          (row as any).to_stage,
-          (row as any).to_stage_id,
-          primaryPipelineId,
-          targetStages,
-        );
-      if (!stageSlug || !targetStages.includes(stageSlug)) continue;
-      // When counting "first-ever" entry into any signed stage, only
-      // include the deal if its earliest signed-stage entry (this row,
-      // since rows are ordered ascending) falls within the window. Deals
-      // whose first signed-stage entry happened before the window (e.g.
-      // entered FCI last year, then Terms Issued this year) are excluded.
-      if (firstEverInWindow) {
-        const enteredMs = new Date((row as any).changed_at).getTime();
-        if (enteredMs < windowStartMs || enteredMs > windowEndMs) {
-          // Mark as seen so later in-window rows for this deal don't sneak in
-          seen.set(row.deal_id, null as any);
-          continue;
-        }
-      }
-      seen.set(row.deal_id, {
-        deal_id: row.deal_id,
-        company: deal.company ?? '—',
-        value: Number(deal.value) || 0,
-        manager: deal.manager,
-        current_stage: deal.stage,
-        entered_at: (row as any).changed_at,
-        pipeline_id: deal.pipeline_id,
-        mrr: Number(deal.mrr) || 0,
-      });
-    }
-
-    const rawDeals: StageEntryDeal[] = Array.from(seen.values())
-      .filter((d): d is StageEntryDeal => !!d)
-      .filter(d => !isExcludedDealName(d.company));
-    // Collapse duplicate deals sharing the same company name (case-insensitive),
-    // keeping the earliest stage entry so counts don't double-book the same deal.
-    const byName = new Map<string, StageEntryDeal>();
-    for (const d of rawDeals) {
-      const name = (d.company ?? '').toLowerCase().trim();
-      const key = calendarYearDedupe && name ? `${String(d.entered_at).slice(0, 4)}|${name}` : name;
-      if (!key) { byName.set(d.deal_id, d); continue; }
-      const existing = byName.get(key);
-      if (!existing || new Date(d.entered_at).getTime() < new Date(existing.entered_at).getTime()) {
-        byName.set(key, d);
-      }
-    }
-    let deals: StageEntryDeal[] = Array.from(byName.values());
-    if (calendarYearDedupe) {
-      deals = deals.filter((d) => {
-        const t = new Date(d.entered_at).getTime();
-        return t >= windowStartMs && t <= windowEndMs;
-      });
-    }
-    const mrr = deals.reduce((s, d) => s + (d.mrr ?? 0), 0);
-    return {
-      count: deals.length,
-      dollarVolume: deals.reduce((s, d) => s + d.value, 0),
-      deals,
-      isLoading: loading,
-      mrr,
-    };
+    const deals: StageEntryDeal[] = r.deals.map(({ to_stage: _t, ...d }) => d);
+    return { count: r.count, dollarVolume: r.dollarVolume, deals, isLoading: loading, mrr: r.mrr };
   }, [data, isLoading, isFetching, pipelineIds?.join(','), targetStages, excludeOwnersKey, calendarYearDedupe]);
 }
 

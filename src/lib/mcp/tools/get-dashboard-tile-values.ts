@@ -17,6 +17,7 @@ import { FINSERV_QBO_REALM_ID, loadFinServNewMrrAdded, loadFinServNrr, loadFinSe
 import { MASTER_PLAN_KEYS, PLAN_OVERLAY_MAP, ROW_ORDER, mergeMasterPlanRows, seedPlanValue, type MetricKey } from "../../dashboardTiles/salesModelPlan";
 import { loadReferralClassification } from "../referralClassification";
 import { normalizeEntityName } from "../../entityTitleMatch";
+import { debtAdvisoryTiles } from "../debtAdvisoryTiles";
 
 const SALES_BD_TZ = "America/Chicago";
 type Tile = {
@@ -264,9 +265,9 @@ export default defineTool({
   name: "get_dashboard_tile_values",
   title: "Get Insights dashboard tile values",
   description:
-    "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
+    "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue), consolidated-debt-pipeline = Debt Advisory Metrics SALES section (Deals on the Board, Proposals Issued, Debt Deals Signed / Dollars Signed, Terms Issued, Terms Signed, Deals Closed, Average Deal on the Board, Average Deal Signed, Average Revenue per Deal Signed, Average Deal Closed, Average Revenue per Deal Closed, Revenue per Deal Hour; Owner = All / Manager = All). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
   inputSchema: {
-    dashboard_id: z.enum(["sales-bd-page", "sales-dashboard-v2", "finserv-financial-metrics"]),
+    dashboard_id: z.enum(["sales-bd-page", "sales-dashboard-v2", "finserv-financial-metrics", "consolidated-debt-pipeline"]),
     view: z.enum(["month", "quarter", "custom"]).default("month"),
     period: z.string().trim().max(10).optional().describe('"YYYY-MM" (month view) or "YYYY-QN" (quarter view).'),
     periods: z.array(z.string().trim().max(10)).max(60).optional().describe("Several periods in one call; overrides period."),
@@ -293,6 +294,11 @@ export default defineTool({
         if (wrong) return errorResult(`Period ${wrong.period} does not match view "${view}".`);
       }
       const sb = supabaseForUser(ctx) as AnySupabase;
+      if (dashboard_id === "consolidated-debt-pipeline") {
+        const debtOut = await debtAdvisoryTiles(sb, resolved, include_rows, rows_offset, rows_limit);
+        const payload = { dashboard_id, view, time_zone: "UTC", periods: debtOut };
+        return textResult(payload, payload);
+      }
       const companyId = await companyIdFor(sb, ctx);
       const out = [];
       for (const p of resolved) {
