@@ -1,3 +1,4 @@
+import { isFinServActiveClientAt, countsTowardFinServMrrAt, type FinServDealLike, type StageHistoryRow } from '@/lib/finservActiveAt';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +20,7 @@ import {
   useFinServCashflow,
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
-import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
+import { FINSERV_PIPELINE_ID, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
 import { useFinServNewMrrAdded } from '@/hooks/useFinServNewMrrAdded';
 import { useFinServNrr } from '@/hooks/useFinServNrr';
 import { FinServNrrDrillSheet } from './FinServNrrDrillSheet';
@@ -1178,29 +1179,41 @@ function FinServFinancialMetricsDashboardInner() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, stage, mrr')
+        .select('id, stage, mrr, created_at, contract_start_date, stage_entered_at')
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
       if (error) throw error;
-      const rows = (data ?? []) as Array<{ id: string; stage: string | null; mrr: number | string | null }>;
+      const rows = (data ?? []) as Array<FinServDealLike & { mrr: number | string | null }>;
+      const { data: hist, error: histErr } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id, to_stage, changed_at')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID)
+        .order('changed_at', { ascending: true });
+      if (histErr) throw histErr;
+      const historyByDeal = new Map<string, StageHistoryRow[]>();
+      for (const h of hist ?? []) {
+        const arr = historyByDeal.get(h.deal_id) ?? [];
+        arr.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+        historyByDeal.set(h.deal_id, arr);
+      }
+      const endStr = range.resolved.end;
+      const effective = endStr ? new Date(endStr + 'T23:59:59') : new Date();
+      const today = new Date();
+      const effClamped = effective > today ? today : effective;
       const CURRENT_PIPELINE_STAGES = new Set([
         'fs-qualification', 'fs-discovery', 'fs-qualified',
         'fs-scoping', 'fs-proposal-sent', 'fs-negotiation',
       ]);
-      const TERMINAL = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
       let totalClients = 0;
       let totalMrr = 0;
       let currentPipeline = 0;
       for (const r of rows) {
         const stage = r.stage ?? '';
-        if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+        const h = historyByDeal.get(r.id);
+        // Point-in-time at the selected period end (pre-May-2026 contract-start rule included).
+        if (isFinServActiveClientAt(r, h, effClamped)) totalClients += 1;
         if (CURRENT_PIPELINE_STAGES.has(stage)) currentPipeline += 1;
-        if (!TERMINAL.has(stage)) totalMrr += Number(r.mrr ?? 0);
+        if (countsTowardFinServMrrAt(r, h, effClamped)) totalMrr += Number(r.mrr ?? 0);
       }
-      // Apply Active Client override for the selected period end (falls back to today).
-      const endStr = range.resolved.end;
-      const effective = endStr ? new Date(endStr + 'T23:59:59') : new Date();
-      const today = new Date();
-      const effClamped = effective > today ? today : effective;
       const overriddenClients = applyActiveClientOverride(effClamped, totalClients);
       return { totalClients: overriddenClients, totalMrr, currentPipeline };
     },
@@ -1338,7 +1351,7 @@ function FinServFinancialMetricsDashboardInner() {
         <FinServSnapshotCard
           label="Total Clients"
           value={pipelineSnapshot.data?.totalClients ?? 0}
-          subtitle='Deals currently in "Active Client" stage'
+          subtitle='Active Clients at end of selected period'
           isLoading={pipelineSnapshot.isLoading}
           onClick={() => openDrill({ kind: 'active-clients', sourceLabel: 'Total Clients', selection: range.resolved.label, period: resolveBucket(undefined), granularity: range.granularity })}
         />

@@ -73,3 +73,35 @@ export function countsTowardFinServMrrAt(deal: FinServDealLike, hist: StageHisto
   const s = stageAtTime(deal, hist, t);
   return !!s && !FINSERV_TERMINAL_STAGES.has(s);
 }
+
+/** Manual correction used by the dashboards: June 2026 period ends show 7 active clients. */
+export function finservActiveClientOverride(t: Date, count: number): number {
+  return t.getFullYear() === 2026 && t.getMonth() === 5 ? 7 : count;
+}
+
+export interface FinServSnapshot {
+  active_clients: number;
+  active_clients_raw: number;
+  total_mrr: number;
+  clients: Array<{ id: string; company: string | null; mrr: number }>;
+}
+
+/** Point-in-time Active Clients + Total MRR, matching the FinServ dashboard cards and chart. */
+export function finservSnapshotAt(
+  deals: Array<FinServDealLike & { mrr?: number | string | null; company?: string | null }>,
+  historyByDeal: Map<string, StageHistoryRow[]>,
+  t: Date,
+): FinServSnapshot {
+  let raw = 0;
+  let mrr = 0;
+  const clients: FinServSnapshot['clients'] = [];
+  for (const d of deals) {
+    const h = historyByDeal.get(d.id);
+    if (isFinServActiveClientAt(d, h, t)) {
+      raw += 1;
+      clients.push({ id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
+    }
+    if (countsTowardFinServMrrAt(d, h, t)) mrr += Number(d.mrr ?? 0);
+  }
+  return { active_clients: finservActiveClientOverride(t, raw), active_clients_raw: raw, total_mrr: mrr, clients };
+}

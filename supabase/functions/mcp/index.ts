@@ -243,7 +243,7 @@ var list_deals_default = defineTool({
   }
 });
 
-// src/lib/mcp/tools/list-pipelines.ts
+// src/lib/mcp/tools/get-finserv-client-metrics.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z2 } from "npm:zod@^3.23.0";
 
@@ -557,13 +557,149 @@ var DASHBOARD_OPTIONS = [
   { id: "management-review", name: "Insights Dashboard", isFavorite: false, folder: "management-insights" }
 ];
 
+// src/lib/finservActiveAt.ts
+var FINSERV_ACTIVE_STAGE = "fs-closed-won";
+var FINSERV_TERMINAL_STAGES = /* @__PURE__ */ new Set(["fs-churned", "fs-closed-lost", "fs-in-development"]);
+var CONTRACT_START_RULE_CUTOFF = new Date(2026, 4, 1);
+function stageAtTime(deal, hist, t) {
+  if (new Date(deal.created_at) > t) return null;
+  if (hist && hist.length) {
+    let last = null;
+    for (const h of hist) {
+      if (new Date(h.changed_at) <= t) last = h.to_stage;
+      else break;
+    }
+    if (last !== null) return last;
+  }
+  return deal.stage ?? null;
+}
+function parseDateOnly(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(v);
+}
+function exitedBy(deal, hist, t) {
+  if (hist && hist.length) {
+    let prev = null;
+    for (const h of hist) {
+      if (new Date(h.changed_at) > t) break;
+      const to = h.to_stage ?? "";
+      if (prev === FINSERV_ACTIVE_STAGE && to !== FINSERV_ACTIVE_STAGE || FINSERV_TERMINAL_STAGES.has(to)) return true;
+      prev = to;
+    }
+    return false;
+  }
+  const cur = deal.stage ?? "";
+  if (FINSERV_TERMINAL_STAGES.has(cur)) {
+    return deal.stage_entered_at ? new Date(deal.stage_entered_at) <= t : true;
+  }
+  return false;
+}
+function isFinServActiveClientAt(deal, hist, t) {
+  if (stageAtTime(deal, hist, t) === FINSERV_ACTIVE_STAGE) return true;
+  if (t >= CONTRACT_START_RULE_CUTOFF || !deal.contract_start_date) return false;
+  if (parseDateOnly(deal.contract_start_date) > t) return false;
+  return !exitedBy(deal, hist, t);
+}
+function countsTowardFinServMrrAt(deal, hist, t) {
+  if (isFinServActiveClientAt(deal, hist, t)) return true;
+  const s = stageAtTime(deal, hist, t);
+  return !!s && !FINSERV_TERMINAL_STAGES.has(s);
+}
+function finservActiveClientOverride(t, count) {
+  return t.getFullYear() === 2026 && t.getMonth() === 5 ? 7 : count;
+}
+function finservSnapshotAt(deals, historyByDeal, t) {
+  let raw = 0;
+  let mrr = 0;
+  const clients = [];
+  for (const d of deals) {
+    const h = historyByDeal.get(d.id);
+    if (isFinServActiveClientAt(d, h, t)) {
+      raw += 1;
+      clients.push({ id: d.id, company: d.company ?? null, mrr: Number(d.mrr ?? 0) });
+    }
+    if (countsTowardFinServMrrAt(d, h, t)) mrr += Number(d.mrr ?? 0);
+  }
+  return { active_clients: finservActiveClientOverride(t, raw), active_clients_raw: raw, total_mrr: mrr, clients };
+}
+
+// src/lib/mcp/tools/get-finserv-client-metrics.ts
+var FINSERV_PIPELINE_ID = "6907be5e-b17c-4a95-a7c2-fd977c94e179";
+function periodEnds(from, to, g) {
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  const step = g === "monthly" ? 1 : g === "quarterly" ? 3 : 12;
+  const out = [];
+  let y = fy, m = fm;
+  if (g === "quarterly") m = Math.floor((m - 1) / 3) * 3 + 1;
+  if (g === "yearly") m = 1;
+  while (y < ty || y === ty && m <= tm) {
+    const endM = m + step - 1;
+    const end = new Date(y, endM, 0, 23, 59, 59);
+    const label = g === "monthly" ? `${y}-${String(m).padStart(2, "0")}` : g === "quarterly" ? `${y}-Q${(m + 2) / 3}` : `${y}`;
+    out.push({ label, end });
+    m += step;
+    while (m > 12) {
+      m -= 12;
+      y += 1;
+    }
+    if (out.length > 120) break;
+  }
+  return out;
+}
+var get_finserv_client_metrics_default = defineTool2({
+  name: "get_finserv_client_metrics",
+  title: "Get FinServ active clients and MRR by period",
+  description: "Point-in-time FinServ Active Clients and Total MRR at the end of each month/quarter/year, exactly as the FinServ Financial Metrics dashboard and Insights tiles show them. Before May 2026 a client counts if it was in Active Client at period end OR its contract start date was on/before period end and it had not exited Active Client; from May 2026 only the Active Client stage counts. MRR = open (non-churned/lost/in-development) deals plus clients counted active. June 2026 uses the dashboard's manual 7-client correction.",
+  inputSchema: {
+    from_month: z2.string().regex(/^\d{4}-\d{2}$/).describe("First month YYYY-MM."),
+    to_month: z2.string().regex(/^\d{4}-\d{2}$/).describe("Last month YYYY-MM inclusive."),
+    granularity: z2.enum(["monthly", "quarterly", "yearly"]).default("quarterly"),
+    include_clients: z2.boolean().default(false).describe("List the clients counted active in each period.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from_month, to_month, granularity, include_clients }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: deals, error } = await sb.from("deals").select("id, company, stage, mrr, created_at, contract_start_date, stage_entered_at").eq("pipeline_id", FINSERV_PIPELINE_ID);
+    if (error) return errorResult(error.message);
+    const { data: hist, error: he } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", FINSERV_PIPELINE_ID).order("changed_at", { ascending: true });
+    if (he) return errorResult(he.message);
+    const historyByDeal = /* @__PURE__ */ new Map();
+    for (const h of hist ?? []) {
+      const arr2 = historyByDeal.get(h.deal_id) ?? [];
+      arr2.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+      historyByDeal.set(h.deal_id, arr2);
+    }
+    const kept = (deals ?? []).filter((d) => !isExcludedDealName(d.company));
+    const now = /* @__PURE__ */ new Date();
+    const periods = periodEnds(from_month, to_month, granularity).map(({ label, end }) => {
+      const eff = end > now ? now : end;
+      const s = finservSnapshotAt(kept, historyByDeal, eff);
+      return {
+        period: label,
+        as_of: eff.toISOString(),
+        active_clients: s.active_clients,
+        active_clients_before_override: s.active_clients_raw,
+        total_mrr: s.total_mrr,
+        ...include_clients ? { clients: s.clients } : {}
+      };
+    });
+    const payload = { granularity, periods };
+    return textResult(payload, payload);
+  }
+});
+
 // src/lib/mcp/tools/list-pipelines.ts
-var list_pipelines_default = defineTool2({
+import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z3 } from "npm:zod@^3.23.0";
+var list_pipelines_default = defineTool3({
   name: "list_pipelines",
   title: "List pipelines",
   description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
   inputSchema: {
-    include_deal_counts: z2.boolean().default(true)
+    include_deal_counts: z3.boolean().default(true)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ include_deal_counts }, ctx) => {
@@ -644,8 +780,8 @@ var list_pipelines_default = defineTool2({
 });
 
 // src/lib/mcp/tools/get-deal.ts
-import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z3 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z4 } from "npm:zod@^3.23.0";
 function contactName(contact) {
   const composed = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
   if (composed) return composed;
@@ -708,16 +844,16 @@ var DEAL_CHILD_TABLES = [
   ["pending_notifications", "pending_deal_notifications"]
 ];
 var CHILD_ROW_LIMIT = 200;
-var get_deal_default = defineTool3({
+var get_deal_default = defineTool4({
   name: "get_deal",
   title: "Get deal",
   description: "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
   inputSchema: {
-    deal_id: z3.string().uuid(),
-    include_tasks: z3.boolean().default(true),
-    include_lenders: z3.boolean().default(true),
-    include_related: z3.boolean().default(false),
-    include_task_detail: z3.boolean().default(false)
+    deal_id: z4.string().uuid(),
+    include_tasks: z4.boolean().default(true),
+    include_lenders: z4.boolean().default(true),
+    include_related: z4.boolean().default(false),
+    include_task_detail: z4.boolean().default(false)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, include_tasks, include_lenders, include_related, include_task_detail }, ctx) => {
@@ -839,8 +975,8 @@ var get_deal_default = defineTool3({
 });
 
 // src/lib/mcp/tools/update-deal.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z4 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z5 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/statusNotes.ts
 var EMPTY = /* @__PURE__ */ new Set(["", "<p></p>", "<p><br></p>"]);
@@ -886,23 +1022,23 @@ async function writeDealStatusNote(sb, ctx, deal_id, note, mode, source) {
 }
 
 // src/lib/mcp/tools/update-deal.ts
-var update_deal_default = defineTool4({
+var update_deal_default = defineTool5({
   name: "update_deal",
   title: "Update deal",
   description: "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional crm_company_id links an accessible CRM company in the same workspace, with atomic MCP deal activity and no-op identical retries. Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed; omitted new fields retain existing behavior. Returns the updated deal with crm_company_id, pipeline_id, pipeline_name, stage and stage_label. Requires user approval.",
   inputSchema: {
-    deal_id: z4.string().uuid(),
-    crm_company_id: z4.string().uuid().optional().describe("Accessible CRM company UUID in this deal's workspace; only sets deals.crm_company_id."),
-    pipeline_id: z4.string().uuid().optional().describe("Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."),
-    stage: z4.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
-    value: z4.number().nonnegative().optional(),
-    closing_date: z4.string().nullable().optional().describe("ISO date, or null to clear."),
-    deal_owner: z4.string().trim().max(200).optional(),
-    manager: z4.string().trim().max(200).optional(),
-    narrative: z4.string().max(2e4).optional(),
-    is_flagged: z4.boolean().optional(),
-    flag_notes: z4.string().max(2e3).nullable().optional(),
-    notes: z4.string().trim().min(1).max(2e3).optional().describe("Replaces the Status Note text; previous note is archived and the change is logged. Use add_deal_status_note to prepend.")
+    deal_id: z5.string().uuid(),
+    crm_company_id: z5.string().uuid().optional().describe("Accessible CRM company UUID in this deal's workspace; only sets deals.crm_company_id."),
+    pipeline_id: z5.string().uuid().optional().describe("Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."),
+    stage: z5.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
+    value: z5.number().nonnegative().optional(),
+    closing_date: z5.string().nullable().optional().describe("ISO date, or null to clear."),
+    deal_owner: z5.string().trim().max(200).optional(),
+    manager: z5.string().trim().max(200).optional(),
+    narrative: z5.string().max(2e4).optional(),
+    is_flagged: z5.boolean().optional(),
+    flag_notes: z5.string().max(2e3).nullable().optional(),
+    notes: z5.string().trim().min(1).max(2e3).optional().describe("Replaces the Status Note text; previous note is archived and the change is logged. Use add_deal_status_note to prepend.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -971,19 +1107,19 @@ var update_deal_default = defineTool4({
 });
 
 // src/lib/mcp/tools/link-deal-contact.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z6 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z7 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealRelationships.ts
-import { z as z5 } from "npm:zod@^3.23.0";
+import { z as z6 } from "npm:zod@^3.23.0";
 var contactLinkSchema = {
-  deal_id: z5.string().uuid(),
-  contact_id: z5.string().uuid().optional().describe("Existing contact UUID; provide this or email, not both."),
-  email: z5.string().trim().email().max(320).optional().describe("Existing contact email in the deal workspace; never creates contacts.")
+  deal_id: z6.string().uuid(),
+  contact_id: z6.string().uuid().optional().describe("Existing contact UUID; provide this or email, not both."),
+  email: z6.string().trim().email().max(320).optional().describe("Existing contact email in the deal workspace; never creates contacts.")
 };
 var aliasSchema = {
-  deal_id: z5.string().uuid(),
-  alias: z5.string().trim().min(1).max(500).describe("Deal alias; matching ignores case and collapses whitespace.")
+  deal_id: z6.string().uuid(),
+  alias: z6.string().trim().min(1).max(500).describe("Deal alias; matching ignores case and collapses whitespace.")
 };
 async function mutateDealRelationship(action, input, ctx) {
   const denied = requireAuth(ctx);
@@ -999,18 +1135,18 @@ async function mutateDealRelationship(action, input, ctx) {
 }
 
 // src/lib/mcp/tools/link-deal-contact.ts
-var link_deal_contact_default = defineTool5({
+var link_deal_contact_default = defineTool6({
   name: "link_deal_contact",
   title: "Link deal contact",
   description: "Link an existing workspace contact to a deal by contact_id or email. Optionally set or update role; omitted role is preserved. Returns the link plus contact name, email and company. Caller-scoped, atomic MCP deal activity; identical retries are no-ops. Never creates a contact. Requires user approval.",
-  inputSchema: { ...contactLinkSchema, role: z6.string().max(200).optional().describe("Deal-specific contact role, e.g. Client \u2013 CFO; only changed when supplied.") },
+  inputSchema: { ...contactLinkSchema, role: z7.string().max(200).optional().describe("Deal-specific contact role, e.g. Client \u2013 CFO; only changed when supplied.") },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: (input, ctx) => mutateDealRelationship("link_deal_contact", input, ctx)
 });
 
 // src/lib/mcp/tools/unlink-deal-contact.ts
-import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var unlink_deal_contact_default = defineTool6({
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var unlink_deal_contact_default = defineTool7({
   name: "unlink_deal_contact",
   title: "Unlink deal contact",
   description: "Remove only an existing contact's contact_deals link by deal_id and contact_id or email; never delete the contact. Caller-scoped, atomic MCP deal activity only when changed; already-unlinked retries succeed as no-ops. Requires user approval.",
@@ -1020,8 +1156,8 @@ var unlink_deal_contact_default = defineTool6({
 });
 
 // src/lib/mcp/tools/add-deal-alias.ts
-import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var add_deal_alias_default = defineTool7({
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var add_deal_alias_default = defineTool8({
   name: "add_deal_alias",
   title: "Add deal alias",
   description: "Add a deal alias with lowercased, trimmed, collapsed-whitespace alias_normalized. Unique per deal; equivalent retries return the existing alias without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
@@ -1031,8 +1167,8 @@ var add_deal_alias_default = defineTool7({
 });
 
 // src/lib/mcp/tools/remove-deal-alias.ts
-import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var remove_deal_alias_default = defineTool8({
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var remove_deal_alias_default = defineTool9({
   name: "remove_deal_alias",
   title: "Remove deal alias",
   description: "Remove only the matching alias on this deal, ignoring case and collapsing whitespace. Already-absent retries succeed without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
@@ -1042,17 +1178,17 @@ var remove_deal_alias_default = defineTool8({
 });
 
 // src/lib/mcp/tools/add-deal-status-note.ts
-import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z7 } from "npm:zod@^3.23.0";
-var add_deal_status_note_default = defineTool9({
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z8 } from "npm:zod@^3.23.0";
+var add_deal_status_note_default = defineTool10({
   name: "add_deal_status_note",
   title: "Add deal status note",
   description: "Add or replace the status note on a deal (the Status Note box on the deal page).",
   inputSchema: {
-    deal_id: z7.string().uuid(),
-    note: z7.string().trim().min(1, "Note cannot be empty.").max(2e3),
-    mode: z7.enum(["prepend", "append", "replace"]).default("prepend").describe("prepend (default) keeps history below a blank line; replace overwrites."),
-    source: z7.string().trim().min(1).max(100).default("Claude deal-update").describe("Attribution recorded in the activity log.")
+    deal_id: z8.string().uuid(),
+    note: z8.string().trim().min(1, "Note cannot be empty.").max(2e3),
+    mode: z8.enum(["prepend", "append", "replace"]).default("prepend").describe("prepend (default) keeps history below a blank line; replace overwrites."),
+    source: z8.string().trim().min(1).max(100).default("Claude deal-update").describe("Attribution recorded in the activity log.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ deal_id, note, mode, source }, ctx) => {
@@ -1065,18 +1201,18 @@ var add_deal_status_note_default = defineTool9({
 });
 
 // src/lib/mcp/tools/list-tasks.ts
-import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z8 } from "npm:zod@^3.23.0";
-var list_tasks_default = defineTool10({
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z9 } from "npm:zod@^3.23.0";
+var list_tasks_default = defineTool11({
   name: "list_tasks",
   title: "List tasks",
   description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
   inputSchema: {
-    deal_id: z8.string().uuid().optional(),
-    status: z8.enum(["not_started", "pending", "in_progress", "completed", "complete"]).optional(),
-    assigned_to: z8.string().uuid().optional().describe("User id the task is assigned to."),
-    query: z8.string().trim().max(200).optional(),
-    limit: z8.number().int().min(1).max(200).default(50)
+    deal_id: z9.string().uuid().optional(),
+    status: z9.enum(["not_started", "pending", "in_progress", "completed", "complete"]).optional(),
+    assigned_to: z9.string().uuid().optional().describe("User id the task is assigned to."),
+    query: z9.string().trim().max(200).optional(),
+    limit: z9.number().int().min(1).max(200).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, status, assigned_to, query, limit }, ctx) => {
@@ -1098,21 +1234,21 @@ var list_tasks_default = defineTool10({
 });
 
 // src/lib/mcp/tools/create-task.ts
-import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z9 } from "npm:zod@^3.23.0";
-var create_task_default = defineTool11({
+import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z10 } from "npm:zod@^3.23.0";
+var create_task_default = defineTool12({
   name: "create_task",
   title: "Create task",
   description: "Create a task, optionally tied to a deal, contact, or company. Returns the created row.",
   inputSchema: {
-    title: z9.string().trim().min(1).max(500),
-    description: z9.string().max(1e4).optional(),
-    due_date: z9.string().nullable().optional().describe("ISO date."),
-    priority: z9.enum(["low", "medium", "high", "urgent"]).optional(),
-    assigned_to: z9.string().uuid().optional().describe("User id to assign the task to."),
-    deal_id: z9.string().uuid().optional(),
-    contact_id: z9.string().uuid().optional(),
-    company_id: z9.string().uuid().optional()
+    title: z10.string().trim().min(1).max(500),
+    description: z10.string().max(1e4).optional(),
+    due_date: z10.string().nullable().optional().describe("ISO date."),
+    priority: z10.enum(["low", "medium", "high", "urgent"]).optional(),
+    assigned_to: z10.string().uuid().optional().describe("User id to assign the task to."),
+    deal_id: z10.string().uuid().optional(),
+    contact_id: z10.string().uuid().optional(),
+    company_id: z10.string().uuid().optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -1134,13 +1270,13 @@ var create_task_default = defineTool11({
 });
 
 // src/lib/mcp/tools/complete-task.ts
-import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z10 } from "npm:zod@^3.23.0";
-var complete_task_default = defineTool12({
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z11 } from "npm:zod@^3.23.0";
+var complete_task_default = defineTool13({
   name: "complete_task",
   title: "Complete task",
   description: "Mark a task as completed.",
-  inputSchema: { task_id: z10.string().uuid() },
+  inputSchema: { task_id: z11.string().uuid() },
   annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ task_id }, ctx) => {
     const authErr = requireAuth(ctx);
@@ -1162,28 +1298,28 @@ function orIlike(value) {
 }
 
 // src/lib/mcp/tools/search-contacts.ts
-import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z11 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z12 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
 var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
-var search_contacts_default = defineTool13({
+var search_contacts_default = defineTool14({
   name: "search_contacts",
   title: "Search contacts",
   description: 'Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more \u2014 keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: "*"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact\'s full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.',
   inputSchema: {
-    query: z11.string().trim().min(1).max(200).optional().describe("Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."),
-    fields: z11.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list. Defaults to a summary set.'),
-    contact_type: z11.string().trim().max(100).optional(),
-    tag: z11.string().trim().max(100).optional().describe("Match a single tag in the contact's tags array."),
-    crm_company_id: z11.string().uuid().optional(),
-    city: z11.string().trim().max(100).optional(),
-    state: z11.string().trim().max(100).optional(),
-    country: z11.string().trim().max(100).optional(),
-    has_email: z11.boolean().optional(),
-    order_by: z11.string().trim().max(80).default("created_at"),
-    ascending: z11.boolean().default(false),
-    limit: z11.number().int().min(1).max(500).default(50),
-    offset: z11.number().int().min(0).default(0)
+    query: z12.string().trim().min(1).max(200).optional().describe("Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."),
+    fields: z12.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list. Defaults to a summary set.'),
+    contact_type: z12.string().trim().max(100).optional(),
+    tag: z12.string().trim().max(100).optional().describe("Match a single tag in the contact's tags array."),
+    crm_company_id: z12.string().uuid().optional(),
+    city: z12.string().trim().max(100).optional(),
+    state: z12.string().trim().max(100).optional(),
+    country: z12.string().trim().max(100).optional(),
+    has_email: z12.boolean().optional(),
+    order_by: z12.string().trim().max(80).default("created_at"),
+    ascending: z12.boolean().default(false),
+    limit: z12.number().int().min(1).max(500).default(50),
+    offset: z12.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -1237,8 +1373,8 @@ var search_contacts_default = defineTool13({
 });
 
 // src/lib/mcp/tools/get-contact.ts
-import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z12 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z13 } from "npm:zod@^3.23.0";
 var CHILD_TABLES = [
   { table: "contact_activities", column: "contact_id", key: "activities", limit: 300, order: "occurred_at" },
   { table: "contact_audit_log", column: "contact_id", key: "change_history", limit: 500, order: "created_at" },
@@ -1260,15 +1396,15 @@ var CHILD_TABLES = [
     limit: 300
   }
 ];
-var get_contact_default = defineTool14({
+var get_contact_default = defineTool15({
   name: "get_contact",
   title: "Get contact detail",
   description: "Return the COMPLETE record for one CRM contact \u2014 every column on `contacts` (all custom and standard fields: names, all phone numbers, email(s), job title, geography/city/state/country, LinkedIn, tags, contact type, source, owner, last-contact timestamps, notes and every custom field) \u2014 plus its related rows: linked CRM company record, company associations, deals the contact is attached to (with deal name/stage/pipeline), logged activities, full field-level change history, AI field suggestions and their audit trail, attachments, and any funding-source or partner links. Look up by `contact_id`, or by `email` or partial `name` (ambiguous name matches return the candidates to choose from).",
   inputSchema: {
-    contact_id: z12.string().uuid().optional(),
-    email: z12.string().trim().max(320).optional(),
-    name: z12.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
-    include_related: z12.boolean().default(true).describe("Include company, deals, activities, change history, suggestions, attachments and links.")
+    contact_id: z13.string().uuid().optional(),
+    email: z13.string().trim().max(320).optional(),
+    name: z13.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
+    include_related: z13.boolean().default(true).describe("Include company, deals, activities, change history, suggestions, attachments and links.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ contact_id, email, name, include_related }, ctx) => {
@@ -1372,30 +1508,30 @@ var get_contact_default = defineTool14({
 });
 
 // src/lib/mcp/tools/search-companies.ts
-import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z13 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z14 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS2 = "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at, updated_at";
 var FIELD_RE2 = /^[a-zA-Z0-9_,\s]+$/;
-var search_companies_default = defineTool15({
+var search_companies_default = defineTool16({
   name: "search_companies",
   title: "Search companies",
   description: 'Search CRM companies by name, domain or website, with optional filters (industry, company_type, status, lifecycle_stage, city, state, country, tag, owner, has_deals). Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: "*"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies. Use `get_company` for one company\'s full record plus contacts, deals, activity history and attachments.',
   inputSchema: {
-    query: z13.string().trim().min(1).max(200).optional(),
-    fields: z13.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list.'),
-    industry: z13.string().trim().max(120).optional().describe("Case-insensitive partial match on industry or sub_industry."),
-    company_type: z13.string().trim().max(120).optional(),
-    status: z13.string().trim().max(120).optional(),
-    lifecycle_stage: z13.string().trim().max(120).optional(),
-    city: z13.string().trim().max(120).optional(),
-    state: z13.string().trim().max(120).optional(),
-    country: z13.string().trim().max(120).optional(),
-    tag: z13.string().trim().max(120).optional().describe("Match a single tag in the company's tags array."),
-    owner_user_id: z13.string().uuid().optional(),
-    limit: z13.number().int().min(1).max(500).default(50),
-    offset: z13.number().int().min(0).default(0),
-    order_by: z13.string().trim().max(80).default("created_at"),
-    ascending: z13.boolean().default(false)
+    query: z14.string().trim().min(1).max(200).optional(),
+    fields: z14.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list.'),
+    industry: z14.string().trim().max(120).optional().describe("Case-insensitive partial match on industry or sub_industry."),
+    company_type: z14.string().trim().max(120).optional(),
+    status: z14.string().trim().max(120).optional(),
+    lifecycle_stage: z14.string().trim().max(120).optional(),
+    city: z14.string().trim().max(120).optional(),
+    state: z14.string().trim().max(120).optional(),
+    country: z14.string().trim().max(120).optional(),
+    tag: z14.string().trim().max(120).optional().describe("Match a single tag in the company's tags array."),
+    owner_user_id: z14.string().uuid().optional(),
+    limit: z14.number().int().min(1).max(500).default(50),
+    offset: z14.number().int().min(0).default(0),
+    order_by: z14.string().trim().max(80).default("created_at"),
+    ascending: z14.boolean().default(false)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, fields, industry, company_type, status, lifecycle_stage, city, state, country, tag, owner_user_id, limit, offset, order_by, ascending }, ctx) => {
@@ -1443,8 +1579,8 @@ var search_companies_default = defineTool15({
 });
 
 // src/lib/mcp/tools/get-company.ts
-import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z14 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z15 } from "npm:zod@^3.23.0";
 var CHILD_TABLES2 = [
   { table: "crm_company_activities", column: "crm_company_id", key: "activities", limit: 500, order: "created_at" },
   { table: "crm_company_attachments", column: "crm_company_id", key: "attachments", limit: 200 },
@@ -1453,15 +1589,15 @@ var CHILD_TABLES2 = [
   { table: "master_lenders", column: "crm_company_id", key: "funding_sources", limit: 200 },
   { table: "tasks", column: "crm_company_id", key: "tasks", limit: 300, order: "created_at" }
 ];
-var get_company_default = defineTool16({
+var get_company_default = defineTool17({
   name: "get_company",
   title: "Get company detail",
   description: "Return the COMPLETE record for one CRM company \u2014 every column on `crm_companies` (name, domains, industry/sub-industry, type, status, lifecycle stage, employee count/range, revenue/ARR/MRR/contract values, contract and renewal dates, HQ address/city/state/country/postal, regions served, key products, description, socials, phone, tags, owner, source system/external ids, custom fields, notes, timestamps) \u2014 plus its related rows: contacts at the company, deals linked to it (with deal name, stage, status, pipeline), full activity history, attachments, team members, contact-to-company match/association history, linked funding sources, tasks, and the parent/child company records. Look up by `company_id`, `domain`, or partial `name` (ambiguous name matches return the candidates to choose from).",
   inputSchema: {
-    company_id: z14.string().uuid().optional(),
-    domain: z14.string().trim().max(253).optional(),
-    name: z14.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
-    include_related: z14.boolean().default(true).describe("Include contacts, deals, activities, attachments, team, funding sources, tasks and match history.")
+    company_id: z15.string().uuid().optional(),
+    domain: z15.string().trim().max(253).optional(),
+    name: z15.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
+    include_related: z15.boolean().default(true).describe("Include contacts, deals, activities, attachments, team, funding sources, tasks and match history.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ company_id, domain, name, include_related }, ctx) => {
@@ -1543,19 +1679,19 @@ var get_company_default = defineTool16({
 });
 
 // src/lib/mcp/tools/create-contact.ts
-import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z15 } from "npm:zod@^3.23.0";
-var create_contact_default = defineTool17({
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z16 } from "npm:zod@^3.23.0";
+var create_contact_default = defineTool18({
   name: "create_contact",
   title: "Create contact",
   description: "Create a CRM contact. Provide at minimum an email or first_name/last_name.",
   inputSchema: {
-    first_name: z15.string().trim().max(200).optional(),
-    last_name: z15.string().trim().max(200).optional(),
-    email: z15.string().trim().email().optional(),
-    phone: z15.string().trim().max(50).optional().describe("Stored as mobile phone."),
-    website_url: z15.string().trim().max(500).optional().describe("Contact domain (matches to company)."),
-    job_title: z15.string().trim().max(200).optional()
+    first_name: z16.string().trim().max(200).optional(),
+    last_name: z16.string().trim().max(200).optional(),
+    email: z16.string().trim().email().optional(),
+    phone: z16.string().trim().max(50).optional().describe("Stored as mobile phone."),
+    website_url: z16.string().trim().max(500).optional().describe("Contact domain (matches to company)."),
+    job_title: z16.string().trim().max(200).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -1576,19 +1712,19 @@ var create_contact_default = defineTool17({
 });
 
 // src/lib/mcp/tools/create-company.ts
-import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z16 } from "npm:zod@^3.23.0";
-var create_company_default = defineTool18({
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z17 } from "npm:zod@^3.23.0";
+var create_company_default = defineTool19({
   name: "create_company",
   title: "Create company",
   description: "Create a CRM company record.",
   inputSchema: {
-    name: z16.string().trim().min(1).max(300),
-    domain: z16.string().trim().max(300).optional(),
-    website_url: z16.string().trim().max(500).optional(),
-    industry: z16.string().trim().max(200).optional(),
-    hq_city: z16.string().trim().max(200).optional(),
-    hq_state: z16.string().trim().max(200).optional()
+    name: z17.string().trim().min(1).max(300),
+    domain: z17.string().trim().max(300).optional(),
+    website_url: z17.string().trim().max(500).optional(),
+    industry: z17.string().trim().max(200).optional(),
+    hq_city: z17.string().trim().max(200).optional(),
+    hq_state: z17.string().trim().max(200).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -1604,26 +1740,26 @@ var create_company_default = defineTool18({
 });
 
 // src/lib/mcp/tools/search-lenders.ts
-import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z17 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z18 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS3 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
-var search_lenders_default = defineTool19({
+var search_lenders_default = defineTool20({
   name: "search_lenders",
   title: "Search funding sources / lenders",
   description: 'Search the master funding-source (lender) directory. By default returns a summary card per lender; pass fields="*" to get EVERY column on master_lenders (criteria, leverage, revenue/EBITDA minimums, industries to avoid, excluded geographies, referral terms, NDA, sync metadata, address, notes) or a comma-separated column list. Filters: name query, deal_size (min_deal <= size <= max_deal), lender_type, tier, appetite_status, active, industry, geography, loan_type. Results are paginated \u2014 the response returns total_count, returned, offset, next_offset and has_more; keep calling with next_offset to walk the entire directory. Use `get_lender` for one lender\'s full record plus contacts, notes, attachments, change history and linked deals.',
   inputSchema: {
-    query: z17.string().trim().max(200).optional(),
-    deal_size: z17.number().nonnegative().optional(),
-    lender_type: z17.string().trim().max(100).optional(),
-    tier: z17.string().trim().max(60).optional(),
-    appetite_status: z17.string().trim().max(60).optional(),
-    active: z17.boolean().optional(),
-    industry: z17.string().trim().max(120).optional().describe("Matches a value in the lender's industries array."),
-    geography: z17.string().trim().max(120).optional().describe("Matches a value in the lender's geographies array."),
-    loan_type: z17.string().trim().max(120).optional().describe("Matches a value in the lender's loan_types array."),
-    fields: z17.string().trim().max(2e3).optional().describe('"*" for every column, or a comma-separated column list. Defaults to a summary set.'),
-    limit: z17.number().int().min(1).max(500).default(25),
-    offset: z17.number().int().min(0).default(0)
+    query: z18.string().trim().max(200).optional(),
+    deal_size: z18.number().nonnegative().optional(),
+    lender_type: z18.string().trim().max(100).optional(),
+    tier: z18.string().trim().max(60).optional(),
+    appetite_status: z18.string().trim().max(60).optional(),
+    active: z18.boolean().optional(),
+    industry: z18.string().trim().max(120).optional().describe("Matches a value in the lender's industries array."),
+    geography: z18.string().trim().max(120).optional().describe("Matches a value in the lender's geographies array."),
+    loan_type: z18.string().trim().max(120).optional().describe("Matches a value in the lender's loan_types array."),
+    fields: z18.string().trim().max(2e3).optional().describe('"*" for every column, or a comma-separated column list. Defaults to a summary set.'),
+    limit: z18.number().int().min(1).max(500).default(25),
+    offset: z18.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, deal_size, lender_type, tier, appetite_status, active, industry, geography, loan_type, fields, limit, offset }, ctx) => {
@@ -1677,8 +1813,8 @@ var search_lenders_default = defineTool19({
 });
 
 // src/lib/mcp/tools/get-lender.ts
-import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z18 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z19 } from "npm:zod@^3.23.0";
 var CHILD_TABLES3 = [
   { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
   { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
@@ -1691,14 +1827,14 @@ var CHILD_TABLES3 = [
   { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
   { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
 ];
-var get_lender_default = defineTool20({
+var get_lender_default = defineTool21({
   name: "get_lender",
   title: "Get funding source / lender detail",
   description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
   inputSchema: {
-    lender_id: z18.string().uuid().optional(),
-    name: z18.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
-    include_related: z18.boolean().default(true).describe("Include contacts, notes, history, attachments and deal links.")
+    lender_id: z19.string().uuid().optional(),
+    name: z19.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
+    include_related: z19.boolean().default(true).describe("Include contacts, notes, history, attachments and deal links.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ lender_id, name, include_related }, ctx) => {
@@ -1769,8 +1905,8 @@ var get_lender_default = defineTool20({
 });
 
 // src/lib/mcp/tools/update-lender.ts
-import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z20 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z21 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderWrites.ts
 async function resolveLenderId(sb, lender_id, name) {
@@ -1800,11 +1936,11 @@ async function resolveLenderId(sb, lender_id, name) {
 }
 
 // src/lib/mcp/lenderFields.ts
-import { z as z19 } from "npm:zod@^3.23.0";
-var str = (max = 2e3) => z19.string().max(max).nullable().optional();
-var arr = () => z19.array(z19.string().trim().min(1).max(200)).nullable().optional();
-var num = () => z19.number().finite().nullable().optional();
-var timestamp = () => z19.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
+import { z as z20 } from "npm:zod@^3.23.0";
+var str = (max = 2e3) => z20.string().max(max).nullable().optional();
+var arr = () => z20.array(z20.string().trim().min(1).max(200)).nullable().optional();
+var num = () => z20.number().finite().nullable().optional();
+var timestamp = () => z20.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
 var CRITERIA_CONFIDENCE_MEANINGS = {
   imported: "Imported criteria; not independently verified.",
   verified_call: "Confirmed by the lender on a recorded call.",
@@ -1836,7 +1972,7 @@ var LENDER_FIELD_SCHEMA = {
   geographies_excluded: arr(),
   sponsor_requirement: str(500),
   tier: str(50),
-  active: z19.boolean().nullable().optional(),
+  active: z20.boolean().nullable().optional(),
   appetite_status: str(100),
   tags: arr(),
   website: str(500),
@@ -1859,11 +1995,11 @@ var LENDER_FIELD_SCHEMA = {
   funding_source_notes: str(2e4),
   about_notes: str(2e4),
   lender_one_pager_url: str(1e3),
-  criteria_reviewed_at: z19.string().trim().refine((v) => !Number.isNaN(Date.parse(v)), { message: "criteria_reviewed_at must be an ISO date or timestamp, e.g. 2026-09-14" }).nullable().optional().describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
-  criteria_confidence: z19.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
+  criteria_reviewed_at: z20.string().trim().refine((v) => !Number.isNaN(Date.parse(v)), { message: "criteria_reviewed_at must be an ISO date or timestamp, e.g. 2026-09-14" }).nullable().optional().describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
+  criteria_confidence: z20.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
   upfront_checklist: str(1e4).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
   post_term_sheet_checklist: str(1e4).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
-  crm_company_id: z19.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
+  crm_company_id: z20.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
   onboarded_to_flex: str(500),
   gift_address: str(1e3),
   sync_source: str(200).describe("Inert historical metadata; does not reconnect FLEx."),
@@ -1871,14 +2007,14 @@ var LENDER_FIELD_SCHEMA = {
   last_synced_from_flex: timestamp(),
   external_created_by: str(500),
   external_last_modified: timestamp(),
-  resp_emails_sent: z19.number().int().nonnegative().nullable().optional(),
-  resp_replies_received: z19.number().int().nonnegative().nullable().optional(),
+  resp_emails_sent: z20.number().int().nonnegative().nullable().optional(),
+  resp_replies_received: z20.number().int().nonnegative().nullable().optional(),
   resp_reply_rate: num(),
   resp_median_hours_to_reply: num(),
   resp_reply_rate_excl_mass: num(),
   resp_last_reply_date: timestamp(),
   resp_rating: str(200),
-  resp_emails_sent_l12m: z19.number().int().nonnegative().nullable().optional(),
+  resp_emails_sent_l12m: z20.number().int().nonnegative().nullable().optional(),
   resp_reply_rate_l12m: num(),
   resp_window_label: str(500),
   resp_updated_at: timestamp()
@@ -1908,22 +2044,22 @@ async function validateLenderPatch(sb, patch) {
 }
 
 // src/lib/mcp/tools/update-lender.ts
-var lenderUpdateItem = z20.object({
-  lender_id: z20.string().uuid().optional(),
-  name_lookup: z20.string().trim().min(1).max(200).optional(),
-  name: z20.string().trim().min(1).max(200).optional(),
+var lenderUpdateItem = z21.object({
+  lender_id: z21.string().uuid().optional(),
+  name_lookup: z21.string().trim().min(1).max(200).optional(),
+  name: z21.string().trim().min(1).max(200).optional(),
   ...LENDER_FIELD_SCHEMA,
-  mode: z20.enum(["replace", "append", "prepend"]).optional(),
-  expected_updated_at: z20.string().datetime({ offset: true }).optional(),
-  dry_run: z20.boolean().optional(),
-  source: z20.string().max(1e3).optional(),
-  change_reason: z20.string().max(2e3).optional()
+  mode: z21.enum(["replace", "append", "prepend"]).optional(),
+  expected_updated_at: z21.string().datetime({ offset: true }).optional(),
+  dry_run: z21.boolean().optional(),
+  source: z21.string().max(1e3).optional(),
+  change_reason: z21.string().max(2e3).optional()
 }).strict();
-var update_lender_default = defineTool21({
+var update_lender_default = defineTool22({
   name: "update_lender",
   title: "Update funding source / lender",
   description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
-  inputSchema: { ...lenderUpdateItem.shape, updates: z20.array(lenderUpdateItem).min(1).max(25).optional() },
+  inputSchema: { ...lenderUpdateItem.shape, updates: z21.array(lenderUpdateItem).min(1).max(25).optional() },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
@@ -1971,108 +2107,108 @@ var update_lender_default = defineTool21({
 });
 
 // src/lib/mcp/tools/upsert-lender-contact.ts
+import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z24 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/lenderRelatedWrites.ts
 import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z23 } from "npm:zod@^3.23.0";
 
-// src/lib/mcp/lenderRelatedWrites.ts
-import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z22 } from "npm:zod@^3.23.0";
-
 // src/lib/mcp/lenderRelatedFields.ts
-import { z as z21 } from "npm:zod@^3.23.0";
+import { z as z22 } from "npm:zod@^3.23.0";
 var LENDER_RELATED_FIELDS = {
   lender_fit_attributes: {
-    summary: z21.string().max(2e4).nullable().optional(),
-    positive_signals: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional(),
-    negative_signals: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional(),
-    exclusions: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional(),
-    nuanced_preferences: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional()
+    summary: z22.string().max(2e4).nullable().optional(),
+    positive_signals: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
+    negative_signals: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
+    exclusions: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
+    nuanced_preferences: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional()
   },
   lender_disqualifications: {
-    deal_id: z21.string().uuid().optional(),
-    deal_lender_id: z21.string().uuid().nullable().optional(),
-    reason_category: z21.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
-    reason_details: z21.string().max(2e4).nullable().optional(),
-    deal_size: z21.number().finite().nullable().optional(),
-    deal_industry: z21.string().max(2e4).nullable().optional(),
-    deal_geography: z21.string().max(2e4).nullable().optional()
+    deal_id: z22.string().uuid().optional(),
+    deal_lender_id: z22.string().uuid().nullable().optional(),
+    reason_category: z22.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
+    reason_details: z22.string().max(2e4).nullable().optional(),
+    deal_size: z22.number().finite().nullable().optional(),
+    deal_industry: z22.string().max(2e4).nullable().optional(),
+    deal_geography: z22.string().max(2e4).nullable().optional()
   },
   lender_doc_flags: {
-    has_nda: z21.boolean().optional(),
-    has_marketing: z21.boolean().optional()
+    has_nda: z22.boolean().optional(),
+    has_marketing: z22.boolean().optional()
   },
   funding_source_acquisition_plans: {
-    year: z21.number().int().optional(),
-    cadence: z21.string().max(2e4).optional(),
-    period: z21.number().int().optional(),
-    target_count: z21.number().int().optional()
+    year: z22.number().int().optional(),
+    cadence: z22.string().max(2e4).optional(),
+    period: z22.number().int().optional(),
+    target_count: z22.number().int().optional()
   },
   lender_match_rules: {
-    rule_type: z21.string().max(2e4).optional(),
-    applies_when: z21.record(z21.unknown()).or(z21.array(z21.unknown())).nullable().optional(),
-    reason: z21.string().max(2e4).optional(),
-    delta: z21.number().int().nullable().optional(),
-    active: z21.boolean().optional()
+    rule_type: z22.string().max(2e4).optional(),
+    applies_when: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
+    reason: z22.string().max(2e4).optional(),
+    delta: z22.number().int().nullable().optional(),
+    active: z22.boolean().optional()
   },
   lender_pass_detections: {
-    deal_id: z21.string().uuid().optional(),
-    deal_lender_id: z21.string().uuid().nullable().optional(),
-    gmail_message_id: z21.string().max(2e4).optional(),
-    thread_id: z21.string().max(2e4).nullable().optional(),
-    sender_email: z21.string().max(2e4).nullable().optional(),
-    sender_name: z21.string().max(2e4).nullable().optional(),
-    confidence: z21.string().max(2e4).optional(),
-    is_pass: z21.boolean().optional(),
-    reason_summary: z21.string().max(2e4).nullable().optional(),
-    source_quote: z21.string().max(2e4).nullable().optional(),
-    status: z21.string().max(2e4).optional(),
-    edited_reason: z21.string().max(2e4).nullable().optional(),
-    raw_classification: z21.record(z21.unknown()).or(z21.array(z21.unknown())).nullable().optional()
+    deal_id: z22.string().uuid().optional(),
+    deal_lender_id: z22.string().uuid().nullable().optional(),
+    gmail_message_id: z22.string().max(2e4).optional(),
+    thread_id: z22.string().max(2e4).nullable().optional(),
+    sender_email: z22.string().max(2e4).nullable().optional(),
+    sender_name: z22.string().max(2e4).nullable().optional(),
+    confidence: z22.string().max(2e4).optional(),
+    is_pass: z22.boolean().optional(),
+    reason_summary: z22.string().max(2e4).nullable().optional(),
+    source_quote: z22.string().max(2e4).nullable().optional(),
+    status: z22.string().max(2e4).optional(),
+    edited_reason: z22.string().max(2e4).nullable().optional(),
+    raw_classification: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional()
   },
   lender_pass_patterns: {
-    reason_category: z21.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
-    pattern_type: z21.string().max(2e4).optional(),
-    pattern_value: z21.string().max(2e4).optional(),
-    confidence_score: z21.number().finite().nullable().optional()
+    reason_category: z22.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
+    pattern_type: z22.string().max(2e4).optional(),
+    pattern_value: z22.string().max(2e4).optional(),
+    confidence_score: z22.number().finite().nullable().optional()
   },
   lender_sync_requests: {
-    source_system: z21.string().max(2e4).optional(),
-    source_lender_id: z21.string().max(2e4).nullable().optional(),
-    request_type: z21.string().max(2e4).optional(),
-    incoming_data: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional(),
-    changes_diff: z21.record(z21.unknown()).or(z21.array(z21.unknown())).nullable().optional(),
-    status: z21.string().max(2e4).optional(),
-    processing_notes: z21.string().max(2e4).nullable().optional(),
-    confidence: z21.string().max(2e4).nullable().optional(),
-    suggested_action: z21.string().max(2e4).nullable().optional(),
-    match_candidates: z21.record(z21.unknown()).or(z21.array(z21.unknown())).optional(),
-    match_reason: z21.string().max(2e4).nullable().optional(),
-    conflict_count: z21.number().int().optional(),
-    contact_change_count: z21.number().int().optional(),
-    assigned_reviewer_id: z21.string().uuid().nullable().optional()
+    source_system: z22.string().max(2e4).optional(),
+    source_lender_id: z22.string().max(2e4).nullable().optional(),
+    request_type: z22.string().max(2e4).optional(),
+    incoming_data: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
+    changes_diff: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
+    status: z22.string().max(2e4).optional(),
+    processing_notes: z22.string().max(2e4).nullable().optional(),
+    confidence: z22.string().max(2e4).nullable().optional(),
+    suggested_action: z22.string().max(2e4).nullable().optional(),
+    match_candidates: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
+    match_reason: z22.string().max(2e4).nullable().optional(),
+    conflict_count: z22.number().int().optional(),
+    contact_change_count: z22.number().int().optional(),
+    assigned_reviewer_id: z22.string().uuid().nullable().optional()
   },
   lender_sync_request_decisions: {
-    request_id: z21.string().uuid().optional(),
-    field_name: z21.string().max(2e4).optional(),
-    scope: z21.string().max(2e4).optional(),
-    existing_value: z21.record(z21.unknown()).or(z21.array(z21.unknown())).nullable().optional(),
-    incoming_value: z21.record(z21.unknown()).or(z21.array(z21.unknown())).nullable().optional(),
-    action: z21.string().max(2e4).optional(),
-    notes: z21.string().max(2e4).nullable().optional()
+    request_id: z22.string().uuid().optional(),
+    field_name: z22.string().max(2e4).optional(),
+    scope: z22.string().max(2e4).optional(),
+    existing_value: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
+    incoming_value: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
+    action: z22.string().max(2e4).optional(),
+    notes: z22.string().max(2e4).nullable().optional()
   },
   lender_duplicate_dismissals: {
-    dismissal_key: z21.string().max(2e4).optional(),
-    lender_ids: z21.array(z21.string().uuid()).max(100).optional()
+    dismissal_key: z22.string().max(2e4).optional(),
+    lender_ids: z22.array(z22.string().uuid()).max(100).optional()
   },
   lender_history_warning_dismissals: {
-    deal_id: z21.string().uuid().optional()
+    deal_id: z22.string().uuid().optional()
   }
 };
 
 // src/lib/mcp/lenderRelatedWrites.ts
 var writeProvenance = {
-  source: z22.string().max(1e3).optional(),
-  change_reason: z22.string().max(2e3).optional()
+  source: z23.string().max(1e3).optional(),
+  change_reason: z23.string().max(2e3).optional()
 };
 async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, confirm, source, reason) {
   const { data, error } = await sb.rpc("mcp_write_lender_related", {
@@ -2090,14 +2226,14 @@ async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, 
 }
 function defineLenderRelatedTool(table, action, name) {
   const fields = LENDER_RELATED_FIELDS[table];
-  return defineTool22({
+  return defineTool23({
     name,
     title: `${action} ${table.replace(/_/g, " ")}`,
     description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
     inputSchema: {
-      lender_id: z22.string().uuid(),
-      record_id: action === "create" ? z22.string().uuid().optional().describe("Not used on creation; IDs are generated.") : z22.string().uuid(),
-      ...action === "delete" ? { confirm: z22.literal(true) } : fields,
+      lender_id: z23.string().uuid(),
+      record_id: action === "create" ? z23.string().uuid().optional().describe("Not used on creation; IDs are generated.") : z23.string().uuid(),
+      ...action === "delete" ? { confirm: z23.literal(true) } : fields,
       ...writeProvenance
     },
     annotations: { readOnlyHint: false, destructiveHint: action === "delete", idempotentHint: false, openWorldHint: false },
@@ -2111,24 +2247,24 @@ function defineLenderRelatedTool(table, action, name) {
 }
 
 // src/lib/mcp/tools/upsert-lender-contact.ts
-var upsert_lender_contact_default = defineTool23({
+var upsert_lender_contact_default = defineTool24({
   name: "upsert_lender_contact",
   title: "Add or update a funding source contact",
   description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
   inputSchema: {
-    lender_id: z23.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
-    contact_id: z23.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
-    name: z23.string().trim().max(200).optional(),
-    title: z23.string().trim().max(200).nullable().optional(),
-    email: z23.string().trim().max(320).nullable().optional(),
-    phone: z23.string().trim().max(100).nullable().optional(),
-    city: z23.string().trim().max(200).nullable().optional(),
-    state: z23.string().trim().max(200).nullable().optional(),
-    country: z23.string().trim().max(200).nullable().optional(),
-    geography: z23.string().trim().max(200).nullable().optional(),
-    notes: z23.string().max(1e4).nullable().optional(),
-    is_primary: z23.boolean().optional(),
-    crm_contact_id: z23.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
+    lender_id: z24.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
+    contact_id: z24.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
+    name: z24.string().trim().max(200).optional(),
+    title: z24.string().trim().max(200).nullable().optional(),
+    email: z24.string().trim().max(320).nullable().optional(),
+    phone: z24.string().trim().max(100).nullable().optional(),
+    city: z24.string().trim().max(200).nullable().optional(),
+    state: z24.string().trim().max(200).nullable().optional(),
+    country: z24.string().trim().max(200).nullable().optional(),
+    geography: z24.string().trim().max(200).nullable().optional(),
+    notes: z24.string().max(1e4).nullable().optional(),
+    is_primary: z24.boolean().optional(),
+    crm_contact_id: z24.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -2162,14 +2298,14 @@ var upsert_lender_contact_default = defineTool23({
 });
 
 // src/lib/mcp/tools/create-lender.ts
-import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z24 } from "npm:zod@^3.23.0";
-var create_lender_default = defineTool24({
+import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z25 } from "npm:zod@^3.23.0";
+var create_lender_default = defineTool25({
   name: "create_lender",
   title: "Create funding source / lender",
   description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
   inputSchema: {
-    name: z24.string().trim().min(1).max(200).describe("Name of the new funding source."),
+    name: z25.string().trim().min(1).max(200).describe("Name of the new funding source."),
     ...LENDER_FIELD_SCHEMA,
     ...writeProvenance
   },
@@ -2212,15 +2348,15 @@ var create_lender_default = defineTool24({
 });
 
 // src/lib/mcp/tools/delete-lender-contact.ts
-import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z25 } from "npm:zod@^3.23.0";
-var delete_lender_contact_default = defineTool25({
+import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z26 } from "npm:zod@^3.23.0";
+var delete_lender_contact_default = defineTool26({
   name: "delete_lender_contact",
   title: "Delete a funding source contact",
   description: "Permanently remove one contact from a funding source's multi-contact list (`lender_contacts`), e.g. a duplicate or wrong entry. Requires `confirm: true`. Logged to `lender_audit_logs`. Deleting the primary contact leaves the lender with no primary; promote another with `upsert_lender_contact` (is_primary: true) \u2014 there is never more than one primary.",
   inputSchema: {
-    contact_id: z25.string().uuid(),
-    confirm: z25.literal(true).describe("Must be true to confirm the permanent deletion."),
+    contact_id: z26.string().uuid(),
+    confirm: z26.literal(true).describe("Must be true to confirm the permanent deletion."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
@@ -2244,8 +2380,8 @@ var delete_lender_contact_default = defineTool25({
 });
 
 // src/lib/mcp/tools/add-lender-attachment.ts
-import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z26 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z27 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderAttachments.ts
 var LENDER_ATTACHMENT_BUCKET = "lender-attachments";
@@ -2290,17 +2426,17 @@ function decodeBase64(b64) {
 }
 
 // src/lib/mcp/tools/add-lender-attachment.ts
-var add_lender_attachment_default = defineTool26({
+var add_lender_attachment_default = defineTool27({
   name: "add_lender_attachment",
   title: "Attach a document to a funding source",
   description: "Upload a document (NDA, one-pager, referral agreement, etc.) to a funding source's Attachments, exactly as the app's upload does. Provide the file as `content_base64` OR as a public https `url` to fetch (max 20 MB). Category 'nda' marks the funding source as having an NDA and 'marketing_materials' as having marketing materials in the app. Does not change the legacy `nda` / `referral_agreement` / `lender_one_pager_url` text columns \u2014 use `update_lender` for those. Returns the new attachment row.",
   inputSchema: {
-    lender_id: z26.string().uuid(),
-    file_name: z26.string().trim().min(1).max(255).describe("File name including extension, e.g. 'Acme NDA.pdf'."),
-    category: z26.enum(LENDER_ATTACHMENT_CATEGORIES).default("general"),
-    content_base64: z26.string().min(1).optional().describe("File bytes, base64-encoded (a data: URL prefix is accepted)."),
-    url: z26.string().url().optional().describe("Public https URL to download the file from."),
-    content_type: z26.string().max(200).optional().describe("MIME type; inferred from the file extension when omitted."),
+    lender_id: z27.string().uuid(),
+    file_name: z27.string().trim().min(1).max(255).describe("File name including extension, e.g. 'Acme NDA.pdf'."),
+    category: z27.enum(LENDER_ATTACHMENT_CATEGORIES).default("general"),
+    content_base64: z27.string().min(1).optional().describe("File bytes, base64-encoded (a data: URL prefix is accepted)."),
+    url: z27.string().url().optional().describe("Public https URL to download the file from."),
+    content_type: z27.string().max(200).optional().describe("MIME type; inferred from the file extension when omitted."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -2364,13 +2500,13 @@ var add_lender_attachment_default = defineTool26({
 });
 
 // src/lib/mcp/tools/list-lender-attachments.ts
-import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z27 } from "npm:zod@^3.23.0";
-var list_lender_attachments_default = defineTool27({
+import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z28 } from "npm:zod@^3.23.0";
+var list_lender_attachments_default = defineTool28({
   name: "list_lender_attachments",
   title: "List funding source attachments",
   description: "List the documents attached to a funding source (NDAs, one-pagers, referral agreements\u2026) with a signed download URL valid for 1 hour.",
-  inputSchema: { lender_id: z27.string().uuid() },
+  inputSchema: { lender_id: z28.string().uuid() },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ lender_id }, ctx) => {
     const authErr = requireAuth(ctx);
@@ -2394,15 +2530,15 @@ var list_lender_attachments_default = defineTool27({
 });
 
 // src/lib/mcp/tools/delete-lender-attachment.ts
-import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z28 } from "npm:zod@^3.23.0";
-var delete_lender_attachment_default = defineTool28({
+import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z29 } from "npm:zod@^3.23.0";
+var delete_lender_attachment_default = defineTool29({
   name: "delete_lender_attachment",
   title: "Delete a funding source attachment",
   description: "Permanently delete one funding source attachment (file and record). Requires `confirm: true`. Only the person who uploaded a file can delete it (same rule as the app).",
   inputSchema: {
-    attachment_id: z28.string().uuid(),
-    confirm: z28.literal(true).describe("Must be true to confirm the permanent deletion."),
+    attachment_id: z29.string().uuid(),
+    confirm: z29.literal(true).describe("Must be true to confirm the permanent deletion."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
@@ -2429,18 +2565,18 @@ var delete_lender_attachment_default = defineTool28({
 });
 
 // src/lib/mcp/tools/add-lender-to-deal.ts
-import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z29 } from "npm:zod@^3.23.0";
-var add_lender_to_deal_default = defineTool29({
+import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z30 } from "npm:zod@^3.23.0";
+var add_lender_to_deal_default = defineTool30({
   name: "add_lender_to_deal",
   title: "Add lender to deal",
   description: "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
   inputSchema: {
-    deal_id: z29.string().uuid(),
-    lender_id: z29.string().uuid().optional(),
-    lender_ids: z29.array(z29.string().uuid()).min(1).max(25).optional(),
-    stage: z29.string().trim().min(1).max(100).default("on-deck"),
-    status: z29.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).default("active")
+    deal_id: z30.string().uuid(),
+    lender_id: z30.string().uuid().optional(),
+    lender_ids: z30.array(z30.string().uuid()).min(1).max(25).optional(),
+    stage: z30.string().trim().min(1).max(100).default("on-deck"),
+    status: z30.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).default("active")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, lender_id, lender_ids, stage, status }, ctx) => {
@@ -2510,22 +2646,22 @@ var add_lender_to_deal_default = defineTool29({
 });
 
 // src/lib/mcp/tools/update-deal-lender.ts
-import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z30 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z31 } from "npm:zod@^3.23.0";
 var fieldSchema = {
-  notes: z30.string().max(1e4).nullable().optional(),
-  mode: z30.enum(["replace", "append", "prepend"]).default("replace"),
-  stage: z30.string().trim().min(1).max(100).optional(),
-  tracking_status: z30.string().trim().min(1).max(100).optional(),
-  tags: z30.array(z30.string().trim().min(1).max(100)).max(50).optional(),
-  quote_amount: z30.number().finite().nullable().optional(),
-  quote_rate: z30.number().finite().nullable().optional(),
-  quote_term: z30.string().max(200).nullable().optional(),
-  pass_reason: z30.string().max(2e3).nullable().optional()
+  notes: z31.string().max(1e4).nullable().optional(),
+  mode: z31.enum(["replace", "append", "prepend"]).default("replace"),
+  stage: z31.string().trim().min(1).max(100).optional(),
+  tracking_status: z31.string().trim().min(1).max(100).optional(),
+  tags: z31.array(z31.string().trim().min(1).max(100)).max(50).optional(),
+  quote_amount: z31.number().finite().nullable().optional(),
+  quote_rate: z31.number().finite().nullable().optional(),
+  quote_term: z31.string().max(200).nullable().optional(),
+  pass_reason: z31.string().max(2e3).nullable().optional()
 };
-var itemSchema = z30.object({
-  lender_id: z30.string().uuid().optional(),
-  deal_lender_id: z30.string().uuid().optional(),
+var itemSchema = z31.object({
+  lender_id: z31.string().uuid().optional(),
+  deal_lender_id: z31.string().uuid().optional(),
   ...fieldSchema
 });
 var EDITABLE = ["stage", "tracking_status", "tags", "quote_amount", "quote_rate", "quote_term", "pass_reason"];
@@ -2549,16 +2685,16 @@ function buildUpdates(row, item) {
   for (const key of EDITABLE) if (item[key] !== void 0) updates[key] = item[key];
   return updates;
 }
-var update_deal_lender_default = defineTool30({
+var update_deal_lender_default = defineTool31({
   name: "update_deal_lender",
   title: "Update funding source on deal",
   description: "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
   inputSchema: {
-    deal_id: z30.string().uuid(),
-    lender_id: z30.string().uuid().optional(),
-    deal_lender_id: z30.string().uuid().optional(),
+    deal_id: z31.string().uuid(),
+    lender_id: z31.string().uuid().optional(),
+    deal_lender_id: z31.string().uuid().optional(),
     ...fieldSchema,
-    updates: z30.array(itemSchema).min(1).max(25).optional()
+    updates: z31.array(itemSchema).min(1).max(25).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (args, ctx) => {
@@ -2628,17 +2764,17 @@ var update_deal_lender_default = defineTool30({
 });
 
 // src/lib/mcp/tools/search-deal-notes.ts
-import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z31 } from "npm:zod@^3.23.0";
-var search_deal_notes_default = defineTool31({
+import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z32 } from "npm:zod@^3.23.0";
+var search_deal_notes_default = defineTool32({
   name: "search_deal_notes",
   title: "Search deal notes",
   description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
   inputSchema: {
-    deal_id: z31.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z31.array(z31.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z31.string().trim().min(1).max(200).optional(),
-    limit: z31.number().int().min(1).max(100).default(25)
+    deal_id: z32.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z32.array(z32.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z32.string().trim().min(1).max(200).optional(),
+    limit: z32.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_ids, query, limit }, ctx) => {
@@ -2664,8 +2800,8 @@ var search_deal_notes_default = defineTool31({
 });
 
 // src/lib/mcp/tools/add-deal-note-entry.ts
-import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z32 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z33 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealNoteEntry.ts
 function escapeHtml(s) {
@@ -2700,19 +2836,19 @@ function entryToHtml(entry, format) {
 }
 
 // src/lib/mcp/tools/add-deal-note-entry.ts
-var add_deal_note_entry_default = defineTool32({
+var add_deal_note_entry_default = defineTool33({
   name: "add_deal_note_entry",
   title: "Add deal note entry",
   description: "Prepend or append an entry to a deal's Deal Space note (the notes pop-up), matched by title (default 'Q&A Notes'), creating the note if missing. Never replaces existing content; saves a version and logs deal activity. Use idempotency_key (e.g. a Claap recording ID) to avoid duplicate entries.",
   inputSchema: {
-    deal_id: z32.string().uuid(),
-    title: z32.string().trim().min(1).max(200).default("Q&A Notes").describe("Note title, matched case-insensitively and trimmed."),
-    entry: z32.string().trim().min(1, "Entry cannot be empty.").max(5e4),
-    format: z32.enum(["text", "html"]).default("text").describe("text (default): plain text; '- ' lines become bullets, '# ' lines headings, **bold** supported. html: TipTap-compatible HTML stored as-is."),
-    mode: z32.enum(["prepend", "append"]).default("prepend"),
-    create_if_missing: z32.boolean().default(true),
-    idempotency_key: z32.string().trim().min(1).max(200).optional(),
-    source: z32.string().trim().min(1).max(100).default("Claude agent").describe("Attribution recorded in the activity log.")
+    deal_id: z33.string().uuid(),
+    title: z33.string().trim().min(1).max(200).default("Q&A Notes").describe("Note title, matched case-insensitively and trimmed."),
+    entry: z33.string().trim().min(1, "Entry cannot be empty.").max(5e4),
+    format: z33.enum(["text", "html"]).default("text").describe("text (default): plain text; '- ' lines become bullets, '# ' lines headings, **bold** supported. html: TipTap-compatible HTML stored as-is."),
+    mode: z33.enum(["prepend", "append"]).default("prepend"),
+    create_if_missing: z33.boolean().default(true),
+    idempotency_key: z33.string().trim().min(1).max(200).optional(),
+    source: z33.string().trim().min(1).max(100).default("Claude agent").describe("Attribution recorded in the activity log.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (args, ctx) => {
@@ -2739,16 +2875,16 @@ var add_deal_note_entry_default = defineTool32({
 });
 
 // src/lib/mcp/tools/get-deal-note.ts
-import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z33 } from "npm:zod@^3.23.0";
-var get_deal_note_default = defineTool33({
+import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z34 } from "npm:zod@^3.23.0";
+var get_deal_note_default = defineTool34({
   name: "get_deal_note",
   title: "Get deal note",
   description: "Read one Deal Space note's full HTML content, by note_id or by deal_id plus title (case-insensitive). Returns candidates if several notes share the title.",
   inputSchema: {
-    note_id: z33.string().uuid().optional(),
-    deal_id: z33.string().uuid().optional(),
-    title: z33.string().trim().min(1).max(200).optional()
+    note_id: z34.string().uuid().optional(),
+    deal_id: z34.string().uuid().optional(),
+    title: z34.string().trim().min(1).max(200).optional()
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ note_id, deal_id, title }, ctx) => {
@@ -2772,18 +2908,18 @@ var get_deal_note_default = defineTool33({
 });
 
 // src/lib/mcp/tools/list-deal-activity.ts
-import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z34 } from "npm:zod@^3.23.0";
-var list_deal_activity_default = defineTool34({
+import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z35 } from "npm:zod@^3.23.0";
+var list_deal_activity_default = defineTool35({
   name: "list_deal_activity",
   title: "List deal activity",
   description: "List recent activity/timeline events \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
   inputSchema: {
-    deal_id: z34.string().uuid().optional().describe("Optional. Omit to return activity across all deals."),
-    activity_type: z34.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
-    since: z34.string().trim().max(40).optional().describe("ISO timestamp lower bound on created_at (inclusive)."),
-    until: z34.string().trim().max(40).optional().describe("ISO timestamp upper bound on created_at (exclusive)."),
-    limit: z34.number().int().min(1).max(200).default(50)
+    deal_id: z35.string().uuid().optional().describe("Optional. Omit to return activity across all deals."),
+    activity_type: z35.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
+    since: z35.string().trim().max(40).optional().describe("ISO timestamp lower bound on created_at (inclusive)."),
+    until: z35.string().trim().max(40).optional().describe("ISO timestamp upper bound on created_at (exclusive)."),
+    limit: z35.number().int().min(1).max(200).default(50)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, activity_type, since, until, limit }, ctx) => {
@@ -2823,18 +2959,18 @@ var list_deal_activity_default = defineTool34({
 });
 
 // src/lib/mcp/tools/search-deal-documents.ts
-import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z35 } from "npm:zod@^3.23.0";
-var search_deal_documents_default = defineTool35({
+import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z36 } from "npm:zod@^3.23.0";
+var search_deal_documents_default = defineTool36({
   name: "search_deal_documents",
   title: "Search deal documents",
   description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
   inputSchema: {
-    deal_id: z35.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z35.array(z35.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z35.string().trim().min(1).max(200).optional(),
-    category: z35.string().trim().min(1).max(100).optional(),
-    limit: z35.number().int().min(1).max(100).default(25)
+    deal_id: z36.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z36.array(z36.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z36.string().trim().min(1).max(200).optional(),
+    category: z36.string().trim().min(1).max(100).optional(),
+    limit: z36.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_ids, query, category, limit }, ctx) => {
@@ -2863,15 +2999,15 @@ var search_deal_documents_default = defineTool35({
 });
 
 // src/lib/mcp/tools/get-deal-document.ts
-import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z36 } from "npm:zod@^3.23.0";
-var get_deal_document_default = defineTool36({
+import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z37 } from "npm:zod@^3.23.0";
+var get_deal_document_default = defineTool37({
   name: "get_deal_document",
   title: "Get deal document",
   description: "Fetch a single deal document/attachment record by id, including extracted_text when available. Use search_deal_documents first to find the id.",
   inputSchema: {
-    document_id: z36.string().uuid(),
-    include_extracted_text: z36.boolean().default(true)
+    document_id: z37.string().uuid(),
+    include_extracted_text: z37.boolean().default(true)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ document_id, include_extracted_text }, ctx) => {
@@ -2887,18 +3023,18 @@ var get_deal_document_default = defineTool36({
 });
 
 // src/lib/mcp/tools/search-deal-emails.ts
-import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z37 } from "npm:zod@^3.23.0";
-var search_deal_emails_default = defineTool37({
+import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z38 } from "npm:zod@^3.23.0";
+var search_deal_emails_default = defineTool38({
   name: "search_deal_emails",
   title: "Search deal emails",
   description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
   inputSchema: {
-    deal_id: z37.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z37.array(z37.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z37.string().trim().min(1).max(200).optional(),
-    direction: z37.enum(["inbound", "outbound"]).optional(),
-    limit: z37.number().int().min(1).max(100).default(25)
+    deal_id: z38.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z38.array(z38.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z38.string().trim().min(1).max(200).optional(),
+    direction: z38.enum(["inbound", "outbound"]).optional(),
+    limit: z38.number().int().min(1).max(100).default(25)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_ids, query, direction, limit }, ctx) => {
@@ -2927,18 +3063,18 @@ var search_deal_emails_default = defineTool37({
 });
 
 // src/lib/mcp/tools/search-deal-recordings.ts
-import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z38 } from "npm:zod@^3.23.0";
-var search_deal_recordings_default = defineTool38({
+import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z39 } from "npm:zod@^3.23.0";
+var search_deal_recordings_default = defineTool39({
   name: "search_deal_recordings",
   title: "Search deal meeting recordings",
   description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
   inputSchema: {
-    deal_id: z38.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z38.array(z38.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z38.string().trim().min(1).max(200).optional(),
-    include_transcript: z38.boolean().default(false),
-    limit: z38.number().int().min(1).max(50).default(20)
+    deal_id: z39.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z39.array(z39.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z39.string().trim().min(1).max(200).optional(),
+    include_transcript: z39.boolean().default(false),
+    limit: z39.number().int().min(1).max(50).default(20)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_ids, query, include_transcript, limit }, ctx) => {
@@ -2974,21 +3110,21 @@ var search_deal_recordings_default = defineTool38({
 });
 
 // src/lib/mcp/tools/list-deal-funding-sources.ts
-import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z39 } from "npm:zod@^3.23.0";
-var list_deal_funding_sources_default = defineTool39({
+import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z40 } from "npm:zod@^3.23.0";
+var list_deal_funding_sources_default = defineTool40({
   name: "list_deal_funding_sources",
   title: "List deal funding sources / lenders",
   description: "List funding sources (lenders) attached to deals \u2014 the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal. Results are paginated: the response returns total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false to cover the entire book.",
   inputSchema: {
-    deal_id: z39.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
-    deal_query: z39.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
-    pipeline_id: z39.string().uuid().optional(),
-    tracking_status: z39.string().trim().min(1).max(60).optional(),
-    stage: z39.string().trim().min(1).max(100).optional(),
-    lender_name: z39.string().trim().min(1).max(200).optional(),
-    limit: z39.number().int().min(1).max(500).default(100),
-    offset: z39.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page.")
+    deal_id: z40.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
+    deal_query: z40.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
+    pipeline_id: z40.string().uuid().optional(),
+    tracking_status: z40.string().trim().min(1).max(60).optional(),
+    stage: z40.string().trim().min(1).max(100).optional(),
+    lender_name: z40.string().trim().min(1).max(200).optional(),
+    limit: z40.number().int().min(1).max(500).default(100),
+    offset: z40.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit, offset }, ctx) => {
@@ -3099,8 +3235,8 @@ var list_deal_funding_sources_default = defineTool39({
 });
 
 // src/lib/mcp/tools/get-daily-rundown.ts
-import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z40 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z41 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/rundownAccess.ts
 var RUNDOWN_ALLOWED_EMAIL = "jturner@5thline.co";
@@ -3133,13 +3269,13 @@ async function logRundownAudit(ctx, action, payload = {}, itemId = null, initiat
 }
 
 // src/lib/mcp/tools/get-daily-rundown.ts
-var get_daily_rundown_default = defineTool40({
+var get_daily_rundown_default = defineTool41({
   name: "get_daily_rundown",
   title: "Get daily rundown",
   description: "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
   inputSchema: {
-    status: z40.enum(["pending", "complete", "all"]).default("all"),
-    limit: z40.number().int().min(1).max(200).default(100)
+    status: z41.enum(["pending", "complete", "all"]).default("all"),
+    limit: z41.number().int().min(1).max(200).default(100)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ status, limit }, ctx) => {
@@ -3156,17 +3292,17 @@ var get_daily_rundown_default = defineTool40({
 });
 
 // src/lib/mcp/tools/add-daily-rundown-item.ts
-import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z41 } from "npm:zod@^3.23.0";
-var add_daily_rundown_item_default = defineTool41({
+import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z42 } from "npm:zod@^3.23.0";
+var add_daily_rundown_item_default = defineTool42({
   name: "add_daily_rundown_item",
   title: "Add daily rundown item",
   description: "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
   inputSchema: {
-    title: z41.string().trim().min(1).max(500),
-    content: z41.string().max(1e4).optional(),
-    sort_order: z41.number().int().optional(),
-    source: z41.string().max(50).optional().describe("Origin marker, e.g. 'openclaw' or 'user'.")
+    title: z42.string().trim().min(1).max(500),
+    content: z42.string().max(1e4).optional(),
+    sort_order: z42.number().int().optional(),
+    source: z42.string().max(50).optional().describe("Origin marker, e.g. 'openclaw' or 'user'.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ title, content, sort_order, source }, ctx) => {
@@ -3196,18 +3332,18 @@ var add_daily_rundown_item_default = defineTool41({
 });
 
 // src/lib/mcp/tools/update-daily-rundown-item.ts
-import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z42 } from "npm:zod@^3.23.0";
-var update_daily_rundown_item_default = defineTool42({
+import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z43 } from "npm:zod@^3.23.0";
+var update_daily_rundown_item_default = defineTool43({
   name: "update_daily_rundown_item",
   title: "Update daily rundown item",
   description: "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
   inputSchema: {
-    id: z42.string().uuid(),
-    title: z42.string().trim().min(1).max(500).optional(),
-    content: z42.string().max(1e4).nullable().optional(),
-    sort_order: z42.number().int().optional(),
-    source: z42.string().max(50).optional()
+    id: z43.string().uuid(),
+    title: z43.string().trim().min(1).max(500).optional(),
+    content: z43.string().max(1e4).nullable().optional(),
+    sort_order: z43.number().int().optional(),
+    source: z43.string().max(50).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async ({ id, ...patch }, ctx) => {
@@ -3225,15 +3361,15 @@ var update_daily_rundown_item_default = defineTool42({
 });
 
 // src/lib/mcp/tools/complete-daily-rundown-item.ts
-import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z43 } from "npm:zod@^3.23.0";
-var complete_daily_rundown_item_default = defineTool43({
+import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z44 } from "npm:zod@^3.23.0";
+var complete_daily_rundown_item_default = defineTool44({
   name: "complete_daily_rundown_item",
   title: "Complete or reopen daily rundown item",
   description: "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
   inputSchema: {
-    id: z43.string().uuid(),
-    complete: z43.boolean().default(true)
+    id: z44.string().uuid(),
+    complete: z44.boolean().default(true)
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ id, complete }, ctx) => {
@@ -3254,14 +3390,14 @@ var complete_daily_rundown_item_default = defineTool43({
 });
 
 // src/lib/mcp/tools/reorder-daily-rundown-items.ts
-import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z44 } from "npm:zod@^3.23.0";
-var reorder_daily_rundown_items_default = defineTool44({
+import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z45 } from "npm:zod@^3.23.0";
+var reorder_daily_rundown_items_default = defineTool45({
   name: "reorder_daily_rundown_items",
   title: "Reorder daily rundown items",
   description: "Apply a new display order to rundown items. Accepts an array of {id, sort_order} \u2014 only rows owned by the signed-in user (jturner@5thline.co) are updated.",
   inputSchema: {
-    items: z44.array(z44.object({ id: z44.string().uuid(), sort_order: z44.number().int() })).min(1).max(200)
+    items: z45.array(z45.object({ id: z45.string().uuid(), sort_order: z45.number().int() })).min(1).max(200)
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   handler: async ({ items }, ctx) => {
@@ -3282,14 +3418,14 @@ var reorder_daily_rundown_items_default = defineTool44({
 });
 
 // src/lib/mcp/tools/list-insights-dashboards.ts
-import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z45 } from "npm:zod@^3.23.0";
-var list_insights_dashboards_default = defineTool45({
+import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z46 } from "npm:zod@^3.23.0";
+var list_insights_dashboards_default = defineTool46({
   name: "list_insights_dashboards",
   title: "List Insights dashboards and widgets",
   description: "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
   inputSchema: {
-    dashboard_id: z45.string().trim().max(80).optional().describe("Only return layouts for this dashboard id.")
+    dashboard_id: z46.string().trim().max(80).optional().describe("Only return layouts for this dashboard id.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ dashboard_id }, ctx) => {
@@ -3314,21 +3450,21 @@ var list_insights_dashboards_default = defineTool45({
 });
 
 // src/lib/mcp/tools/get-pipeline-metrics.ts
-import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z46 } from "npm:zod@^3.23.0";
-var get_pipeline_metrics_default = defineTool46({
+import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z47 } from "npm:zod@^3.23.0";
+var get_pipeline_metrics_default = defineTool47({
   name: "get_pipeline_metrics",
   title: "Get pipeline metrics (Insights)",
   description: "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
   inputSchema: {
-    date_field: z46.enum(["created_at", "updated_at", "closing_date", "dashboard_closing_date"]).default("created_at").describe("Which date column the timeframe window applies to."),
-    from: z46.string().trim().max(40).optional().describe("ISO date/timestamp lower bound (inclusive)."),
-    to: z46.string().trim().max(40).optional().describe("ISO date/timestamp upper bound (exclusive)."),
-    pipeline_id: z46.string().uuid().optional(),
-    manager: z46.string().trim().max(120).optional(),
-    status: z46.string().trim().max(60).optional(),
-    stage: z46.string().trim().max(100).optional(),
-    include_deals: z46.boolean().default(false).describe("Also return the underlying deal rows used in the aggregation.")
+    date_field: z47.enum(["created_at", "updated_at", "closing_date", "dashboard_closing_date"]).default("created_at").describe("Which date column the timeframe window applies to."),
+    from: z47.string().trim().max(40).optional().describe("ISO date/timestamp lower bound (inclusive)."),
+    to: z47.string().trim().max(40).optional().describe("ISO date/timestamp upper bound (exclusive)."),
+    pipeline_id: z47.string().uuid().optional(),
+    manager: z47.string().trim().max(120).optional(),
+    status: z47.string().trim().max(60).optional(),
+    stage: z47.string().trim().max(100).optional(),
+    include_deals: z47.boolean().default(false).describe("Also return the underlying deal rows used in the aggregation.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date_field, from, to, pipeline_id, manager, status, stage, include_deals }, ctx) => {
@@ -3414,17 +3550,17 @@ var get_pipeline_metrics_default = defineTool46({
 });
 
 // src/lib/mcp/tools/get-funnel-velocity.ts
-import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z47 } from "npm:zod@^3.23.0";
-var get_funnel_velocity_default = defineTool47({
+import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z48 } from "npm:zod@^3.23.0";
+var get_funnel_velocity_default = defineTool48({
   name: "get_funnel_velocity",
   title: "Get funnel velocity / stage durations",
   description: "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
   inputSchema: {
-    stage_path: z47.array(z47.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
-    consecutive_only: z47.boolean().default(false),
-    deal_id: z47.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
-    pipeline_id: z47.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
+    stage_path: z48.array(z48.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
+    consecutive_only: z48.boolean().default(false),
+    deal_id: z48.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
+    pipeline_id: z48.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ stage_path, consecutive_only, deal_id, pipeline_id }, ctx) => {
@@ -3500,8 +3636,8 @@ var get_funnel_velocity_default = defineTool47({
 });
 
 // src/lib/mcp/tools/get-revenue-metrics.ts
-import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z48 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z49 } from "npm:zod@^3.23.0";
 
 // src/lib/qboMonthly.ts
 function isoMonthKey(date2) {
@@ -3550,15 +3686,15 @@ function withPnlRevenue(invoices, snapshots) {
 }
 
 // src/lib/mcp/tools/get-revenue-metrics.ts
-var get_revenue_metrics_default = defineTool48({
+var get_revenue_metrics_default = defineTool49({
   name: "get_revenue_metrics",
   title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
   description: "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
   inputSchema: {
-    from: z48.string().trim().max(40).optional().describe("ISO date lower bound (inclusive) on invoice txn_date / snapshot period."),
-    to: z48.string().trim().max(40).optional().describe("ISO date upper bound (exclusive)."),
-    realm_id: z48.string().trim().max(64).optional().describe("QuickBooks entity/realm id to scope to."),
-    include_invoices: z48.boolean().default(false).describe("Also return the underlying invoice rows.")
+    from: z49.string().trim().max(40).optional().describe("ISO date lower bound (inclusive) on invoice txn_date / snapshot period."),
+    to: z49.string().trim().max(40).optional().describe("ISO date upper bound (exclusive)."),
+    realm_id: z49.string().trim().max(64).optional().describe("QuickBooks entity/realm id to scope to."),
+    include_invoices: z49.boolean().default(false).describe("Also return the underlying invoice rows.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from, to, realm_id, include_invoices }, ctx) => {
@@ -3615,18 +3751,18 @@ var get_revenue_metrics_default = defineTool48({
 });
 
 // src/lib/mcp/tools/get-lender-metrics.ts
-import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z49 } from "npm:zod@^3.23.0";
-var get_lender_metrics_default = defineTool49({
+import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z50 } from "npm:zod@^3.23.0";
+var get_lender_metrics_default = defineTool50({
   name: "get_lender_metrics",
   title: "Get lender / funding-source metrics (Lender Intelligence dashboard)",
   description: "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
   inputSchema: {
-    date_field: z49.enum(["created_at", "last_status_change_at", "submitted_at"]).default("created_at"),
-    from: z49.string().trim().max(40).optional(),
-    to: z49.string().trim().max(40).optional(),
-    deal_id: z49.string().uuid().optional().describe("Scope to a single deal."),
-    lender_name: z49.string().trim().max(160).optional()
+    date_field: z50.enum(["created_at", "last_status_change_at", "submitted_at"]).default("created_at"),
+    from: z50.string().trim().max(40).optional(),
+    to: z50.string().trim().max(40).optional(),
+    deal_id: z50.string().uuid().optional().describe("Scope to a single deal."),
+    lender_name: z50.string().trim().max(160).optional()
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ date_field, from, to, deal_id, lender_name }, ctx) => {
@@ -3690,16 +3826,16 @@ var get_lender_metrics_default = defineTool49({
 });
 
 // src/lib/mcp/tools/get-metric-targets.ts
-import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z50 } from "npm:zod@^3.23.0";
-var get_metric_targets_default = defineTool50({
+import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z51 } from "npm:zod@^3.23.0";
+var get_metric_targets_default = defineTool51({
   name: "get_metric_targets",
   title: "Get Insights plan targets and manual metric inputs",
   description: "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
   inputSchema: {
-    metric_key: z50.string().trim().max(120).optional(),
-    month_from: z50.string().trim().max(7).optional().describe("Inclusive lower bound, format YYYY-MM."),
-    month_to: z50.string().trim().max(7).optional().describe("Inclusive upper bound, format YYYY-MM.")
+    metric_key: z51.string().trim().max(120).optional(),
+    month_from: z51.string().trim().max(7).optional().describe("Inclusive lower bound, format YYYY-MM."),
+    month_to: z51.string().trim().max(7).optional().describe("Inclusive upper bound, format YYYY-MM.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ metric_key, month_from, month_to }, ctx) => {
@@ -3732,27 +3868,27 @@ var get_metric_targets_default = defineTool50({
 });
 
 // src/lib/mcp/tools/query-insights-dataset.ts
-import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z51 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z52 } from "npm:zod@^3.23.0";
 var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
-var query_insights_dataset_default = defineTool51({
+var query_insights_dataset_default = defineTool52({
   name: "query_insights_dataset",
   title: "Query any Insights source dataset",
   description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
   inputSchema: {
-    dataset: z51.enum(INSIGHTS_DATASETS),
-    columns: z51.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
-    filters: z51.array(
-      z51.object({
-        column: z51.string().trim().min(1).max(80),
-        op: z51.enum(OPERATORS).default("eq"),
-        value: z51.union([z51.string(), z51.number(), z51.boolean(), z51.null(), z51.array(z51.union([z51.string(), z51.number()]))])
+    dataset: z52.enum(INSIGHTS_DATASETS),
+    columns: z52.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
+    filters: z52.array(
+      z52.object({
+        column: z52.string().trim().min(1).max(80),
+        op: z52.enum(OPERATORS).default("eq"),
+        value: z52.union([z52.string(), z52.number(), z52.boolean(), z52.null(), z52.array(z52.union([z52.string(), z52.number()]))])
       })
     ).max(10).optional(),
-    order_by: z51.string().trim().max(80).optional(),
-    ascending: z51.boolean().default(false),
-    limit: z51.number().int().min(1).max(1e3).default(200),
-    offset: z51.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
+    order_by: z52.string().trim().max(80).optional(),
+    ascending: z52.boolean().default(false),
+    limit: z52.number().int().min(1).max(1e3).default(200),
+    offset: z52.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
@@ -3805,8 +3941,8 @@ var query_insights_dataset_default = defineTool51({
 });
 
 // src/lib/mcp/tools/describe-schema.ts
-import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z52 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z53 } from "npm:zod@^3.23.0";
 var EXTRA_TABLES = [
   "deal_writeups",
   "deal_memos",
@@ -3825,13 +3961,13 @@ var EXTRA_TABLES = [
   "lender_master_note_history"
 ];
 var DESCRIBABLE = Array.from(/* @__PURE__ */ new Set([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
-var describe_schema_default = defineTool52({
+var describe_schema_default = defineTool53({
   name: "describe_schema",
   title: "Describe table schema",
   description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
   inputSchema: {
-    tables: z52.array(z52.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
-    include_field_layout: z52.boolean().default(false).describe(
+    tables: z53.array(z53.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
+    include_field_layout: z53.boolean().default(false).describe(
       "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
     )
   },
@@ -3914,7 +4050,7 @@ var describe_schema_default = defineTool52({
 });
 
 // src/lib/mcp/tools/list-referral-partners.ts
-import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
 
 // src/components/channels/atRiskSources.ts
 var REMOVAL_MONTHS = 6;
@@ -3977,7 +4113,7 @@ function resolveNdaEnteredAt(deal, entries, _activePipelineIds) {
 }
 
 // src/lib/mcp/tools/list-referral-partners.ts
-import { z as z53 } from "npm:zod@^3.23.0";
+import { z as z54 } from "npm:zod@^3.23.0";
 
 // src/lib/partnerNameMatch.ts
 var STOPWORDS = /* @__PURE__ */ new Set([
@@ -4162,14 +4298,14 @@ async function fetchByIds(sb, table, select, column, ids) {
   }
   return out;
 }
-var list_referral_partners_default = defineTool53({
+var list_referral_partners_default = defineTool54({
   name: "list_referral_partners",
   title: "List referral partners",
   description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
   inputSchema: {
-    stages: z53.array(z53.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
-    limit: z53.number().int().min(1).max(1e3).default(200),
-    offset: z53.number().int().min(0).default(0)
+    stages: z54.array(z54.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
+    limit: z54.number().int().min(1).max(1e3).default(200),
+    offset: z54.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ stages, limit, offset }, ctx) => {
@@ -4299,8 +4435,8 @@ var list_referral_partners_default = defineTool53({
 });
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z54 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z55 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/salesCallsWeekly.ts
 function weekStartUtc(d) {
@@ -4328,15 +4464,15 @@ function bucketSalesCallsByWeek(events, from, to) {
 }
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-var get_sales_calls_weekly_default = defineTool54({
+var get_sales_calls_weekly_default = defineTool55({
   name: "get_sales_calls_weekly",
   title: "Get weekly sales call counts",
   description: 'Returns the Sales Calls metric shown on Insights \u2192 Sales Dashboard, bucketed by week (Monday\u2013Sunday, UTC). Debt counts deduped calendar events titled "[Company] <> 5th Line Financing Review"; FinServ counts "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro". Defaults to the last 12 weeks ending today.',
   inputSchema: {
-    weeks: z54.number().int().min(1).max(53).default(12).describe("Number of weeks back from end_date."),
-    end_date: z54.string().trim().max(30).optional().describe("ISO date (YYYY-MM-DD) to end on; defaults to today."),
-    variant: z54.enum(["debt", "finserv"]).default("debt"),
-    include_events: z54.boolean().default(false).describe("Also return each qualifying call.")
+    weeks: z55.number().int().min(1).max(53).default(12).describe("Number of weeks back from end_date."),
+    end_date: z55.string().trim().max(30).optional().describe("ISO date (YYYY-MM-DD) to end on; defaults to today."),
+    variant: z55.enum(["debt", "finserv"]).default("debt"),
+    include_events: z55.boolean().default(false).describe("Also return each qualifying call.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
   handler: async ({ weeks, end_date, variant, include_events }, ctx) => {
@@ -4365,8 +4501,8 @@ var get_sales_calls_weekly_default = defineTool54({
 });
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z55 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z56 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealHoursFees.ts
 var n = (v) => Number(v) || 0;
@@ -4412,18 +4548,18 @@ function rollupHoursFees(rows) {
 }
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-var get_deal_hours_fees_default = defineTool55({
+var get_deal_hours_fees_default = defineTool56({
   name: "get_deal_hours_fees",
   title: "Get deal hours & fees",
   description: "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
   inputSchema: {
-    deal_id: z55.string().uuid().optional(),
-    pipeline_id: z55.string().uuid().optional(),
-    stage: z55.string().trim().max(100).optional().describe("Raw stage id."),
-    query: z55.string().trim().min(1).max(200).optional().describe("Substring match on deal/company name."),
-    only_missing_fees: z55.boolean().default(false),
-    include_weekly_hours: z55.boolean().default(false),
-    limit: z55.number().int().min(1).max(2e3).default(500).describe("Max deals listed (rollups always cover all matches).")
+    deal_id: z56.string().uuid().optional(),
+    pipeline_id: z56.string().uuid().optional(),
+    stage: z56.string().trim().max(100).optional().describe("Raw stage id."),
+    query: z56.string().trim().min(1).max(200).optional().describe("Substring match on deal/company name."),
+    only_missing_fees: z56.boolean().default(false),
+    include_weekly_hours: z56.boolean().default(false),
+    limit: z56.number().int().min(1).max(2e3).default(500).describe("Max deals listed (rollups always cover all matches).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, pipeline_id, stage, query, only_missing_fees, include_weekly_hours, limit }, ctx) => {
@@ -4493,8 +4629,8 @@ var get_deal_hours_fees_default = defineTool55({
 });
 
 // src/lib/mcp/tools/get-cashflow-metrics.ts
-import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z56 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z57 } from "npm:zod@^3.23.0";
 
 // src/components/cashflow/weeklyHistoricalSeed.ts
 var LAST_HISTORICAL_WEEK_ENDING = "2026-04-17";
@@ -7417,15 +7553,15 @@ function computeCashflowKpis(weekly, weeksFuture, weeksPast, todayISO = (/* @__P
 var DEFAULT_WEEKS_FUTURE = 8;
 var DEFAULT_WEEKS_PAST = 1;
 var num2 = (v) => Math.round(Number(v) || 0);
-var get_cashflow_metrics_default = defineTool56({
+var get_cashflow_metrics_default = defineTool57({
   name: "get_cashflow_metrics",
   title: "Get cash flow metrics (Finance headline widgets)",
   description: "Returns the exact Finance > Cash Flow headline figures: Cash In, Cash Out, Net Change (current week through weeks_future), and Peak Cash / Low Cash with their week-ending dates (weeks_past through weeks_future). Uses the same calculation as the Finance page, including scheduled entries, deal fee projections, manual date/amount moves and weekly overrides. Defaults to the workspace's saved Finance window. Figures match the page with no Year/Quarter/Entity/Category filters applied.",
   inputSchema: {
-    weeks_future: z56.number().int().min(0).max(104).optional().describe("Weeks after the current week. Defaults to the Finance page default."),
-    weeks_past: z56.number().int().min(0).max(104).optional().describe("Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."),
-    as_of: z56.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."),
-    include_weekly_breakdown: z56.boolean().default(false).describe("Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash.")
+    weeks_future: z57.number().int().min(0).max(104).optional().describe("Weeks after the current week. Defaults to the Finance page default."),
+    weeks_past: z57.number().int().min(0).max(104).optional().describe("Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."),
+    as_of: z57.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."),
+    include_weekly_breakdown: z57.boolean().default(false).describe("Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ weeks_future, weeks_past, as_of, include_weekly_breakdown }, ctx) => {
@@ -7527,8 +7663,8 @@ var get_cashflow_metrics_default = defineTool56({
 });
 
 // src/lib/mcp/tools/get-headcount.ts
-import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z57 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z58 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/workforceMetrics.ts
 var WORKSPACE_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
@@ -7632,13 +7768,13 @@ async function monthlyPnl(sb, realmIds, from, to) {
 }
 
 // src/lib/mcp/tools/get-headcount.ts
-var get_headcount_default = defineTool57({
+var get_headcount_default = defineTool58({
   name: "get_headcount",
   title: "Get monthly headcount by entity",
   description: "Monthly headcount from the Insights Headcount editor for each QuickBooks entity (Debt, FinServ, Tech, Parent) plus the firm-wide total (sum minus 1 for James's Debt/Parent duplicate) and yearly averages. 5th Line workspace only.",
   inputSchema: {
-    from_month: z57.string().regex(/^\d{4}-\d{2}$/).optional().describe("First month YYYY-MM (default: all)."),
-    to_month: z57.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last month YYYY-MM inclusive.")
+    from_month: z58.string().regex(/^\d{4}-\d{2}$/).optional().describe("First month YYYY-MM (default: all)."),
+    to_month: z58.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last month YYYY-MM inclusive.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from_month, to_month }, ctx) => {
@@ -7669,17 +7805,17 @@ var get_headcount_default = defineTool57({
 });
 
 // src/lib/mcp/tools/get-harvest-metrics.ts
-import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z58 } from "npm:zod@^3.23.0";
-var get_harvest_metrics_default = defineTool58({
+import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z59 } from "npm:zod@^3.23.0";
+var get_harvest_metrics_default = defineTool59({
   name: "get_harvest_metrics",
   title: "Get Harvest hours and FinServ revenue/profit per hour",
   description: "Harvest time data from the latest completed sync (Jan 2024 onward) as shown on the FinServ Financial Metrics dashboard: monthly total/billable hours, billable amount, per-person hours and utilization, plus FinServ Revenue per Hour (QuickBooks income \xF7 billable hours of ALL users), Gross Profit per Hour and Profit per Hour (operating profit \xF7 billable hours), monthly and for the whole period. Set include_entries=true for raw time entries.",
   inputSchema: {
-    from: z58.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Start date (default 2024-01-01)."),
-    to: z58.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("End date inclusive (default today)."),
-    include_entries: z58.boolean().default(false),
-    entries_limit: z58.number().int().min(1).max(5e3).default(1e3)
+    from: z59.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Start date (default 2024-01-01)."),
+    to: z59.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("End date inclusive (default today)."),
+    include_entries: z59.boolean().default(false),
+    entries_limit: z59.number().int().min(1).max(5e3).default(1e3)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from, to, include_entries, entries_limit }, ctx) => {
@@ -7751,17 +7887,17 @@ var get_harvest_metrics_default = defineTool58({
 });
 
 // src/lib/mcp/tools/get-per-head-metrics.ts
-import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z59 } from "npm:zod@^3.23.0";
-var get_per_head_metrics_default = defineTool59({
+import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z60 } from "npm:zod@^3.23.0";
+var get_per_head_metrics_default = defineTool60({
   name: "get_per_head_metrics",
   title: "Get TTM revenue and gross profit per head",
   description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors \xF7 Debt headcount), 'finserv' (5th Line Financial Services \xF7 FinServ headcount) or 'firm' (all entities \xF7 firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
   inputSchema: {
-    scope: z59.enum(["debt", "finserv", "firm"]).default("debt"),
-    end_month: z59.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
-    view: z59.enum(["month", "quarter"]).default("month"),
-    periods: z59.number().int().min(1).max(36).default(12)
+    scope: z60.enum(["debt", "finserv", "firm"]).default("debt"),
+    end_month: z60.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
+    view: z60.enum(["month", "quarter"]).default("month"),
+    periods: z60.number().int().min(1).max(36).default(12)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ scope, end_month, view, periods }, ctx) => {
@@ -7908,13 +8044,13 @@ var update_lender_history_warning_dismissal_default = defineLenderRelatedTool("l
 var delete_lender_history_warning_dismissal_default = defineLenderRelatedTool("lender_history_warning_dismissals", "delete", "delete_lender_history_warning_dismissal");
 
 // src/lib/mcp/tools/add-lender-note.ts
-import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z60 } from "npm:zod@^3.23.0";
-var add_lender_note_default = defineTool60({
+import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z61 } from "npm:zod@^3.23.0";
+var add_lender_note_default = defineTool61({
   name: "add_lender_note",
   title: "Add funding source note",
   description: "Create lender_notes body, tags and is_flag. Server derives author, lender name and company. Writes field-level audit atomically; does not write deal_lenders or deal-note history.",
-  inputSchema: { lender_id: z60.string().uuid(), body: z60.string().min(1).max(2e4), tags: z60.array(z60.string().max(200)).max(100).optional(), is_flag: z60.boolean().optional(), ...writeProvenance },
+  inputSchema: { lender_id: z61.string().uuid(), body: z61.string().min(1).max(2e4), tags: z61.array(z61.string().max(200)).max(100).optional(), is_flag: z61.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ lender_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -7924,13 +8060,13 @@ var add_lender_note_default = defineTool60({
 });
 
 // src/lib/mcp/tools/update-lender-note.ts
-import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z61 } from "npm:zod@^3.23.0";
-var update_lender_note_default = defineTool61({
+import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z62 } from "npm:zod@^3.23.0";
+var update_lender_note_default = defineTool62({
   name: "update_lender_note",
   title: "Edit funding source note",
   description: "Update only supplied lender_notes body, tags, is_flag. Author-only RLS remains. Atomically preserves prior record in lender_master_note_history and audits every field. lender_notes_history is deal-specific and is NOT used for directory notes.",
-  inputSchema: { note_id: z61.string().uuid(), body: z61.string().min(1).max(2e4).optional(), tags: z61.array(z61.string().max(200)).max(100).optional(), is_flag: z61.boolean().optional(), ...writeProvenance },
+  inputSchema: { note_id: z62.string().uuid(), body: z62.string().min(1).max(2e4).optional(), tags: z62.array(z62.string().max(200)).max(100).optional(), is_flag: z62.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ note_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -7943,13 +8079,13 @@ var update_lender_note_default = defineTool61({
 });
 
 // src/lib/mcp/tools/delete-lender-note.ts
-import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z62 } from "npm:zod@^3.23.0";
-var delete_lender_note_default = defineTool62({
+import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z63 } from "npm:zod@^3.23.0";
+var delete_lender_note_default = defineTool63({
   name: "delete_lender_note",
   title: "Delete funding source note",
   description: "Delete one lender_notes row with confirm:true, preserving its previous record in lender_master_note_history and field-level lender_audit_logs atomically. Existing author/admin delete permissions apply; no deal-specific notes are touched.",
-  inputSchema: { note_id: z62.string().uuid(), confirm: z62.literal(true), ...writeProvenance },
+  inputSchema: { note_id: z63.string().uuid(), confirm: z63.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ note_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -7962,13 +8098,13 @@ var delete_lender_note_default = defineTool62({
 });
 
 // src/lib/mcp/tools/update-lender-attachment.ts
-import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z63 } from "npm:zod@^3.23.0";
-var update_lender_attachment_default = defineTool63({
+import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z64 } from "npm:zod@^3.23.0";
+var update_lender_attachment_default = defineTool64({
   name: "update_lender_attachment",
   title: "Edit funding source attachment",
   description: "Rename (file_name -> lender_attachments.name) or recategorize an attachment; only supplied fields change. Does not move or replace stored bytes, file_path, size, MIME type or uploader. Existing uploader/company permissions apply; field diffs audited transactionally.",
-  inputSchema: { attachment_id: z63.string().uuid(), file_name: z63.string().trim().min(1).max(255).optional(), category: z63.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
+  inputSchema: { attachment_id: z64.string().uuid(), file_name: z64.string().trim().min(1).max(255).optional(), category: z64.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ attachment_id, file_name, category, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -7984,13 +8120,13 @@ var update_lender_attachment_default = defineTool63({
 });
 
 // src/lib/mcp/tools/delete-lender.ts
-import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z64 } from "npm:zod@^3.23.0";
-var delete_lender_default = defineTool64({
+import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z65 } from "npm:zod@^3.23.0";
+var delete_lender_default = defineTool65({
   name: "delete_lender",
   title: "Archive funding source",
   description: "SOFT DELETE: set master_lenders.active=false, preserving contacts, notes, attachments, deal links and audit history. Requires confirm:true and existing lender deletion permission. Refuses deal-linked lenders unless force:true (still preserves links). Never hard deletes or removes stored files. Field diff audited atomically.",
-  inputSchema: { lender_id: z64.string().uuid(), confirm: z64.literal(true), force: z64.boolean().default(false), ...writeProvenance },
+  inputSchema: { lender_id: z65.string().uuid(), confirm: z65.literal(true), force: z65.boolean().default(false), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ lender_id, confirm, force, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8001,13 +8137,13 @@ var delete_lender_default = defineTool64({
 });
 
 // src/lib/mcp/tools/merge-lenders.ts
-import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z65 } from "npm:zod@^3.23.0";
-var merge_lenders_default = defineTool65({
+import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z66 } from "npm:zod@^3.23.0";
+var merge_lenders_default = defineTool66({
   name: "merge_lenders",
   title: "Merge funding sources",
   description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
-  inputSchema: { keep_lender_id: z65.string().uuid(), merge_lender_id: z65.string().uuid(), confirm: z65.literal(true), ...writeProvenance },
+  inputSchema: { keep_lender_id: z66.string().uuid(), merge_lender_id: z66.string().uuid(), confirm: z66.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ keep_lender_id, merge_lender_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8018,18 +8154,18 @@ var merge_lenders_default = defineTool65({
 });
 
 // src/lib/mcp/tools/update-claap-meeting-match.ts
-import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z66 } from "npm:zod@^3.23.0";
-var update_claap_meeting_match_default = defineTool66({
+import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z67 } from "npm:zod@^3.23.0";
+var update_claap_meeting_match_default = defineTool67({
   name: "update_claap_meeting_match",
   title: "Update Claap funding-source match",
   description: "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
   inputSchema: {
-    meeting_id: z66.string().uuid(),
-    matched_lender_id: z66.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
-    match_status: z66.enum(["matched", "needs_review", "unmatched"]),
-    reason: z66.string().max(1e4).optional(),
-    status: z66.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+    meeting_id: z67.string().uuid(),
+    matched_lender_id: z67.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
+    match_status: z67.enum(["matched", "needs_review", "unmatched"]),
+    reason: z67.string().max(1e4).optional(),
+    status: z67.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8047,19 +8183,19 @@ var update_claap_meeting_match_default = defineTool66({
 });
 
 // src/lib/mcp/tools/list-lender-claap-meetings.ts
-import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z67 } from "npm:zod@^3.23.0";
-var list_lender_claap_meetings_default = defineTool67({
+import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z68 } from "npm:zod@^3.23.0";
+var list_lender_claap_meetings_default = defineTool68({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
   description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
   inputSchema: {
-    lender_ids: z67.array(z67.string().uuid()).max(200).optional(),
-    updated_after: z67.string().datetime({ offset: true }).optional(),
-    match_statuses: z67.array(z67.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
-    include_transcript: z67.boolean().default(false),
-    limit: z67.number().int().min(1).max(200).default(50),
-    offset: z67.number().int().min(0).max(1e6).default(0)
+    lender_ids: z68.array(z68.string().uuid()).max(200).optional(),
+    updated_after: z68.string().datetime({ offset: true }).optional(),
+    match_statuses: z68.array(z68.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    include_transcript: z68.boolean().default(false),
+    limit: z68.number().int().min(1).max(200).default(50),
+    offset: z68.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8078,26 +8214,26 @@ var list_lender_claap_meetings_default = defineTool67({
 });
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z69 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z70 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/outstandingItemFields.ts
-import { z as z68 } from "npm:zod@^3.23.0";
-var outstandingStatus = z68.enum(["requested", "received", "submitted"]);
-var outstandingPriority = z68.enum(["normal", "high", "urgent"]);
-var date = z68.string().date();
-var metadata = z68.record(z68.string(), z68.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
+import { z as z69 } from "npm:zod@^3.23.0";
+var outstandingStatus = z69.enum(["requested", "received", "submitted"]);
+var outstandingPriority = z69.enum(["normal", "high", "urgent"]);
+var date = z69.string().date();
+var metadata = z69.record(z69.string(), z69.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
 var outstandingCreateFields = {
-  description: z68.string().trim().min(1).max(2e3),
-  lender_id: z68.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
+  description: z69.string().trim().min(1).max(2e3),
+  lender_id: z69.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
   status: outstandingStatus.default("requested"),
   priority: outstandingPriority.default("normal"),
   due_date: date.optional(),
   eta: date.optional(),
-  assigned_to: z68.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
-  notes: z68.string().max(1e4).optional(),
+  assigned_to: z69.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
+  notes: z69.string().max(1e4).optional(),
   source_metadata: metadata.optional(),
-  idempotency_key: z68.string().trim().min(1).max(200).optional()
+  idempotency_key: z69.string().trim().min(1).max(200).optional()
 };
 var outstandingUpdateFields = {
   description: outstandingCreateFields.description.optional(),
@@ -8105,28 +8241,28 @@ var outstandingUpdateFields = {
   priority: outstandingPriority.optional(),
   due_date: date.nullable().optional(),
   eta: date.nullable().optional(),
-  assigned_to: z68.string().max(500).nullable().optional(),
-  lender_id: z68.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
-  notes: z68.string().max(1e4).nullable().optional(),
-  is_archived: z68.boolean().optional(),
+  assigned_to: z69.string().max(500).nullable().optional(),
+  lender_id: z69.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
+  notes: z69.string().max(1e4).nullable().optional(),
+  is_archived: z69.boolean().optional(),
   source_metadata_merge: metadata.optional(),
-  append_note: z68.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
+  append_note: z69.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
 };
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-var list_outstanding_items_default = defineTool68({
+var list_outstanding_items_default = defineTool69({
   name: "list_outstanding_items",
   title: "List Open Items",
   description: "Read full deal Open Items rows ordered by position. open_only excludes items both Received and Submitted (the current Open Items tab itself includes completed items). Archived rows are excluded by default. lender_id is deal_lenders.id. Use offset/next_offset to page through all results.",
   inputSchema: {
-    deal_id: z69.string().uuid(),
-    lender_id: z69.string().uuid().optional(),
+    deal_id: z70.string().uuid(),
+    lender_id: z70.string().uuid().optional(),
     status: outstandingStatus.optional(),
-    open_only: z69.boolean().default(false),
-    include_archived: z69.boolean().default(false),
-    updated_since: z69.string().datetime({ offset: true }).optional(),
-    limit: z69.number().int().min(1).max(500).default(100),
-    offset: z69.number().int().min(0).max(1e6).default(0)
+    open_only: z70.boolean().default(false),
+    include_archived: z70.boolean().default(false),
+    updated_since: z70.string().datetime({ offset: true }).optional(),
+    limit: z70.number().int().min(1).max(500).default(100),
+    offset: z70.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8138,13 +8274,13 @@ var list_outstanding_items_default = defineTool68({
 });
 
 // src/lib/mcp/tools/create-outstanding-item.ts
-import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z70 } from "npm:zod@^3.23.0";
-var create_outstanding_item_default = defineTool69({
+import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z71 } from "npm:zod@^3.23.0";
+var create_outstanding_item_default = defineTool70({
   name: "create_outstanding_item",
   title: "Create Open Item",
   description: "After user approval, create an Open Item on an accessible deal. Defaults to Requested/normal, appends to the active list, validates deal_lenders.id, stores provenance and deduplicates idempotency keys even for archived items. Returns the full item and created flag; logs an MCP-attributed activity atomically. No email is sent.",
-  inputSchema: { deal_id: z70.string().uuid(), ...outstandingCreateFields },
+  inputSchema: { deal_id: z71.string().uuid(), ...outstandingCreateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8156,13 +8292,13 @@ var create_outstanding_item_default = defineTool69({
 });
 
 // src/lib/mcp/tools/update-outstanding-item.ts
-import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z71 } from "npm:zod@^3.23.0";
-var update_outstanding_item_default = defineTool70({
+import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z72 } from "npm:zod@^3.23.0";
+var update_outstanding_item_default = defineTool71({
   name: "update_outstanding_item",
   title: "Update Open Item",
   description: "After user approval, partially update an existing Open Item under caller RLS. Requested/Received/Submitted translate into the UI JSON state without losing requester/delivery lists. Shallow-merge provenance; append_note preserves notes with a UTC date. notes and append_note are mutually exclusive. Retire with is_archived, never delete. Returns the full row and logs MCP-attributed activity atomically; no email is sent.",
-  inputSchema: { id: z71.string().uuid(), ...outstandingUpdateFields },
+  inputSchema: { id: z72.string().uuid(), ...outstandingUpdateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8176,13 +8312,13 @@ var update_outstanding_item_default = defineTool70({
 });
 
 // src/lib/mcp/tools/batch-create-outstanding-items.ts
-import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z72 } from "npm:zod@^3.23.0";
-var batch_create_outstanding_items_default = defineTool71({
+import { defineTool as defineTool72 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z73 } from "npm:zod@^3.23.0";
+var batch_create_outstanding_items_default = defineTool72({
   name: "batch_create_outstanding_items",
   title: "Create Open Items batch",
   description: "After user approval, create up to 25 Open Items on one deal, with per-item idempotency and independent created/existing/error results. Same defaults and permissions as create_outstanding_item. No delete or email actions.",
-  inputSchema: { deal_id: z72.string().uuid(), items: z72.array(z72.object(outstandingCreateFields).strict()).min(1).max(25) },
+  inputSchema: { deal_id: z73.string().uuid(), items: z73.array(z73.object(outstandingCreateFields).strict()).min(1).max(25) },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8207,7 +8343,7 @@ var mcp_default = defineMcp({
   name: "naitive",
   title: "naitive",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `get_deal_note` (read one note's full content), `add_deal_note_entry` (prepend/append an entry to a Deal Space note such as \"Q&A Notes\", creating it if missing, with idempotency_key dedupe \u2014 never overwrites), `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. `get_deal_hours_fees` returns Hours & Fees per deal (retainer, milestone, success fee %, closing fee, total fee, pre/post-signing hours, revenue per hour, optional weekly logged hours) with per-pipeline and overall rollups. `get_headcount` returns monthly headcount by entity plus firm total; `get_harvest_metrics` returns Harvest hours, utilization, and FinServ revenue/gross-profit/profit per billable hour; `get_per_head_metrics` returns rolling TTM revenue and gross profit per head (debt, finserv or firm). All of them apply the same global test-deal exclusions and RLS scoping as the UI. Open Items: `list_outstanding_items`, `create_outstanding_item`, `update_outstanding_item`, and `batch_create_outstanding_items` manage the Deal Space widget. Status inputs are requested (Requested, default), received (Received), submitted (Submitted); priorities normal (default), high, urgent. open_only means incomplete (not both received and submitted), unlike the item-type UI tab. lender_id is deal_lenders.id, not master_lenders.id. assigned_to is opaque text, currently unused in the widget. Writes require explicit user approval. Metadata idempotency keys cannot be changed; archived duplicates return existing rows. Append notes preserves history; no delete tool or email action. Use offset for listing pagination.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `get_deal_note` (read one note's full content), `add_deal_note_entry` (prepend/append an entry to a Deal Space note such as \"Q&A Notes\", creating it if missing, with idempotency_key dedupe \u2014 never overwrites), `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. `get_deal_hours_fees` returns Hours & Fees per deal (retainer, milestone, success fee %, closing fee, total fee, pre/post-signing hours, revenue per hour, optional weekly logged hours) with per-pipeline and overall rollups. `get_headcount` returns monthly headcount by entity plus firm total; `get_harvest_metrics` returns Harvest hours, utilization, and FinServ revenue/gross-profit/profit per billable hour; `get_per_head_metrics` returns rolling TTM revenue and gross profit per head (debt, finserv or firm); `get_finserv_client_metrics` returns point-in-time FinServ Active Clients and Total MRR per month/quarter/year matching the dashboard. All of them apply the same global test-deal exclusions and RLS scoping as the UI. Open Items: `list_outstanding_items`, `create_outstanding_item`, `update_outstanding_item`, and `batch_create_outstanding_items` manage the Deal Space widget. Status inputs are requested (Requested, default), received (Received), submitted (Submitted); priorities normal (default), high, urgent. open_only means incomplete (not both received and submitted), unlike the item-type UI tab. lender_id is deal_lenders.id, not master_lenders.id. assigned_to is opaque text, currently unused in the widget. Writes require explicit user approval. Metadata idempotency keys cannot be changed; archived duplicates return existing rows. Append notes preserves history; no delete tool or email action. Use offset for listing pagination.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -8271,6 +8407,7 @@ var mcp_default = defineMcp({
     get_headcount_default,
     get_harvest_metrics_default,
     get_per_head_metrics_default,
+    get_finserv_client_metrics_default,
     create_lender_fit_attribute_default,
     update_lender_fit_attribute_default,
     delete_lender_fit_attribute_default,

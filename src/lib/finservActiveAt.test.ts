@@ -25,3 +25,20 @@ describe('FinServ active client rule', () => {
     expect(isFinServActiveClientAt(deal, [], end(2026, 5, 31))).toBe(false);
   });
 });
+
+import { finservSnapshotAt } from './finservActiveAt';
+describe('finservSnapshotAt', () => {
+  it('counts pre-May-2026 contract-start clients and their MRR at the period end', () => {
+    const deals = [
+      { id: 'x', company: 'A', stage: 'fs-closed-won', mrr: 7000, created_at: '2026-05-12T00:00:00Z', contract_start_date: '2023-08-01' },
+      { id: 'y', company: 'B', stage: 'fs-churned', mrr: 800, created_at: '2026-05-12T00:00:00Z', contract_start_date: '2024-01-05', stage_entered_at: '2026-05-27T00:00:00Z' },
+      { id: 'z', company: 'C', stage: 'fs-closed-won', mrr: 5000, created_at: '2026-07-01T00:00:00Z', contract_start_date: '2026-07-27' },
+    ];
+    const s = finservSnapshotAt(deals, new Map(), end(2026, 3, 31));
+    expect(s.active_clients).toBe(2);
+    expect(s.total_mrr).toBe(7800);
+  });
+  it('applies the June 2026 seven-client correction', () => {
+    expect(finservSnapshotAt([], new Map(), end(2026, 6, 30)).active_clients).toBe(7);
+  });
+});
