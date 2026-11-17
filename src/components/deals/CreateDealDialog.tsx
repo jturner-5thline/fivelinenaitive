@@ -128,6 +128,8 @@ const createDealDropdownTriggerStyle: CSSProperties = {
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35)',
 };
 
+const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
+
 export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, initialValues }: CreateDealDialogProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -284,6 +286,17 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     
     return options;
   })();
+
+  // 5th Line: default Deal Owner and Deal Manager to James Turner on new deals.
+  const fifthLineDefaultMemberId = is5thLine
+    ? memberOptions.find(o => o.value === JAMES_TURNER_USER_ID)?.value
+      ?? members.find(m => (m.email || '').toLowerCase() === 'jturner@5thline.co')?.user_id
+    : undefined;
+  useEffect(() => {
+    if (!open || !fifthLineDefaultMemberId) return;
+    if (!dealOwner) setDealOwner(fifthLineDefaultMemberId);
+    if (!dealManager) setDealManager(fifthLineDefaultMemberId);
+  }, [open, fifthLineDefaultMemberId, dealOwner, dealManager]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatAmountWithCommas(e.target.value);
