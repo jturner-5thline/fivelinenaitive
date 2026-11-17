@@ -3,22 +3,24 @@ import { z } from "zod";
 import { supabaseForUser, requireAuth, textResult, errorResult } from "../supabase";
 import { LENDER_FIELD_SCHEMA, validateLenderPatch } from "../lenderFields";
 import { writeProvenance } from "../lenderRelatedWrites";
+import { validateLenderOptions } from "../lenderOptionValidation";
 
 export default defineTool({
   name: "create_lender",
   title: "Create funding source / lender",
   description:
-    "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet — to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
+    "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet — to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Option-backed fields are validated against list_field_options (unknown values rejected with closest matches unless allow_new_options: true). Contacts go in `upsert_lender_contact` afterwards.",
   inputSchema: {
     name: z.string().trim().min(1).max(200).describe("Name of the new funding source."),
     ...LENDER_FIELD_SCHEMA,
+    allow_new_options: z.boolean().default(false).describe("Save option-backed values that are not in the app's option lists (see list_field_options)."),
     ...writeProvenance,
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { name, source, change_reason, ...rest } = input;
+    const { name, source, change_reason, allow_new_options, ...rest } = input;
     const cleanName = name.trim();
 
     const fields: Record<string, unknown> = {};
@@ -27,6 +29,8 @@ export default defineTool({
     const sb = supabaseForUser(ctx);
     const invalid = await validateLenderPatch(sb, fields);
     if (invalid) return errorResult(invalid);
+    const optionErr = await validateLenderOptions(sb, fields, allow_new_options ?? false);
+    if (optionErr) return { ...textResult(optionErr), isError: true as const };
 
     const escaped = cleanName.replace(/[\\%_]/g, (c) => `\\${c}`);
     const { data: similar, error: dupErr } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${escaped}%`).limit(50);

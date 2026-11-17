@@ -1111,7 +1111,7 @@
       {
         "name": "get_lender",
         "title": "Get funding source / lender detail",
-        "description": "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows — contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans — and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
+        "description": "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows — contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans — and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Also returns `contact_ids` (lender_contacts row ids) and `attachment_ids` (lender_attachments row ids). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -1144,7 +1144,7 @@
       {
         "name": "update_lender",
         "title": "Update funding source / lender",
-        "description": "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
+        "description": "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. array_mode add/remove edits list fields without resending the whole list (checked against the current row for concurrency). Option-backed fields (lender_type, loan_types, industries, industries_to_avoid, geographies, geographies_excluded, cash_burn, sponsorship, refinancing, sub_debt, appetite_status, tier) are validated against list_field_options; unknown values are rejected with closest matches unless allow_new_options: true. FLEx columns are inert metadata; FLEx stays disconnected.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -1966,6 +1966,19 @@
             "dry_run": {
               "type": "boolean"
             },
+            "array_mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "add",
+                "remove"
+              ],
+              "description": "For loan_types, industries, industries_to_avoid, geographies and tags: replace (default) sets the whole list; add appends missing values; remove drops the given values."
+            },
+            "allow_new_options": {
+              "type": "boolean",
+              "description": "Save values that are not in the app's option lists (see list_field_options)."
+            },
             "source": {
               "type": "string",
               "maxLength": 1000
@@ -2207,6 +2220,12 @@
                   "dry_run": {
                     "$ref": "#/properties/dry_run"
                   },
+                  "array_mode": {
+                    "$ref": "#/properties/array_mode"
+                  },
+                  "allow_new_options": {
+                    "$ref": "#/properties/allow_new_options"
+                  },
                   "source": {
                     "$ref": "#/properties/source"
                   },
@@ -2228,7 +2247,7 @@
       {
         "name": "upsert_lender_contact",
         "title": "Add or update a funding source contact",
-        "description": "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
+        "description": "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. Without contact_id, an existing contact on the lender with the same email (case-insensitive) or same normalized name is updated instead of duplicated (matched_existing: true); pass force_create: true to always create. Name, title, phone, location and notes edits never depend on the CRM link; the CRM company check only applies when crm_contact_id is set or changed — on conflict the error lists the contact, its company and the lender company, and relink_crm_contact_to_lender_company: true fixes the link in the same call. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -2355,6 +2374,16 @@
               ],
               "description": "CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."
             },
+            "force_create": {
+              "type": "boolean",
+              "default": false,
+              "description": "Create a new row even if a matching email/name already exists on this lender."
+            },
+            "relink_crm_contact_to_lender_company": {
+              "type": "boolean",
+              "default": false,
+              "description": "When crm_contact_id belongs to a different CRM company than the lender, move that CRM contact to the lender's company in the same transaction."
+            },
             "source": {
               "type": "string",
               "maxLength": 1000
@@ -2375,7 +2404,7 @@
       {
         "name": "create_lender",
         "title": "Create funding source / lender",
-        "description": "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet — to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
+        "description": "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet — to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Option-backed fields are validated against list_field_options (unknown values rejected with closest matches unless allow_new_options: true). Contacts go in `upsert_lender_contact` afterwards.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -3173,6 +3202,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "allow_new_options": {
+              "type": "boolean",
+              "default": false,
+              "description": "Save option-backed values that are not in the app's option lists (see list_field_options)."
             },
             "source": {
               "type": "string",
@@ -4452,7 +4486,7 @@
       {
         "name": "query_insights_dataset",
         "title": "Query any Insights source dataset",
-        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_field_suggestions, contact_field_suggestion_audit, contact_tagging_rules, contact_types, crm_contact_attachments, crm_company_activities, crm_company_attachments, crm_company_team, crm_industry_options, companies, company_settings, company_members, company_features, company_feature_overrides, company_invitations, company_join_requests, company_email_style_guide, company_write_up_fields, company_agent_access, partner_companies, partner_contacts, wf_contacts, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, monthly_entity_headcount, harvest_time_entries, harvest_sync_state, quickbooks_accounts, quickbooks_vendors, quickbooks_credit_memos, quickbooks_estimates, scheduled_cash_flows, cashflow_sidebar_data, cashflow_cash_in_items, cash_flow_imports, cash_flow_override_history, cell_comments, qb_cashflow_mapping_rules, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs, lender_contacts, lender_notes, lender_notes_history, lender_attachments, lender_audit_logs, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, funding_source_acquisition_plans, deal_lender_recommendation_exclusions, lender_outcome_stats, lender_match_weight_calibrations, lender_qa_regression_tests, lender_sync_request_decisions, lender_duplicate_dismissals, lender_history_warning_dismissals, pending_lender_notifications, external_deal_lenders, deal_saas_lenders, wf_lenders, flex_sync_settings, flex_sync_history, flex_notifications, flex_info_notifications, flex_auto_removal_audit, deal_meeting_history, deal_call_transcripts, deal_claap_recordings, meeting_deal_links, meeting_synthesized_notes, meeting_task_suggestions, meeting_holds, meeting_claap_resolution, deal_space_documents, deal_space_document_summaries, deal_financial_files, deal_financial_insights, deal_drive_folders, deal_data_room_custom_folders, deal_document_exclusions, deal_space_conversations, deal_space_messages, deal_space_note_versions, deal_space_note_comments, deal_space_note_templates, deal_space_financials, deal_memo_approvals, deal_memo_comments, deal_memo_views, deal_memo_audit_logs, deal_stage_history_notes, deal_status_report_drafts, deal_emails, deal_email_prompts, deal_info_requests, client_requests, client_request_drafts, deal_audit_log, deal_access_requests, deal_advance_reasons, deal_aliases, deal_sla_rules, deal_saved_views, deal_ai_settings, deal_ai_status_snapshots, deal_research_cache, deal_fit_profiles, deal_calendar_items, deal_kpi_links, deal_saas_model, deal_saas_mappings, deal_saas_sensitivity, finserv_deal_projects, cashflow_deal_overrides, pending_deal_suggestions, duplicate_deal_suppressions, pending_deal_notifications, external_deals, task_activity, task_attachments, task_collaborators, task_comments, task_dependencies, task_followers, task_labels, task_label_assignments, task_tags, task_tag_assignments, task_time_entries, task_templates, task_projects, task_watchers, task_mentions, task_saved_views, agenda_comment_threads, agenda_comments, vdr_tasks, vdr_task_document_links, vdr_task_request_links, claap_meeting_participants, proposed_meeting_slots, meeting_title_templates, user_meeting_notes, referral_meeting_exclusions, default_milestones, naitive_stage_milestones, subtask_checklist_items, task_duplicate_candidates, task_view_tabs, weekly_hours_tasks, copilot_conversations, copilot_deal_messages, copilot_user_preferences, user_deal_summary_preferences, wf_deals, wf_tasks, wf_meeting_notes, v_deal_owner_resolution, v_deal_stage_transitions, emails, email_threads, email_thread_labels, email_labels, email_label_assignments, email_label_rules, email_drafts, staged_email_drafts, scheduled_emails, email_send_log, email_send_state, email_analysis, email_cadence_jobs, email_cadence_profiles, email_templates, email_templates_v2, outbound_email_templates, email_snippets, email_block_library, email_workflows, email_workflow_events, email_distribution_stats, email_priority_signal_log, email_intelligence_settings, user_email_preferences, user_email_ai_preferences, suppressed_emails, email_suppression_log, pending_mention_emails, claap_call_email_drafts, gmail_messages, gmail_sent_messages, ms_synced_emails, referral_sources, channel_entries, channel_types, partner_channel_types, ai_action_log, event_claap_recordings. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
+        "description": "Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: deals, deal_lenders, deal_pipelines, deal_stage_history, deal_milestones, deal_computed_metrics, deal_stage_durations, deal_stage_transitions, outstanding_items, tasks, activity_logs, contacts, crm_companies, contact_activities, contact_audit_log, contact_company_associations, contact_company_match_audit, contact_field_suggestions, contact_field_suggestion_audit, contact_tagging_rules, contact_types, crm_contact_attachments, crm_company_activities, crm_company_attachments, crm_company_team, crm_industry_options, companies, company_settings, company_members, company_features, company_feature_overrides, company_invitations, company_join_requests, company_email_style_guide, company_write_up_fields, company_agent_access, partner_companies, partner_contacts, wf_contacts, master_lenders, custom_metrics, insights_metric_targets, metric_manual_inputs, dashboard_grid_layouts, dashboard_layouts, quickbooks_invoices, quickbooks_customers, quickbooks_payments, quickbooks_expenses, quickbooks_bills, quickbooks_reports, qbo_pnl_snapshots, qbo_cashflow_snapshots, monthly_entity_headcount, harvest_time_entries, harvest_sync_state, quickbooks_accounts, quickbooks_vendors, quickbooks_credit_memos, quickbooks_estimates, scheduled_cash_flows, cashflow_sidebar_data, cashflow_cash_in_items, cash_flow_imports, cash_flow_override_history, cell_comments, qb_cashflow_mapping_rules, claap_meetings, team_interaction_metrics, deal_writeups, deal_memos, deal_checklist_items, deal_checklist_status, deal_attachments, deal_status_notes, deal_financial_data, deal_flag_notes, deal_ownership, deal_space_notes, deal_activity, contact_deals, deal_pipeline_configs, lender_contacts, lender_notes, lender_notes_history, lender_attachments, lender_audit_logs, lender_disqualifications, lender_doc_flags, lender_fit_attributes, lender_match_rules, lender_pass_detections, lender_pass_patterns, lender_recommendation_outcomes, lender_recommendation_run_items, lender_recommendation_runs, lender_stage_configs, lender_sync_requests, lender_sync_settings, funding_source_acquisition_plans, deal_lender_recommendation_exclusions, lender_outcome_stats, lender_match_weight_calibrations, lender_qa_regression_tests, lender_sync_request_decisions, lender_duplicate_dismissals, lender_history_warning_dismissals, pending_lender_notifications, external_deal_lenders, deal_saas_lenders, wf_lenders, flex_sync_settings, flex_sync_history, flex_notifications, flex_info_notifications, flex_auto_removal_audit, deal_meeting_history, deal_call_transcripts, deal_claap_recordings, meeting_deal_links, meeting_synthesized_notes, meeting_task_suggestions, meeting_holds, meeting_claap_resolution, deal_space_documents, deal_space_document_summaries, deal_financial_files, deal_financial_insights, deal_drive_folders, deal_data_room_custom_folders, deal_document_exclusions, deal_space_conversations, deal_space_messages, deal_space_note_versions, deal_space_note_comments, deal_space_note_templates, deal_space_financials, deal_memo_approvals, deal_memo_comments, deal_memo_views, deal_memo_audit_logs, deal_stage_history_notes, deal_status_report_drafts, deal_emails, deal_email_prompts, deal_info_requests, client_requests, client_request_drafts, deal_audit_log, deal_access_requests, deal_advance_reasons, deal_aliases, deal_sla_rules, deal_saved_views, deal_ai_settings, deal_ai_status_snapshots, deal_research_cache, deal_fit_profiles, deal_calendar_items, deal_kpi_links, deal_saas_model, deal_saas_mappings, deal_saas_sensitivity, finserv_deal_projects, cashflow_deal_overrides, pending_deal_suggestions, duplicate_deal_suppressions, pending_deal_notifications, external_deals, task_activity, task_attachments, task_collaborators, task_comments, task_dependencies, task_followers, task_labels, task_label_assignments, task_tags, task_tag_assignments, task_time_entries, task_templates, task_projects, task_watchers, task_mentions, task_saved_views, agenda_comment_threads, agenda_comments, vdr_tasks, vdr_task_document_links, vdr_task_request_links, claap_meeting_participants, proposed_meeting_slots, meeting_title_templates, user_meeting_notes, referral_meeting_exclusions, default_milestones, naitive_stage_milestones, subtask_checklist_items, task_duplicate_candidates, task_view_tabs, weekly_hours_tasks, copilot_conversations, copilot_deal_messages, copilot_user_preferences, user_deal_summary_preferences, wf_deals, wf_tasks, wf_meeting_notes, v_deal_owner_resolution, v_deal_stage_transitions, emails, email_threads, email_thread_labels, email_labels, email_label_assignments, email_label_rules, email_drafts, staged_email_drafts, scheduled_emails, email_send_log, email_send_state, email_analysis, email_cadence_jobs, email_cadence_profiles, email_templates, email_templates_v2, outbound_email_templates, email_snippets, email_block_library, email_workflows, email_workflow_events, email_distribution_stats, email_priority_signal_log, email_intelligence_settings, user_email_preferences, user_email_ai_preferences, suppressed_emails, email_suppression_log, pending_mention_emails, claap_call_email_drafts, gmail_messages, gmail_sent_messages, ms_synced_emails, referral_sources, channel_entries, channel_types, partner_channel_types, ai_action_log, event_claap_recordings. Supply optional column selection (defaults to ALL columns, except wide tables — contacts, crm_companies, deals, master_lenders — which default to a compact core set; pass columns=\"*\" for every column), filters (column + operator + value, all ANDed), or_groups (each group is an OR of conditions; groups are ANDed with each other and with filters), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more — keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -4718,7 +4752,7 @@
             "columns": {
               "type": "string",
               "maxLength": 1000,
-              "description": "Comma-separated column list; defaults to all columns."
+              "description": "Comma-separated column list, or * for all. Defaults to all columns, or a compact core set on wide tables."
             },
             "filters": {
               "type": "array",
@@ -4779,6 +4813,19 @@
                 "additionalProperties": false
               },
               "maxItems": 10
+            },
+            "or_groups": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/properties/filters/items"
+                },
+                "minItems": 2,
+                "maxItems": 10
+              },
+              "maxItems": 5,
+              "description": "Each inner array matches rows satisfying ANY of its conditions, e.g. [[{column:'email',op:'is',value:null},{column:'email',op:'eq',value:''}]]."
             },
             "order_by": {
               "type": "string",
@@ -4845,7 +4892,7 @@
       {
         "name": "list_referral_partners",
         "title": "List referral partners",
-        "description": "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 — the same classification the app shows — with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
+        "description": "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 — the same classification the app shows — with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are INCLUDED with `email: null` and `has_email: false` (pass `require_email: true` to skip them, e.g. for email lists); `missing_email` counts them either way. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -4868,6 +4915,11 @@
               "minItems": 1,
               "maxItems": 4,
               "description": "Stages to include. Defaults to all four: \"Nurturing\", \"Tier 3\", \"Tier 2\", \"Tier 1\"."
+            },
+            "require_email": {
+              "type": "boolean",
+              "default": false,
+              "description": "Skip sources without an email."
             },
             "limit": {
               "type": "integer",
@@ -7851,7 +7903,7 @@
       {
         "name": "merge_lenders",
         "title": "Merge funding sources",
-        "description": "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
+        "description": "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. dry_run: true previews the merge (fields filled, children moved, blocking conflicts) by running it in a rolled-back transaction. Does not use the legacy broad merge RPC or reconnect FLEx.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": true,
@@ -7868,9 +7920,15 @@
               "type": "string",
               "format": "uuid"
             },
+            "dry_run": {
+              "type": "boolean",
+              "default": false,
+              "description": "Preview only: report fields that would fill on the kept lender, child records that would move, and any conflict that would block the merge. Nothing is changed."
+            },
             "confirm": {
               "type": "boolean",
-              "const": true
+              "const": true,
+              "description": "Required for the real merge (not for dry_run)."
             },
             "source": {
               "type": "string",
@@ -7883,8 +7941,7 @@
           },
           "required": [
             "keep_lender_id",
-            "merge_lender_id",
-            "confirm"
+            "merge_lender_id"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
@@ -7894,7 +7951,7 @@
       {
         "name": "update_claap_meeting_match",
         "title": "Update Claap funding-source match",
-        "description": "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
+        "description": "Confirm, reassign, or clear Claap meeting funding-source matches after user approval — one meeting via top-level fields, or up to 25 via `updates` (each applied in its own transaction with an independent result). Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -7917,8 +7974,7 @@
                 {
                   "type": "null"
                 }
-              ],
-              "description": "Visible master_lenders.id in the meeting's company, or null to clear."
+              ]
             },
             "match_status": {
               "type": "string",
@@ -7940,13 +7996,61 @@
                 "excluded",
                 "awaiting_confirmation"
               ]
+            },
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "meeting_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "matched_lender_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Visible master_lenders.id in the meeting's company, or null to clear."
+                  },
+                  "match_status": {
+                    "type": "string",
+                    "enum": [
+                      "matched",
+                      "needs_review",
+                      "unmatched"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending_review",
+                      "routed",
+                      "excluded",
+                      "awaiting_confirmation"
+                    ]
+                  }
+                },
+                "required": [
+                  "meeting_id",
+                  "matched_lender_id",
+                  "match_status"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 25
             }
           },
-          "required": [
-            "meeting_id",
-            "matched_lender_id",
-            "match_status"
-          ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
@@ -7955,7 +8059,7 @@
       {
         "name": "list_lender_claap_meetings",
         "title": "List funding-source Claap meetings",
-        "description": "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
+        "description": "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection. match_status (confirmed/suggested/none) is a shorthand for match_statuses. include_transcript defaults to false.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -7987,6 +8091,15 @@
                 ]
               },
               "maxItems": 3
+            },
+            "match_status": {
+              "type": "string",
+              "enum": [
+                "confirmed",
+                "suggested",
+                "none"
+              ],
+              "description": "Shorthand filter: confirmed = matched, suggested = needs_review, none = unmatched."
             },
             "include_transcript": {
               "type": "boolean",
@@ -8354,6 +8467,1683 @@
           "required": [
             "deal_id",
             "items"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_contact",
+        "title": "Update CRM contact",
+        "description": "Partial update of a CRM contact (contacts) by id. Only supplied fields change; null clears. Editable: first/last name, email, additional_emails, phone_work/phone_mobile/phone_other, job_title, contact_type, lifecycle_stage, status, lead_source, owner_user_id, linkedin_url, city/state/country, description (mode replace/append/prepend), tags, crm_company_id (same workspace only), referral_agreement_on_file, w9_on_file, referral_fee, lender_referred_pct. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff. Use list_field_options for allowed contact_type/lifecycle_stage/status values.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "first_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "last_name": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 320
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "additional_emails": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone_work": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone_mobile": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone_other": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "job_title": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Contact type(s); multiple types are joined with ' ; '. See list_field_options contacts.contact_type."
+            },
+            "lifecycle_stage": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lead_source": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "owner_user_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "linkedin_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "city": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "crm_company_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "referral_agreement_on_file": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "w9_on_file": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "referral_fee": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_referred_pct": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "append",
+                "prepend"
+              ],
+              "default": "replace",
+              "description": "Applies to long text (description, and notes on companies): append/prepend adds a blank-line-separated entry."
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Optimistic concurrency: fail with the current record if it changed since this timestamp."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": false,
+              "description": "Return the field diff without writing."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "contact_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_company",
+        "title": "Update CRM company",
+        "description": "Partial update of a CRM company (crm_companies) by id. Only supplied fields change; null clears. Editable: name, domain, additional_domains, website_url, company_type, status, owner_user_id, industry, sub_industry, employee_count/range, annual_revenue, revenue_band, HQ address fields, regions_served, parent_company_id (same workspace), customer_tier, segment, lifecycle_stage, description and notes (mode replace/append/prepend), linkedin/twitter, phone, main_contact_email, tags, year_founded, financing_status, key_products. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "company_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "domain": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 300
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "additional_domains": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "website_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "company_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "owner_user_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "industry": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sub_industry": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "employee_count": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "employee_range": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "annual_revenue": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "revenue_band": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hq_city": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hq_state": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hq_country": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hq_postal_code": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hq_address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "address": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "regions_served": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parent_company_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "customer_tier": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "segment": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lifecycle_stage": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "linkedin_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "twitter_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "main_contact_email": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 320
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "year_founded": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1600,
+                  "maximum": 2200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "financing_status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "key_products": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "append",
+                "prepend"
+              ],
+              "default": "replace",
+              "description": "Applies to long text (description, and notes on companies): append/prepend adds a blank-line-separated entry."
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Optimistic concurrency: fail with the current record if it changed since this timestamp."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": false,
+              "description": "Return the field diff without writing."
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "company_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_contact_note",
+        "title": "Add contact note",
+        "description": "Add a dated note to a CRM contact's activity history (shown on the contact page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "subject": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "occurred_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the note/activity happened; defaults to now."
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Retries with the same key return the existing note instead of adding a duplicate."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "contact_id",
+            "body"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_company_note",
+        "title": "Add company note",
+        "description": "Add a dated note to a CRM company's activity history (shown on the company page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "company_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000
+            },
+            "subject": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "occurred_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the note/activity happened; defaults to now."
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Retries with the same key return the existing note instead of adding a duplicate."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "company_id",
+            "body"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_referral_partner",
+        "title": "Add contact to Referral Source pipeline",
+        "description": "Put an existing CRM contact into the Referral Source pipeline (Sales & BD) at Nurturing — the same as the app's \"Add to Nurturing\" button: tags the contact type \"Referral Source\" (audited) and creates its referral_sources entry. Optional owner, notes and referral agreement/fee fields. Tier 3/2/1 are calculated automatically from the contact's referred deals (Sales & BD tier rules) and cannot be set directly. Contacts are added at Nurturing and move up as their referred deals progress. Idempotent: an existing entry is returned unchanged apart from supplied fields.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "Nurturing",
+                "Tier 3",
+                "Tier 2",
+                "Tier 1"
+              ],
+              "default": "Nurturing"
+            },
+            "owner_user_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 10000
+            },
+            "referral_agreement_on_file": {
+              "type": "boolean"
+            },
+            "w9_on_file": {
+              "type": "boolean"
+            },
+            "referral_fee": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "lender_referred_pct": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "contact_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_referral_partner",
+        "title": "Update Referral Source partner",
+        "description": "Update a contact that is in the Referral Source pipeline: owner (contact owner and relationship owner), notes on its referral entry (mode replace/append), referral_agreement_on_file, w9_on_file, referral_fee and lender_referred_pct. Contact field changes are audited with source/change_reason. Tier 3/2/1 are calculated automatically from the contact's referred deals (Sales & BD tier rules) and cannot be set directly. Contacts are added at Nurturing and move up as their referred deals progress. Passing stage \"Nurturing\" is accepted as a no-op; other stages are rejected.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "Nurturing",
+                "Tier 3",
+                "Tier 2",
+                "Tier 1"
+              ]
+            },
+            "owner_user_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes_mode": {
+              "type": "string",
+              "enum": [
+                "replace",
+                "append"
+              ],
+              "default": "replace"
+            },
+            "referral_agreement_on_file": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "w9_on_file": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "referral_fee": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_referred_pct": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "contact_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "remove_referral_partner",
+        "title": "Remove contact from Referral Source pipeline",
+        "description": "Remove a contact from the Referral Source pipeline: deletes its referral_sources entry and removes the \"Referral Source\" contact type (audited). The contact itself and its deals are kept. Requires confirm:true. Note: a contact credited as the referrer on Active Pipeline deals still appears in Tier 3/2/1, because tiers are calculated from referred deals.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "contact_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_channel_partners",
+        "title": "List channel partners",
+        "description": "Read-only. Lists the Channel Partner pipeline on the BD page (separate from Referral Sources): id, linked CRM company, stage (prospect/nurturing/trial/engaged), owner, current status note, last contact (company's last activity) and next activity date. Filter by stage, owner or company name. Paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "stages": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "prospect",
+                  "nurturing",
+                  "trial",
+                  "engaged"
+                ]
+              },
+              "maxItems": 4
+            },
+            "owner_user_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "query": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Company name contains (case-insensitive)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_channel_partner",
+        "title": "Get channel partner",
+        "description": "Read one Channel Partner by partner id or CRM company id: stage, owner, current status note plus full status-note history, stage/activity history, last contact and next activity date.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "partner_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "crm_company_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_channel_partner",
+        "title": "Create channel partner",
+        "description": "Add an existing CRM company to the Channel Partner pipeline (BD page), like the app's Add Partner action. Defaults: stage prospect, owner = you. Optional first status note. Refuses if the company is already a channel partner (returns the existing id). Stage history is recorded automatically. Create the CRM company first with create_company if needed.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "crm_company_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "prospect",
+                "nurturing",
+                "trial",
+                "engaged"
+              ],
+              "default": "prospect"
+            },
+            "owner_user_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status_note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000
+            }
+          },
+          "required": [
+            "crm_company_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_channel_partner",
+        "title": "Update channel partner",
+        "description": "Update a Channel Partner: stage (prospect/nurturing/trial/engaged; history recorded automatically) and owner, and/or replace the current status note (the previous note stays in visible history, as in the app). Returns the updated partner with a diff. 'Last contact' is the linked company's last activity date — log contact with add_company_note. There is no separate stored 'next step' field; put next steps in the status note.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "partner_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "prospect",
+                "nurturing",
+                "trial",
+                "engaged"
+              ]
+            },
+            "owner_user_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status_note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000,
+              "description": "New current status note; earlier notes remain in history."
+            }
+          },
+          "required": [
+            "partner_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_attachment_upload_url",
+        "title": "Create attachment upload URL",
+        "description": "Step 1 of a two-step upload for real files (PDFs, decks, spreadsheets) up to 20 MB, for a funding source (lender), deal, contact or company. Returns a short-lived signed `upload_url` (HTTP PUT the raw file bytes with the given Content-Type, valid ~2 hours) and an `upload_token`. Then call complete_attachment_upload with the token to create the attachment record. If a file with the same name and size is already attached to that record, nothing is created and the existing attachment is returned.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "target_type": {
+              "type": "string",
+              "enum": [
+                "lender",
+                "deal",
+                "contact",
+                "company"
+              ],
+              "description": "Record type to attach to."
+            },
+            "target_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders.id, deals.id, contacts.id or crm_companies.id."
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "File name with extension, e.g. 'Acme term sheet.pdf'."
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20971520,
+              "description": "Exact file size in bytes; verified when the upload is completed."
+            },
+            "content_type": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Informational; the stored type is derived from the extension."
+            },
+            "category": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "general",
+              "description": "Attachment category (see list_field_options lender_attachments.category for lenders)."
+            }
+          },
+          "required": [
+            "target_type",
+            "target_id",
+            "file_name",
+            "size_bytes"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "complete_attachment_upload",
+        "title": "Complete attachment upload",
+        "description": "Step 2 of the two-step upload: pass the upload_token from create_attachment_upload_url after PUTting the file. Verifies the file is in storage with the declared size, then creates the attachment record on the lender/deal/contact/company (lender attachments are audited with source/change_reason). Skips if the same name and size is already attached.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "upload_token": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 4000
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "upload_token"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_attachment_from_gmail",
+        "title": "Attach a file from Gmail",
+        "description": "Fetch an email attachment server-side through the signed-in user's existing connected mailbox and attach it to a funding source (lender), deal, contact or company. Identify the attachment by attachment_id, or by file_name (looked up on the message). 20 MB limit; skips if the same name and size is already attached to that record.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "target_type": {
+              "type": "string",
+              "enum": [
+                "lender",
+                "deal",
+                "contact",
+                "company"
+              ],
+              "description": "Record type to attach to."
+            },
+            "target_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders.id, deals.id, contacts.id or crm_companies.id."
+            },
+            "message_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "attachment_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "Attachment file name on the message; also used as the stored name."
+            },
+            "category": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "correspondence"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "target_type",
+            "target_id",
+            "message_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_attachment_from_drive",
+        "title": "Attach a file from Google Drive",
+        "description": "Download a Google Drive file server-side through the workspace's connected Drive (the same connection the Drive data-room import uses; internal 5th Line users only) and attach it to a funding source (lender), deal, contact or company. Native Google Docs/Sheets/Slides need mime_type and are exported to docx/xlsx/pptx. 20 MB limit; skips if the same name and size is already attached.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "target_type": {
+              "type": "string",
+              "enum": [
+                "lender",
+                "deal",
+                "contact",
+                "company"
+              ],
+              "description": "Record type to attach to."
+            },
+            "target_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders.id, deals.id, contacts.id or crm_companies.id."
+            },
+            "file_id": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 300,
+              "description": "Drive file id (or a Drive link containing it)."
+            },
+            "file_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "description": "Name to store, with extension (e.g. 'Lender deck.pdf')."
+            },
+            "mime_type": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Drive mimeType; required for native Google Docs/Sheets/Slides."
+            },
+            "category": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "general"
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "change_reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "target_type",
+            "target_id",
+            "file_id",
+            "file_name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_contacts",
+        "title": "List funding source contacts",
+        "description": "Read-only. List every row in a funding source's multi-contact list (lender_contacts) with its row id (use as contact_id in upsert_lender_contact / delete_lender_contact), name, title, email, phone, location, notes, is_primary and linked CRM contact id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_field_options",
+        "title": "List allowed field values",
+        "description": "Read-only. Return the option list the app's dropdowns and filters use for a field, so writes use valid values. Supported table.column keys: master_lenders.lender_type, master_lenders.loan_types, master_lenders.industries, master_lenders.industries_to_avoid, master_lenders.geographies, master_lenders.geographies_excluded, master_lenders.cash_burn, master_lenders.sponsorship, master_lenders.refinancing, master_lenders.sub_debt, master_lenders.appetite_status, master_lenders.tier, contacts.contact_type, contacts.lifecycle_stage, contacts.status, lender_attachments.category, channel_partners.stage, deals.stage. Pass one or more as fields, or table + column. create_lender/update_lender reject values outside these lists unless allow_new_options: true.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "master_lenders.lender_type",
+                  "master_lenders.loan_types",
+                  "master_lenders.industries",
+                  "master_lenders.industries_to_avoid",
+                  "master_lenders.geographies",
+                  "master_lenders.geographies_excluded",
+                  "master_lenders.cash_burn",
+                  "master_lenders.sponsorship",
+                  "master_lenders.refinancing",
+                  "master_lenders.sub_debt",
+                  "master_lenders.appetite_status",
+                  "master_lenders.tier",
+                  "contacts.contact_type",
+                  "contacts.lifecycle_stage",
+                  "contacts.status",
+                  "lender_attachments.category",
+                  "channel_partners.stage",
+                  "deals.stage"
+                ]
+              },
+              "minItems": 1,
+              "maxItems": 18
+            },
+            "table": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "column": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_unmatched_claap_meetings",
+        "title": "List unmatched Claap meetings",
+        "description": "Read-only. Claap meetings with no confirmed funding-source match (unmatched, or only a suggested match awaiting review). Filter by date range, participant email or email domain, and title text. Returns meeting id, title, date, participants, recording URL and any suggested lender with its reason. Use link_claap_meeting_to_lender or update_claap_meeting_match to resolve.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "string",
+              "enum": [
+                "both",
+                "unmatched",
+                "suggested"
+              ],
+              "default": "both"
+            },
+            "started_after": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "started_before": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "participant_email": {
+              "type": "string",
+              "maxLength": 320
+            },
+            "participant_domain": {
+              "type": "string",
+              "maxLength": 253,
+              "description": "e.g. firstncc.com"
+            },
+            "title_contains": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "link_claap_meeting_to_lender",
+        "title": "Link Claap meeting to funding source",
+        "description": "Manually link any Claap meeting to a funding source, even when no suggestion exists. Identify the meeting by meeting_id (claap_meetings.id) or recording_id (claap_recordings.id). Confirms the match (locked as a manual decision, audited) and optionally sets the matched contact (a CRM contact in the same workspace). Organizer/admin update permissions apply; no deal routing runs.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "meeting_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "recording_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "contact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Optional CRM contacts.id to record as the matched contact."
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 10000
+            }
+          },
+          "required": [
+            "lender_id"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"

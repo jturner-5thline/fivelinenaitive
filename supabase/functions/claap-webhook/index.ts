@@ -1,4 +1,5 @@
 import { isCompanyMember } from "../_shared/requestAuth.ts";
+import { loadLenderMatchInputs, pickLenderMatch } from "../_shared/claapLenderMatch.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -329,76 +330,24 @@ async function runSmartMatching(
     }
   }
 
-  // ═══════════════════════════════════════════════════════
-  // 2. LENDER MATCH
-  // ═══════════════════════════════════════════════════════
+  // 2. LENDER MATCH — participant domain (unique within the workspace) or exact name in title only.
   if (configCompanyId) {
-    if (titleLower) {
-      const { data: lenders } = await supabaseAdmin
-        .from("master_lenders").select("id, name")
-        .eq("company_id", configCompanyId).limit(500);
-
-      if (lenders) {
-        for (const lender of lenders) {
-          const lenderName = normalizeName(lender.name);
-          if (lenderName.length >= 3 && titleLower.includes(lenderName)) {
-            result.matched = true;
-            result.matchType = "lender";
-            result.matchSource = `Lender name in title: "${lender.name}"`;
-            result.lenderId = lender.id;
-            result.callType = "Lender Call";
-            result.confidence = 75;
-            const { data: dealLenders } = await supabaseAdmin
-              .from("deal_lenders").select("deal_id").eq("name", lender.name).limit(10);
-            if (dealLenders) result.dealIds = dealLenders.map((dl: any) => dl.deal_id);
-            return result;
-          }
-          if (diceCoefficient(lenderName, normalizeName(title || "")) > 0.45) {
-            result.matched = true;
-            result.matchType = "lender";
-            result.matchSource = `Fuzzy lender name match: "${lender.name}"`;
-            result.lenderId = lender.id;
-            result.callType = "Lender Call";
-            result.confidence = 55;
-            return result;
-          }
-        }
-      }
-    }
-
-    for (const domain of externalDomains) {
-      const { data: lenderContacts } = await supabaseAdmin
-        .from("lender_contacts").select("lender_id, email")
-        .ilike("email", `%@${domain}`).limit(5);
-
-      if (lenderContacts && lenderContacts.length > 0) {
-        result.matched = true;
-        result.matchType = "lender";
-        result.matchSource = `Lender contact domain match: ${domain}`;
-        result.lenderId = lenderContacts[0].lender_id;
-        result.callType = "Lender Call";
-        result.confidence = 65;
-        return result;
-      }
-    }
-
-    for (const participant of externalParticipants) {
-      if (!participant.name) continue;
-      const { data: lenderContacts } = await supabaseAdmin
-        .from("lender_contacts").select("lender_id, name")
-        .ilike("name", `%${participant.name}%`).limit(3);
-
-      if (lenderContacts && lenderContacts.length > 0) {
-        result.matched = true;
-        result.matchType = "lender";
-        result.matchSource = `Lender contact name match: ${participant.name}`;
-        result.lenderId = lenderContacts[0].lender_id;
-        result.callType = "Lender Call";
-        result.confidence = 55;
-        return result;
-      }
+    const { lenders: lenderList, domainContacts } = await loadLenderMatchInputs(supabaseAdmin, configCompanyId, externalDomains);
+    const lenderMatch = pickLenderMatch({ title, externalDomains, lenders: lenderList, domainContacts });
+    if (lenderMatch) {
+      result.matched = true;
+      result.matchType = "lender";
+      result.matchSource = lenderMatch.source;
+      result.lenderId = lenderMatch.lenderId;
+      result.callType = "Lender Call";
+      result.confidence = lenderMatch.confidence;
+      const { data: dealLenders } = await supabaseAdmin
+        .from("deal_lenders").select("deal_id").eq("master_lender_id", lenderMatch.lenderId).limit(10);
+      if (dealLenders) result.dealIds = dealLenders.map((dl: any) => dl.deal_id);
+      return result;
     }
   }
+
 
   // ═══════════════════════════════════════════════════════
   // 3. COMPANY MATCH

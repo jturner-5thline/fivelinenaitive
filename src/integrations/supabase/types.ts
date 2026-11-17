@@ -8605,6 +8605,48 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_record_field_audit: {
+        Row: {
+          actor_user_id: string
+          change_reason: string | null
+          created_at: string
+          field: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          org_company_id: string
+          record_id: string
+          record_type: string
+          source: string | null
+        }
+        Insert: {
+          actor_user_id?: string
+          change_reason?: string | null
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          org_company_id: string
+          record_id: string
+          record_type: string
+          source?: string | null
+        }
+        Update: {
+          actor_user_id?: string
+          change_reason?: string | null
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          org_company_id?: string
+          record_id?: string
+          record_type?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       crm_table_layouts: {
         Row: {
           column_order: string[]
@@ -31261,6 +31303,10 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_merge_lenders_preview: {
+        Args: { p_keep: string; p_merge: string }
+        Returns: Json
+      }
       mcp_mutate_deal_relationship: {
         Args: { p_action: string; p_deal_id: string; p_input: Json }
         Returns: Json
@@ -31277,6 +31323,19 @@ export type Database = {
           p_meeting_id: string
           p_reason?: string
           p_status?: Database["public"]["Enums"]["claap_meeting_status"]
+        }
+        Returns: Json
+      }
+      mcp_update_crm_record: {
+        Args: {
+          p_change_reason?: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
+          p_id: string
+          p_mode?: string
+          p_patch: Json
+          p_source?: string
+          p_table: string
         }
         Returns: Json
       }
@@ -31313,6 +31372,7 @@ export type Database = {
           p_lender_id: string
           p_patch?: Json
           p_record_id?: string
+          p_relink_crm_contact?: boolean
           p_source?: string
           p_table: string
         }

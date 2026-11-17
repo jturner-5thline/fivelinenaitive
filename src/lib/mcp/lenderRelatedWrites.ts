@@ -10,12 +10,13 @@ export const writeProvenance = {
 
 export async function writeLenderRelated(
   sb: ReturnType<typeof supabaseForUser>, table: string, action: string, lenderId: string,
-  recordId: string | undefined, patch: Record<string, unknown>, confirm?: boolean, source?: string, reason?: string,
+  recordId: string | undefined, patch: Record<string, unknown>, confirm?: boolean, source?: string, reason?: string, relinkCrmContact?: boolean,
 ) {
   const { data, error } = await sb.rpc("mcp_write_lender_related", {
     p_table: table, p_action: action, p_lender_id: lenderId, p_record_id: recordId ?? null,
     p_patch: Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)),
     p_confirm: confirm ?? false, p_source: source ?? null, p_change_reason: reason ?? null,
+    p_relink_crm_contact: relinkCrmContact ?? false,
   });
   if (error) return errorResult(`${table} ${action}: ${error.message}`);
   return textResult(data);

@@ -136,7 +136,7 @@ async function loadPipelineStageMaps(sb, pipelineIds) {
   for (const row of data ?? []) {
     const labels = /* @__PURE__ */ new Map();
     const stages = Array.isArray(row.stages) ? row.stages : [];
-    for (const s of stages) if (s?.id) labels.set(s.id, s.label ?? s.id);
+    for (const s2 of stages) if (s2?.id) labels.set(s2.id, s2.label ?? s2.id);
     byPipeline.set(row.id, { name: row.name ?? null, labels });
   }
   return byPipeline;
@@ -603,8 +603,8 @@ function isFinServActiveClientAt(deal, hist, t) {
 }
 function countsTowardFinServMrrAt(deal, hist, t) {
   if (isFinServActiveClientAt(deal, hist, t)) return true;
-  const s = stageAtTime(deal, hist, t);
-  return !!s && !FINSERV_TERMINAL_STAGES.has(s);
+  const s2 = stageAtTime(deal, hist, t);
+  return !!s2 && !FINSERV_TERMINAL_STAGES.has(s2);
 }
 var CLIENT_NAME_NOISE = /* @__PURE__ */ new Set(["inc", "llc", "co", "corp", "ltd", "the", "and", "cfo", "advisory", "finops", "bookkeeping", "back", "office", "expansion", "m", "a", "diligence", "support"]);
 function finservClientKey(deal) {
@@ -675,22 +675,22 @@ var get_finserv_client_metrics_default = defineTool2({
     if (he) return errorResult(he.message);
     const historyByDeal = /* @__PURE__ */ new Map();
     for (const h of hist ?? []) {
-      const arr2 = historyByDeal.get(h.deal_id) ?? [];
-      arr2.push({ to_stage: h.to_stage, changed_at: h.changed_at });
-      historyByDeal.set(h.deal_id, arr2);
+      const arr3 = historyByDeal.get(h.deal_id) ?? [];
+      arr3.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+      historyByDeal.set(h.deal_id, arr3);
     }
     const kept = (deals ?? []).filter((d) => !isExcludedDealName(d.company));
     const now = /* @__PURE__ */ new Date();
     const periods = periodEnds(from_month, to_month, granularity).map(({ label, end }) => {
       const eff = end > now ? now : end;
-      const s = finservSnapshotAt(kept, historyByDeal, eff);
+      const s2 = finservSnapshotAt(kept, historyByDeal, eff);
       return {
         period: label,
         as_of: eff.toISOString(),
-        active_clients: s.active_clients,
-        active_engagements: s.active_engagements,
-        total_mrr: s.total_mrr,
-        ...include_clients ? { clients: s.clients } : {}
+        active_clients: s2.active_clients,
+        active_engagements: s2.active_engagements,
+        total_mrr: s2.total_mrr,
+        ...include_clients ? { clients: s2.clients } : {}
       };
     });
     const payload = { granularity, periods };
@@ -932,7 +932,7 @@ function computeStageEntryDeals(rows, dedupe) {
 }
 function averageSizedValue(deals) {
   const sized = deals.map((d) => Number(d.value) || 0).filter((v) => v > 0);
-  return sized.length ? sized.reduce((s, v) => s + v, 0) / sized.length : null;
+  return sized.length ? sized.reduce((s2, v) => s2 + v, 0) / sized.length : null;
 }
 
 // src/lib/dashboardTiles/salesCallFilters.ts
@@ -1338,13 +1338,13 @@ async function loadFinServNewMrrAdded(sb, companyId, start, end) {
     seen.set(row.deal_id, { deal_id: row.deal_id, company: deal.company ?? "\u2014", mrr: Number(deal.mrr) || 0, entered_at: row.changed_at });
   }
   const deals = Array.from(seen.values());
-  return { total: deals.reduce((s, d) => s + d.mrr, 0), deals };
+  return { total: deals.reduce((s2, d) => s2 + d.mrr, 0), deals };
 }
 function priorWindow(start, end) {
-  const s = /* @__PURE__ */ new Date(start + "T00:00:00Z");
+  const s2 = /* @__PURE__ */ new Date(start + "T00:00:00Z");
   const e = /* @__PURE__ */ new Date(end + "T00:00:00Z");
-  const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 864e5) + 1);
-  const prevEnd = new Date(s.getTime() - 864e5);
+  const days = Math.max(1, Math.round((e.getTime() - s2.getTime()) / 864e5) + 1);
+  const prevEnd = new Date(s2.getTime() - 864e5);
   const prevStart = new Date(prevEnd.getTime() - (days - 1) * 864e5);
   const ymd = (d) => d.toISOString().slice(0, 10);
   return { start: ymd(prevStart), end: ymd(prevEnd) };
@@ -1390,9 +1390,9 @@ async function loadFinServPipelineSnapshot(sb, endYmd, now = /* @__PURE__ */ new
   if (histErr) throw histErr;
   const historyByDeal = /* @__PURE__ */ new Map();
   for (const h of hist ?? []) {
-    const arr2 = historyByDeal.get(h.deal_id) ?? [];
-    arr2.push({ to_stage: h.to_stage, changed_at: h.changed_at });
-    historyByDeal.set(h.deal_id, arr2);
+    const arr3 = historyByDeal.get(h.deal_id) ?? [];
+    arr3.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+    historyByDeal.set(h.deal_id, arr3);
   }
   const effective = endYmd ? /* @__PURE__ */ new Date(endYmd + "T23:59:59") : now;
   const asOf = effective > now ? now : effective;
@@ -1524,14 +1524,14 @@ function previousMonthEnd(reference = /* @__PURE__ */ new Date()) {
 var monthsAgo = (now, months) => {
   return new Date(now.getFullYear(), now.getMonth() - months + 1, 0, 23, 59, 59, 999);
 };
-function activityAnchor(s) {
-  const qualifying = s.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
-  let at = s.addedAt ?? null;
+function activityAnchor(s2) {
+  const qualifying = s2.deals.filter((d) => d.stage == null || REACHED_NDA_STAGES.has(d.stage));
+  let at = s2.addedAt ?? null;
   for (const d of qualifying) if (!at || d.created_at > at) at = d.created_at;
   return at ? { at, qualifying: qualifying.length } : null;
 }
-function isRemovedForInactivity(s, now = /* @__PURE__ */ new Date()) {
-  const a = activityAnchor(s);
+function isRemovedForInactivity(s2, now = /* @__PURE__ */ new Date()) {
+  const a = activityAnchor(s2);
   return !!a && new Date(a.at) <= monthsAgo(now, REMOVAL_MONTHS);
 }
 
@@ -1582,14 +1582,14 @@ var STOPWORDS = /* @__PURE__ */ new Set([
   "corporation",
   "ventures"
 ]);
-function stripFirm(s) {
-  return s.split(/\s*@\s*|\s+-\s+|\s+\bat\b\s+/i)[0].trim();
+function stripFirm(s2) {
+  return s2.split(/\s*@\s*|\s+-\s+|\s+\bat\b\s+/i)[0].trim();
 }
-function normalize(s) {
-  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+function normalize(s2) {
+  return s2.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
-function tokens(s) {
-  return normalize(s).split(" ").filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+function tokens(s2) {
+  return normalize(s2).split(" ").filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 }
 function partnerMatches(partnerName, candidate) {
   if (!partnerName || !candidate) return false;
@@ -1618,8 +1618,8 @@ var SIGNED_STAGE_SLUGS = /* @__PURE__ */ new Set([
   "terms-issued",
   "agreement-pending"
 ]);
-var toSlug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-var normalize2 = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
+var toSlug = (s2) => s2.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+var normalize2 = (s2) => s2.trim().toLowerCase().replace(/\s+/g, " ");
 var windowStart = (asOf, months) => {
   const d = new Date(asOf);
   return new Date(d.getFullYear(), d.getMonth() - months + 1, 1).getTime();
@@ -1862,7 +1862,7 @@ function normalizeMetricStageSlug(toStage, toStageId, pipelineId, targetStages) 
 }
 async function fetchClosedDealsAsSyntheticRows(sb, pipelineId, targetStages, startIso, endIso) {
   if (!pipelineId) return [];
-  const closedTargets = targetStages.filter((s) => CLOSED_STAGE_SLUGS.has(s));
+  const closedTargets = targetStages.filter((s2) => CLOSED_STAGE_SLUGS.has(s2));
   if (closedTargets.length === 0) return [];
   const { data, error } = await sb.from("deals").select("id, company, value, manager, stage, pipeline_id, status, mrr, closing_date").eq("pipeline_id", pipelineId).in("stage", closedTargets).gte("closing_date", startIso.slice(0, 10)).lte("closing_date", endIso.slice(0, 10)).order("closing_date", { ascending: true });
   if (error) {
@@ -1891,9 +1891,9 @@ async function fetchValueUpdatedEvents(sb, dealIds, sinceIso) {
     const oldV = Number(m.oldValue);
     const newV = Number(m.newValue);
     if (!Number.isFinite(oldV) || !Number.isFinite(newV)) continue;
-    const arr2 = map.get(row.deal_id) ?? [];
-    arr2.push({ ts: row.created_at, oldValue: oldV, newValue: newV });
-    map.set(row.deal_id, arr2);
+    const arr3 = map.get(row.deal_id) ?? [];
+    arr3.push({ ts: row.created_at, oldValue: oldV, newValue: newV });
+    map.set(row.deal_id, arr3);
   }
   return map;
 }
@@ -1974,7 +1974,7 @@ function computeStageEntryMetric(rows, targetStages, period, pipelineIds, option
   const windowEndMs = (/* @__PURE__ */ new Date(period.endDate + "T23:59:59.999Z")).getTime();
   const rwStart = rowWindow && !firstEverInWindow ? `${rowWindow.start}T00:00:00.000Z` : null;
   const rwEnd = rowWindow && !firstEverInWindow ? `${rowWindow.end}T23:59:59.999Z` : null;
-  const excludedOwners = new Set((options?.excludeDealOwners ?? []).map((s) => s.toLowerCase().trim()));
+  const excludedOwners = new Set((options?.excludeDealOwners ?? []).map((s2) => s2.toLowerCase().trim()));
   const excludedChangedBy = new Set(options?.excludeChangedByUserIds ?? []);
   const historyPipelines = options?.historyPipelineIds ? new Set(options.historyPipelineIds) : null;
   const seen = /* @__PURE__ */ new Map();
@@ -2039,15 +2039,15 @@ function computeStageEntryMetric(rows, targetStages, period, pipelineIds, option
   }
   return {
     count: deals.length,
-    dollarVolume: deals.reduce((s, d) => s + d.value, 0),
-    mrr: deals.reduce((s, d) => s + (d.mrr ?? 0), 0),
+    dollarVolume: deals.reduce((s2, d) => s2 + d.value, 0),
+    mrr: deals.reduce((s2, d) => s2 + (d.mrr ?? 0), 0),
     deals
   };
 }
 function rollingMonthsWindow(anchorEnd, monthCount) {
   const [y, m] = anchorEnd.split("-").map(Number);
-  const s = new Date(Date.UTC(y, m - 1 - (monthCount - 1), 1));
-  return { startDate: `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-01`, endDate: anchorEnd };
+  const s2 = new Date(Date.UTC(y, m - 1 - (monthCount - 1), 1));
+  return { startDate: `${s2.getUTCFullYear()}-${String(s2.getUTCMonth() + 1).padStart(2, "0")}-01`, endDate: anchorEnd };
 }
 function rollingAnchor(periodEnd, now = /* @__PURE__ */ new Date()) {
   const nowEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
@@ -2087,9 +2087,9 @@ async function fetchEligibleHourRows(sb, pipelineIds, start, end) {
   return rows.filter((r) => r.deal_id && eligible.has(r.deal_id)).map((r) => ({ week_start_date: String(r.week_start_date), hours: Number(r.hours) || 0 }));
 }
 function sumInWindow(rows, dateOf, amountOf, start, end) {
-  return rows.reduce((s, r) => {
+  return rows.reduce((s2, r) => {
     const d = dateOf(r);
-    return d >= start && d <= end ? s + amountOf(r) : s;
+    return d >= start && d <= end ? s2 + amountOf(r) : s2;
   }, 0);
 }
 
@@ -2421,7 +2421,7 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
     salesCalls: countByMonth(debtCalls.map((e) => e.start)),
     dealsOnBoard: lenMap(dob.byMonthKey),
     proposalsIssued: lenMap(prop.byMonthKey),
-    dollarsSigned: Object.fromEntries(Object.entries(signed.byMonthKey).map(([k, arr2]) => [k, mm(arr2.reduce((s, d) => s + d.value, 0))]))
+    dollarsSigned: Object.fromEntries(Object.entries(signed.byMonthKey).map(([k, arr3]) => [k, mm(arr3.reduce((s2, d) => s2 + d.value, 0))]))
   };
   const modelRows = ROW_ORDER.map((row) => {
     const months = p.months.map((ym) => {
@@ -2434,8 +2434,8 @@ async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
       return { month: ym, forecast: forecast2, actual: actual2, variance: actual2 == null ? null : actual2 - forecast2 };
     });
     const tracked = !!live[row.key];
-    const forecast = months.reduce((s, r) => s + r.forecast, 0);
-    const actual = tracked ? months.reduce((s, r) => s + (r.actual ?? 0), 0) : null;
+    const forecast = months.reduce((s2, r) => s2 + r.forecast, 0);
+    const actual = tracked ? months.reduce((s2, r) => s2 + (r.actual ?? 0), 0) : null;
     return {
       row_key: row.key,
       row_label: row.label,
@@ -2492,12 +2492,12 @@ async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
       for (const c of data ?? []) contactNames.set(c.id, c.full_name || c.email || c.id);
     }
   }
-  const tiered = new Set(classification.classified.filter((s) => s.stage !== "Nurturing").map((s) => normalizeEntityName(s.name || "")));
-  const newSources = (newSourcesRes.data ?? []).filter((s) => {
-    const n2 = normalizeEntityName(s.name || s.contact_name || "");
+  const tiered = new Set(classification.classified.filter((s2) => s2.stage !== "Nurturing").map((s2) => normalizeEntityName(s2.name || "")));
+  const newSources = (newSourcesRes.data ?? []).filter((s2) => {
+    const n2 = normalizeEntityName(s2.name || s2.contact_name || "");
     return !!n2 && !tiered.has(n2);
   });
-  const totalValue = onBoard.reduce((s, d) => s + (Number(d.value) || 0), 0);
+  const totalValue = onBoard.reduce((s2, d) => s2 + (Number(d.value) || 0), 0);
   const anchor = ttmAnchorFromTimeframeEnd(p.end);
   const w = ttmWindow(anchor);
   const ttmDeals = pipelineIds.length ? await fetchTtmActiveDeals(sb, companyId, pipelineIds, w.since.toISOString(), w.until.toISOString()) : [];
@@ -2529,7 +2529,7 @@ async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
       unit: "count",
       subtitle: "added in selected timeframe",
       definition: `referral_sources rows for the company with created_at in the period, keeping only sources still in the Nurturing stage (names already at Tier 3/2/1 are excluded). "Added" = referral_sources.created_at. ${TZ2}`,
-      ...page(newSources.map((s) => ({ id: s.id, name: s.name || s.contact_name, company: s.company, added_at: s.created_at })), inc, off, lim)
+      ...page(newSources.map((s2) => ({ id: s2.id, name: s2.name || s2.contact_name, company: s2.company, added_at: s2.created_at })), inc, off, lim)
     },
     {
       tile_key: "deals_and_dollars_on_board",
@@ -2735,7 +2735,7 @@ var list_calendar_meetings_default = defineTool4({
     }
     const needle = title_contains?.toLowerCase();
     const rows = (data?.events ?? []).map((e) => {
-      const attendees = (e.attendees ?? []).map((a) => typeof a === "string" ? a : a?.email ?? "").filter(Boolean).map((s) => s.toLowerCase());
+      const attendees = (e.attendees ?? []).map((a) => typeof a === "string" ? a : a?.email ?? "").filter(Boolean).map((s2) => s2.toLowerCase());
       return {
         id: String(e.id),
         title: e.title ?? null,
@@ -2791,7 +2791,7 @@ var list_pipelines_default = defineTool5({
         name: p.name ?? null,
         is_default: p.is_default ?? false,
         company_id: p.company_id ?? null,
-        stages: stages.map((s) => ({ id: s?.id ?? null, label: s?.label ?? s?.id ?? null })),
+        stages: stages.map((s2) => ({ id: s2?.id ?? null, label: s2?.label ?? s2?.id ?? null })),
         deal_count: null,
         active_deal_count: null,
         on_hold_deal_count: null,
@@ -2814,8 +2814,8 @@ var list_pipelines_default = defineTool5({
       const kept = rows.filter((r) => !isExcludedDealName(r.company));
       excludedTestDeals = rows.length - kept.length;
       const isClosed = (r) => {
-        const s = `${r.status ?? ""} ${r.stage ?? ""}`.toLowerCase();
-        return s.includes("closed") || s.includes("lost") || s.includes("dead");
+        const s2 = `${r.status ?? ""} ${r.stage ?? ""}`.toLowerCase();
+        return s2.includes("closed") || s2.includes("lost") || s2.includes("dead");
       };
       const bucket2 = (subset) => ({
         deal_count: subset.length,
@@ -2830,7 +2830,7 @@ var list_pipelines_default = defineTool5({
         p.active_deal_count = b.active_deal_count;
         p.on_hold_deal_count = b.on_hold_deal_count;
         p.closed_deal_count = b.closed_deal_count;
-        const labels = new Map(p.stages.map((s) => [s.id ?? "", s.label ?? s.id ?? ""]));
+        const labels = new Map(p.stages.map((s2) => [s2.id ?? "", s2.label ?? s2.id ?? ""]));
         const counts = /* @__PURE__ */ new Map();
         for (const r of subset) {
           const key = r.stage ?? "unknown";
@@ -3056,7 +3056,7 @@ import { z as z7 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/statusNotes.ts
 var EMPTY = /* @__PURE__ */ new Set(["", "<p></p>", "<p><br></p>"]);
-var isEmpty = (s) => EMPTY.has(String(s ?? "").trim());
+var isEmpty = (s2) => EMPTY.has(String(s2 ?? "").trim());
 function toHtml(note) {
   if (/<\/?(p|ul|ol|li|br|strong|em)\b/i.test(note)) return note;
   const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -3906,7 +3906,7 @@ var CHILD_TABLES3 = [
 var get_lender_default = defineTool23({
   name: "get_lender",
   title: "Get funding source / lender detail",
-  description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
+  description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Also returns `contact_ids` (lender_contacts row ids) and `attachment_ids` (lender_attachments row ids). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
   inputSchema: {
     lender_id: z21.string().uuid().optional(),
     name: z21.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
@@ -3975,6 +3975,9 @@ var get_lender_default = defineTool23({
         })
       );
       payload.related = related;
+      const ids = (v) => Array.isArray(v) ? v.map((r) => r.id) : [];
+      payload.contact_ids = ids(related.contacts);
+      payload.attachment_ids = ids(related.attachments);
     }
     return textResult(payload, { lender_id: id, name: String(lender.name ?? "") });
   }
@@ -4119,6 +4122,352 @@ async function validateLenderPatch(sb, patch) {
   return null;
 }
 
+// src/constants/loanTypes.ts
+var LOAN_TYPE_OPTIONS = [
+  "ABL",
+  "AR",
+  "Bridge Financing",
+  "CAPEX",
+  "Convertible Note",
+  "Factoring",
+  "Inventory",
+  "MCA",
+  "PO",
+  "Revenue-Based Financing",
+  "SBA Loan",
+  "Sale Leaseback",
+  "Sub Debt",
+  "Term Loan"
+];
+
+// src/constants/industries.ts
+var INDUSTRY_OPTIONS = [
+  "Agnostic",
+  "Consumer Goods",
+  "Clothing & Apparel",
+  "Food & Beverage",
+  "Ecommerce",
+  "Professional Services",
+  "Tech-Enabled Services & MSPs",
+  "Technology",
+  "SaaS",
+  "Hardware",
+  "Telecommunications",
+  "Media & Entertainment",
+  "Casinos & Gaming",
+  "Hospitality (Hotels, Restaurants, etc.)",
+  "Financial Services",
+  "Real Estate",
+  "Construction",
+  "Manufacturing & Industrial",
+  "Automotive",
+  "Aerospace",
+  "Transportation",
+  "Energy",
+  "Oil & Gas",
+  "Mining",
+  "Healthcare",
+  "Biotech & Life Science",
+  "Medical Device",
+  "Education"
+];
+
+// src/constants/geoOptions.ts
+var GEO_OPTIONS = [
+  "Agnostic",
+  "United States",
+  "Canada",
+  "North America",
+  "Americas",
+  "Europe",
+  "UK",
+  "Asia",
+  "Middle East",
+  "Africa",
+  "Oceania",
+  "Australia",
+  "South America",
+  "Central America",
+  "Global",
+  // US Regions
+  "Northeast",
+  "Southeast",
+  "Midwest",
+  "Southwest",
+  "West Coast",
+  // US States (most common)
+  "California",
+  "New York",
+  "Texas",
+  "Florida",
+  "Illinois",
+  "Colorado",
+  "Georgia",
+  "Massachusetts",
+  "Pennsylvania",
+  "Ohio",
+  "Virginia",
+  "Washington",
+  "Arizona",
+  "Tennessee",
+  "Alabama",
+  "Arkansas",
+  "Delaware",
+  "District of Columbia",
+  "Louisiana",
+  "New Mexico",
+  "Utah"
+];
+
+// src/lib/mcp/lenderAttachments.ts
+var LENDER_ATTACHMENT_BUCKET = "lender-attachments";
+var LENDER_ATTACHMENT_CATEGORIES = [
+  "general",
+  "nda",
+  "marketing_materials",
+  "contracts",
+  "presentations",
+  "due_diligence",
+  "term_sheets",
+  "correspondence",
+  "referral_agreement",
+  "other"
+];
+var MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+var MIME = {
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  md: "text/markdown",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg"
+};
+function guessContentType(fileName) {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MIME[ext] ?? "application/octet-stream";
+}
+function decodeBase64(b64) {
+  const clean = b64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
+  const bin = atob(clean);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// src/lib/mcp/fieldOptions.ts
+var DEFAULT_LENDER_TYPES = ["Bank", "Family Office", "Private Credit", "Revenue-Based", "Asset-Based", "SBA", "Buyer"];
+var APPETITE_STATUSES = ["active", "paused", "unknown"];
+var LENDER_TIERS = ["T1", "T2", "T3"];
+var LIFECYCLE_STAGES = ["subscriber", "lead", "mql", "sql", "opportunity", "customer", "evangelist", "other"];
+var CONTACT_STATUSES = ["active", "inactive", "went_dark", "do_not_contact"];
+var CHANNEL_PARTNER_STAGES = ["prospect", "nurturing", "trial", "engaged"];
+var FIELD_OPTION_KEYS = [
+  "master_lenders.lender_type",
+  "master_lenders.loan_types",
+  "master_lenders.industries",
+  "master_lenders.industries_to_avoid",
+  "master_lenders.geographies",
+  "master_lenders.geographies_excluded",
+  "master_lenders.cash_burn",
+  "master_lenders.sponsorship",
+  "master_lenders.refinancing",
+  "master_lenders.sub_debt",
+  "master_lenders.appetite_status",
+  "master_lenders.tier",
+  "contacts.contact_type",
+  "contacts.lifecycle_stage",
+  "contacts.status",
+  "lender_attachments.category",
+  "channel_partners.stage",
+  "deals.stage"
+];
+var VALIDATED_LENDER_FIELDS = {
+  lender_type: { key: "master_lenders.lender_type", array: false, csv: true },
+  loan_types: { key: "master_lenders.loan_types", array: true },
+  industries: { key: "master_lenders.industries", array: true },
+  industries_to_avoid: { key: "master_lenders.industries_to_avoid", array: true },
+  geographies: { key: "master_lenders.geographies", array: true },
+  geographies_excluded: { key: "master_lenders.geographies_excluded", array: true },
+  cash_burn: { key: "master_lenders.cash_burn", array: false },
+  sponsorship: { key: "master_lenders.sponsorship", array: false },
+  refinancing: { key: "master_lenders.refinancing", array: false },
+  sub_debt: { key: "master_lenders.sub_debt", array: false },
+  appetite_status: { key: "master_lenders.appetite_status", array: false },
+  tier: { key: "master_lenders.tier", array: false }
+};
+var LENDER_ARRAY_MODE_FIELDS = ["loan_types", "industries", "industries_to_avoid", "geographies", "tags"];
+var DISTINCT_FROM_DATA = {
+  "master_lenders.cash_burn": "cash_burn",
+  "master_lenders.sponsorship": "sponsorship",
+  "master_lenders.refinancing": "refinancing",
+  "master_lenders.sub_debt": "sub_debt",
+  "master_lenders.lender_type": "lender_type"
+};
+function uniq(values) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const v of values) {
+    const t = String(v ?? "").trim();
+    if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+  }
+  return [...seen.values()];
+}
+async function distinctLenderValues(sb, column, csv) {
+  const out = [];
+  for (let from = 0; from < 2e4; from += 1e3) {
+    const { data, error } = await sb.from("master_lenders").select(column).not(column, "is", null).range(from, from + 999);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    for (const r of rows) {
+      const raw = r[column];
+      if (typeof raw !== "string") continue;
+      for (const part of csv ? raw.split(",") : [raw]) if (part.trim() && !part.includes("@")) out.push(part.trim());
+    }
+    if (rows.length < 1e3) break;
+  }
+  return uniq(out).sort((a, b) => a.localeCompare(b));
+}
+async function loadFieldOptions(sb, key, companyId) {
+  switch (key) {
+    case "master_lenders.loan_types":
+      return { key, values: [...LOAN_TYPE_OPTIONS], source: "Canonical loan type list used by the funding-source forms and filters." };
+    case "master_lenders.industries":
+    case "master_lenders.industries_to_avoid":
+      return { key, values: [...INDUSTRY_OPTIONS], source: "The 28 canonical industry tags." };
+    case "master_lenders.geographies":
+    case "master_lenders.geographies_excluded":
+      return { key, values: [...GEO_OPTIONS], source: "Canonical geography list used by the funding-source forms." };
+    case "master_lenders.appetite_status":
+      return { key, values: [...APPETITE_STATUSES], source: "Appetite dropdown on the funding-source page." };
+    case "master_lenders.tier":
+      return { key, values: [...LENDER_TIERS], source: "Tier dropdown (T1-T3); null clears." };
+    case "master_lenders.lender_type": {
+      const existing = await distinctLenderValues(sb, "lender_type", true);
+      return { key, values: uniq([...DEFAULT_LENDER_TYPES, ...existing]), source: "Default funding-source types plus types already stored (comma-separated multi-type values are split)." };
+    }
+    case "contacts.lifecycle_stage":
+      return { key, values: [...LIFECYCLE_STAGES], source: "Contact lifecycle stage dropdown." };
+    case "contacts.status":
+      return { key, values: [...CONTACT_STATUSES], source: "Contact status dropdown." };
+    case "contacts.contact_type": {
+      let q = sb.from("contact_types").select("name").eq("is_active", true).order("sort_order").order("name");
+      if (companyId) q = q.eq("company_id", companyId);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return { key, values: uniq((data ?? []).map((r) => r.name)), source: "Workspace contact types (multiple types are stored joined with ' ; ')." };
+    }
+    case "lender_attachments.category":
+      return { key, values: [...LENDER_ATTACHMENT_CATEGORIES], source: "Attachment categories." };
+    case "channel_partners.stage":
+      return { key, values: [...CHANNEL_PARTNER_STAGES], source: "Channel Partner pipeline stages (Prospect, Nurturing, Trial, Engaged)." };
+    case "deals.stage": {
+      const { data, error } = await sb.from("deal_pipelines").select("id, name, is_default, stages").order("name");
+      if (error) throw new Error(error.message);
+      const labels = {};
+      const values = [];
+      for (const p of data ?? []) {
+        const stages = Array.isArray(p.stages) ? p.stages : [];
+        for (const s2 of stages) {
+          const id = String(s2.id ?? s2.key ?? "");
+          if (!id) continue;
+          values.push(`${p.id}:${id}`);
+          labels[`${p.id}:${id}`] = `${p.name} \u2192 ${String(s2.label ?? s2.name ?? id)}`;
+        }
+      }
+      return { key, values, labels, source: "Stages per pipeline as pipeline_id:stage_id (stage IDs are resolved within their pipeline)." };
+    }
+    default: {
+      const column = DISTINCT_FROM_DATA[key];
+      if (!column) throw new Error(`Unsupported field ${key}`);
+      return { key, values: await distinctLenderValues(sb, column, false), source: "Values already used in the directory \u2014 the same list the funding-source dropdowns offer." };
+    }
+  }
+}
+function editDistance(a, b) {
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  const row = Array.from({ length: y.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= x.length; i++) {
+    let prev = row[0];
+    row[0] = i;
+    for (let j = 1; j <= y.length; j++) {
+      const tmp = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (x[i - 1] === y[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return row[y.length];
+}
+function closestMatches(value, options, n2 = 3) {
+  const v = value.trim().toLowerCase();
+  return [...options].map((o) => ({ o, d: o.toLowerCase().includes(v) || v.includes(o.toLowerCase()) ? 0.5 : editDistance(v, o) })).sort((a, b) => a.d - b.d).slice(0, n2).map((r) => r.o);
+}
+function validateOptionValues(field, value, options, spec) {
+  if (value === null || value === void 0) return { value };
+  const canon = new Map(options.map((o) => [o.toLowerCase(), o]));
+  const parts = spec.array ? value : spec.csv ? String(value).split(",") : [String(value)];
+  const fixed = [];
+  const invalid = [];
+  for (const raw of parts) {
+    const t = raw.trim();
+    if (!t) continue;
+    const hit = canon.get(t.toLowerCase());
+    if (hit) fixed.push(hit);
+    else invalid.push(t);
+  }
+  if (invalid.length) {
+    return { value, error: { field, invalid, suggestions: Object.fromEntries(invalid.map((v) => [v, closestMatches(v, options)])) } };
+  }
+  return { value: spec.array ? fixed : spec.csv ? fixed.join(",") : fixed[0] ?? null };
+}
+function applyArrayMode(current, mode, values) {
+  const base = Array.isArray(current) ? current.filter((v) => typeof v === "string") : [];
+  if (mode === "add") {
+    const have = new Set(base.map((v) => v.toLowerCase()));
+    const out = [...base];
+    for (const v of values) if (!have.has(v.toLowerCase())) {
+      out.push(v);
+      have.add(v.toLowerCase());
+    }
+    return out;
+  }
+  const drop = new Set(values.map((v) => v.toLowerCase()));
+  return base.filter((v) => !drop.has(v.toLowerCase()));
+}
+
+// src/lib/mcp/lenderOptionValidation.ts
+async function validateLenderOptions(sb, patch, allowNew) {
+  if (allowNew) return null;
+  const cache = /* @__PURE__ */ new Map();
+  const errors = [];
+  for (const [field, spec] of Object.entries(VALIDATED_LENDER_FIELDS)) {
+    if (!(field in patch) || patch[field] === null) continue;
+    if (!cache.has(spec.key)) cache.set(spec.key, (await loadFieldOptions(sb, spec.key)).values);
+    const res = validateOptionValues(field, patch[field], cache.get(spec.key), spec);
+    if (res.error) errors.push(res.error);
+    else patch[field] = res.value;
+  }
+  return errors.length ? { error: "invalid_option_values", message: "Some values are not in the app's option lists. Use a suggested value, check list_field_options, or pass allow_new_options: true to save them anyway.", fields: errors } : null;
+}
+async function resolveArrayModes(sb, lenderId, patch, mode) {
+  if (mode === "replace") return { updatedAt: null };
+  const fields = LENDER_ARRAY_MODE_FIELDS.filter((f) => Array.isArray(patch[f]));
+  const others = Object.keys(patch).filter((k) => Array.isArray(patch[k]) && !LENDER_ARRAY_MODE_FIELDS.includes(k));
+  if (others.length) throw new Error(`array_mode add/remove only applies to ${LENDER_ARRAY_MODE_FIELDS.join(", ")}; remove ${others.join(", ")} or send them in a separate replace call.`);
+  if (!fields.length) throw new Error(`array_mode ${mode} needs at least one of ${LENDER_ARRAY_MODE_FIELDS.join(", ")}.`);
+  const { data, error } = await sb.from("master_lenders").select(["id", "updated_at", ...fields].join(", ")).eq("id", lenderId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Funding source not found (or not visible to this user).");
+  const cur = data;
+  for (const f of fields) patch[f] = applyArrayMode(cur[f], mode, patch[f]);
+  return { updatedAt: cur.updated_at };
+}
+
 // src/lib/mcp/tools/update-lender.ts
 var lenderUpdateItem = z23.object({
   lender_id: z23.string().uuid().optional(),
@@ -4128,27 +4477,29 @@ var lenderUpdateItem = z23.object({
   mode: z23.enum(["replace", "append", "prepend"]).optional(),
   expected_updated_at: z23.string().datetime({ offset: true }).optional(),
   dry_run: z23.boolean().optional(),
+  array_mode: z23.enum(["replace", "add", "remove"]).optional().describe("For loan_types, industries, industries_to_avoid, geographies and tags: replace (default) sets the whole list; add appends missing values; remove drops the given values."),
+  allow_new_options: z23.boolean().optional().describe("Save values that are not in the app's option lists (see list_field_options)."),
   source: z23.string().max(1e3).optional(),
   change_reason: z23.string().max(2e3).optional()
 }).strict();
 var update_lender_default = defineTool24({
   name: "update_lender",
   title: "Update funding source / lender",
-  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
+  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. array_mode add/remove edits list fields without resending the whole list (checked against the current row for concurrency). Option-backed fields (lender_type, loan_types, industries, industries_to_avoid, geographies, geographies_excluded, cash_burn, sponsorship, refinancing, sub_debt, appetite_status, tier) are validated against list_field_options; unknown values are rejected with closest matches unless allow_new_options: true. FLEx columns are inert metadata; FLEx stays disconnected.",
   inputSchema: { ...lenderUpdateItem.shape, updates: z23.array(lenderUpdateItem).min(1).max(25).optional() },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const { updates, ...single } = input;
-    if (updates && Object.keys(single).some((k) => !["dry_run", "source", "change_reason", "mode"].includes(k))) {
-      return errorResult("Provide either updates or a single lender edit. Only mode, dry_run, source and change_reason may be batch defaults.");
+    if (updates && Object.keys(single).some((k) => !["dry_run", "source", "change_reason", "mode", "array_mode", "allow_new_options"].includes(k))) {
+      return errorResult("Provide either updates or a single lender edit. Only mode, array_mode, allow_new_options, dry_run, source and change_reason may be batch defaults.");
     }
     const sb = supabaseForUser(ctx);
     const results = [];
     for (const value of updates ?? [single]) {
-      const item = { mode: input.mode, dry_run: input.dry_run, source: input.source, change_reason: input.change_reason, ...value };
-      const { lender_id, name_lookup, mode, expected_updated_at, dry_run, source, change_reason, ...fields } = item;
+      const item2 = { mode: input.mode, array_mode: input.array_mode, allow_new_options: input.allow_new_options, dry_run: input.dry_run, source: input.source, change_reason: input.change_reason, ...value };
+      const { lender_id, name_lookup, mode, array_mode, allow_new_options, expected_updated_at, dry_run, source, change_reason, ...fields } = item2;
       try {
         const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
         if (!Object.keys(patch).length) throw new Error("No fields to update.");
@@ -4160,11 +4511,20 @@ var update_lender_default = defineTool24({
           results.push({ lender_id: lender_id ?? null, success: false, error: resolved.error.content });
           continue;
         }
+        const toValidate = array_mode === "remove" ? Object.fromEntries(Object.entries(patch).filter(([k]) => !LENDER_ARRAY_MODE_FIELDS.includes(k))) : patch;
+        const optionErr = await validateLenderOptions(sb, toValidate, allow_new_options ?? false);
+        if (toValidate !== patch) Object.assign(patch, toValidate);
+        if (optionErr) {
+          if (!updates) return { ...textResult(optionErr), isError: true };
+          results.push({ lender_id: resolved.id, success: false, ...optionErr });
+          continue;
+        }
+        const arr3 = await resolveArrayModes(sb, resolved.id, patch, array_mode ?? "replace");
         const { data, error } = await sb.rpc("mcp_update_lender", {
           p_lender_id: resolved.id,
           p_patch: patch,
           p_mode: mode ?? "replace",
-          p_expected_updated_at: expected_updated_at ?? null,
+          p_expected_updated_at: expected_updated_at ?? arr3.updatedAt ?? null,
           p_dry_run: dry_run ?? false,
           p_source: source ?? null,
           p_change_reason: change_reason ?? null
@@ -4286,7 +4646,7 @@ var writeProvenance = {
   source: z25.string().max(1e3).optional(),
   change_reason: z25.string().max(2e3).optional()
 };
-async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, confirm, source, reason) {
+async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, confirm, source, reason, relinkCrmContact) {
   const { data, error } = await sb.rpc("mcp_write_lender_related", {
     p_table: table,
     p_action: action,
@@ -4295,7 +4655,8 @@ async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, 
     p_patch: Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== void 0)),
     p_confirm: confirm ?? false,
     p_source: source ?? null,
-    p_change_reason: reason ?? null
+    p_change_reason: reason ?? null,
+    p_relink_crm_contact: relinkCrmContact ?? false
   });
   if (error) return errorResult(`${table} ${action}: ${error.message}`);
   return textResult(data);
@@ -4322,11 +4683,38 @@ function defineLenderRelatedTool(table, action, name) {
   });
 }
 
+// src/lib/mcp/lenderContactMatch.ts
+function normalizePersonName(name) {
+  return String(name ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\b(mr|mrs|ms|dr|jr|sr|ii|iii)\b\.?/g, " ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+function findExistingLenderContact(rows, input) {
+  const email = input.email?.trim().toLowerCase();
+  if (email) {
+    const byEmail = rows.find((r) => r.email?.trim().toLowerCase() === email);
+    if (byEmail) return byEmail;
+  }
+  const name = normalizePersonName(input.name);
+  if (name) {
+    const byName = rows.find((r) => normalizePersonName(r.name) === name);
+    if (byName && !(email && byName.email && byName.email.trim().toLowerCase() !== email)) return byName;
+  }
+  return null;
+}
+function parseCrmLinkConflict(message) {
+  const i = message.indexOf("crm_contact_company_conflict:");
+  if (i < 0) return null;
+  try {
+    return JSON.parse(message.slice(i + "crm_contact_company_conflict:".length));
+  } catch {
+    return null;
+  }
+}
+
 // src/lib/mcp/tools/upsert-lender-contact.ts
 var upsert_lender_contact_default = defineTool26({
   name: "upsert_lender_contact",
   title: "Add or update a funding source contact",
-  description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
+  description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. Without contact_id, an existing contact on the lender with the same email (case-insensitive) or same normalized name is updated instead of duplicated (matched_existing: true); pass force_create: true to always create. Name, title, phone, location and notes edits never depend on the CRM link; the CRM company check only applies when crm_contact_id is set or changed \u2014 on conflict the error lists the contact, its company and the lender company, and relink_crm_contact_to_lender_company: true fixes the link in the same call. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
   inputSchema: {
     lender_id: z26.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
     contact_id: z26.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
@@ -4341,13 +4729,17 @@ var upsert_lender_contact_default = defineTool26({
     notes: z26.string().max(1e4).nullable().optional(),
     is_primary: z26.boolean().optional(),
     crm_contact_id: z26.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
+    force_create: z26.boolean().default(false).describe("Create a new row even if a matching email/name already exists on this lender."),
+    relink_crm_contact_to_lender_company: z26.boolean().default(false).describe("When crm_contact_id belongs to a different CRM company than the lender, move that CRM contact to the lender's company in the same transaction."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { lender_id, contact_id, crm_contact_id, source, change_reason, ...rest } = input;
+    const { lender_id, crm_contact_id, source, change_reason, force_create, relink_crm_contact_to_lender_company, ...rest } = input;
+    let contact_id = rest.contact_id;
+    delete rest.contact_id;
     const patch = {};
     for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
     if (crm_contact_id !== void 0) patch.contact_id = crm_contact_id;
@@ -4355,6 +4747,16 @@ var upsert_lender_contact_default = defineTool26({
     const { data: lender, error: lenderErr } = await sb.from("master_lenders").select("id, name").eq("id", lender_id).maybeSingle();
     if (lenderErr) return errorResult(lenderErr.message);
     if (!lender) return errorResult("Funding source not found (or not visible to this user).");
+    let matched_existing = false;
+    if (!contact_id && !force_create) {
+      const { data: rows, error: rowsErr } = await sb.from("lender_contacts").select("*").eq("lender_id", lender_id).limit(500);
+      if (rowsErr) return errorResult(rowsErr.message);
+      const hit = findExistingLenderContact(rows ?? [], { name: patch.name, email: patch.email });
+      if (hit) {
+        contact_id = hit.id;
+        matched_existing = true;
+      }
+    }
     let before = null;
     if (contact_id) {
       const { data, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).eq("lender_id", lender_id).maybeSingle();
@@ -4364,12 +4766,16 @@ var upsert_lender_contact_default = defineTool26({
     } else if (!patch.name) {
       return errorResult("A `name` is required when creating a new contact.");
     }
-    const result = await writeLenderRelated(sb, "lender_contacts", contact_id ? "update" : "create", lender_id, contact_id, patch, false, source, change_reason);
-    if ("isError" in result) return result;
+    const result = await writeLenderRelated(sb, "lender_contacts", contact_id ? "update" : "create", lender_id, contact_id, patch, false, source, change_reason, relink_crm_contact_to_lender_company);
+    if ("isError" in result) {
+      const conflict = parseCrmLinkConflict(result.content[0].text);
+      if (conflict) return { ...textResult({ error: "crm_contact_company_conflict", message: "The CRM contact belongs to a different CRM company than this funding source. Nothing was written.", ...conflict }), isError: true };
+      return result;
+    }
     const payload = JSON.parse(result.content[0].text);
     const row = payload.record;
     const fields = Object.keys(patch).filter((k) => JSON.stringify(before?.[k]) !== JSON.stringify(row?.[k]));
-    return textResult({ contact: row, changed_fields: fields, created: !contact_id, demoted_primary_contact_ids: payload.demoted_primary_contact_ids }, { lender_id, contact_id: row.id, created: !contact_id });
+    return textResult({ contact: row, changed_fields: fields, created: !contact_id, matched_existing, demoted_primary_contact_ids: payload.demoted_primary_contact_ids }, { lender_id, contact_id: row.id, created: !contact_id, matched_existing });
   }
 });
 
@@ -4379,23 +4785,26 @@ import { z as z27 } from "npm:zod@^3.23.0";
 var create_lender_default = defineTool27({
   name: "create_lender",
   title: "Create funding source / lender",
-  description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
+  description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Option-backed fields are validated against list_field_options (unknown values rejected with closest matches unless allow_new_options: true). Contacts go in `upsert_lender_contact` afterwards.",
   inputSchema: {
     name: z27.string().trim().min(1).max(200).describe("Name of the new funding source."),
     ...LENDER_FIELD_SCHEMA,
+    allow_new_options: z27.boolean().default(false).describe("Save option-backed values that are not in the app's option lists (see list_field_options)."),
     ...writeProvenance
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { name, source, change_reason, ...rest } = input;
+    const { name, source, change_reason, allow_new_options, ...rest } = input;
     const cleanName = name.trim();
     const fields = {};
     for (const [k, v] of Object.entries(rest)) if (v !== void 0) fields[k] = v;
     const sb = supabaseForUser(ctx);
     const invalid = await validateLenderPatch(sb, fields);
     if (invalid) return errorResult(invalid);
+    const optionErr = await validateLenderOptions(sb, fields, allow_new_options ?? false);
+    if (optionErr) return { ...textResult(optionErr), isError: true };
     const escaped = cleanName.replace(/[\\%_]/g, (c) => `\\${c}`);
     const { data: similar, error: dupErr } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${escaped}%`).limit(50);
     if (dupErr) return errorResult(dupErr.message);
@@ -4458,50 +4867,6 @@ var delete_lender_contact_default = defineTool28({
 // src/lib/mcp/tools/add-lender-attachment.ts
 import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z29 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/lenderAttachments.ts
-var LENDER_ATTACHMENT_BUCKET = "lender-attachments";
-var LENDER_ATTACHMENT_CATEGORIES = [
-  "general",
-  "nda",
-  "marketing_materials",
-  "contracts",
-  "presentations",
-  "due_diligence",
-  "term_sheets",
-  "correspondence",
-  "referral_agreement",
-  "other"
-];
-var MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-var MIME = {
-  pdf: "application/pdf",
-  txt: "text/plain",
-  csv: "text/csv",
-  md: "text/markdown",
-  doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  xls: "application/vnd.ms-excel",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg"
-};
-function guessContentType(fileName) {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  return MIME[ext] ?? "application/octet-stream";
-}
-function decodeBase64(b64) {
-  const clean = b64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
-  const bin = atob(clean);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-// src/lib/mcp/tools/add-lender-attachment.ts
 var add_lender_attachment_default = defineTool29({
   name: "add_lender_attachment",
   title: "Attach a document to a funding source",
@@ -4751,14 +5116,14 @@ ${next}` : `${next}
 
 ${old}`;
 }
-function buildUpdates(row, item) {
+function buildUpdates(row, item2) {
   const updates = {};
-  if (item.notes !== void 0) {
-    const notes = combineNotes(row.notes, item.notes, item.mode ?? "replace");
+  if (item2.notes !== void 0) {
+    const notes = combineNotes(row.notes, item2.notes, item2.mode ?? "replace");
     if (notes !== null && notes.length > 1e4) throw new Error("Resulting notes exceed 10,000 characters.");
     updates.notes = notes;
   }
-  for (const key of EDITABLE) if (item[key] !== void 0) updates[key] = item[key];
+  for (const key of EDITABLE) if (item2[key] !== void 0) updates[key] = item2[key];
   return updates;
 }
 var update_deal_lender_default = defineTool33({
@@ -4787,18 +5152,18 @@ var update_deal_lender_default = defineTool33({
       return errorResult(dealError?.message ?? "Deal not found, inaccessible, or missing company scope.");
     }
     const results = [];
-    for (const item of items) {
-      const target = item.deal_lender_id ?? item.lender_id ?? null;
+    for (const item2 of items) {
+      const target = item2.deal_lender_id ?? item2.lender_id ?? null;
       try {
-        if (Boolean(item.lender_id) === Boolean(item.deal_lender_id)) {
+        if (Boolean(item2.lender_id) === Boolean(item2.deal_lender_id)) {
           throw new Error("Provide exactly one of lender_id or deal_lender_id.");
         }
         let q = sb.from("deal_lenders").select("*").eq("deal_id", deal_id);
-        q = item.deal_lender_id ? q.eq("id", item.deal_lender_id) : q.eq("master_lender_id", item.lender_id);
+        q = item2.deal_lender_id ? q.eq("id", item2.deal_lender_id) : q.eq("master_lender_id", item2.lender_id);
         const { data: row, error: lookupError } = await q.maybeSingle();
         if (lookupError) throw new Error(lookupError.message);
         if (!row) throw new Error("This funding source is not on the deal (or is inaccessible). No row was created.");
-        const changes = buildUpdates(row, item);
+        const changes = buildUpdates(row, item2);
         if (Object.keys(changes).length === 0) throw new Error("No editable fields were provided.");
         const warnings = [];
         if ("notes" in changes && row.notes && String(row.notes).trim() && changes.notes !== row.notes) {
@@ -4880,11 +5245,11 @@ import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z35 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealNoteEntry.ts
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(s2) {
+  return s2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function inline(s) {
-  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+function inline(s2) {
+  return escapeHtml(s2).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }
 function entryToHtml(entry, format) {
   const trimmed = entry.trim();
@@ -5579,7 +5944,7 @@ var get_pipeline_metrics_default = defineTool49({
     const pipeMap = new Map((pipelineRows ?? []).map((p) => [p.id, p]));
     const labelFor = (pid, stageId) => {
       const stages = pid && pipeMap.get(pid)?.stages || [];
-      const match = Array.isArray(stages) ? stages.find((s) => s?.id === stageId) : void 0;
+      const match = Array.isArray(stages) ? stages.find((s2) => s2?.id === stageId) : void 0;
       return match?.label ?? stageId;
     };
     const byPipeline = groupAggregate(deals, (d) => d.pipeline_id ?? "none", value).map((entry) => {
@@ -5591,11 +5956,11 @@ var get_pipeline_metrics_default = defineTool49({
         is_default: pid ? pipeMap.get(pid)?.is_default ?? false : false,
         count: entry.count,
         total_value: entry.total_value,
-        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s) => ({
-          stage_id: s.key,
-          stage_label: labelFor(pid, s.key),
-          count: s.count,
-          total_value: s.total_value
+        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s2) => ({
+          stage_id: s2.key,
+          stage_label: labelFor(pid, s2.key),
+          count: s2.count,
+          total_value: s2.total_value
         }))
       };
     });
@@ -5696,7 +6061,7 @@ var get_funnel_velocity_default = defineTool50({
           deals_reaching_to: toCount,
           conversion_rate: fromCount ? toCount / fromCount : null,
           median_days: median,
-          avg_days: durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : null
+          avg_days: durations.length ? durations.reduce((s2, d) => s2 + d, 0) / durations.length : null
         });
       }
       const payload = { pipeline_id, stage_path, basis: "first entry per stage from deal_stage_history", steps };
@@ -5753,7 +6118,7 @@ var PNL_REVENUE_REALM_IDS = [
 function withPnlRevenue(invoices, snapshots) {
   const pnlRealms = new Set(PNL_REVENUE_REALM_IDS);
   const out = invoices.filter((r) => !r.realm_id || !pnlRealms.has(r.realm_id));
-  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id && pnlRealms.has(s.realm_id)));
+  const best = pickMonthlySnapshots(snapshots.filter((s2) => s2.realm_id && pnlRealms.has(s2.realm_id)));
   for (const key of Object.keys(best)) {
     const [realm, month] = key.split("::");
     out.push({ realm_id: realm, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
@@ -5871,7 +6236,7 @@ var get_lender_metrics_default = defineTool52({
       }
     }
     const lenders = rows.filter((r) => !excluded.has(r.deal_id));
-    const quote = (r) => Number(r.quote_amount) || 0;
+    const quote2 = (r) => Number(r.quote_amount) || 0;
     const submitted = lenders.filter((l) => l.submitted_at).length;
     const approved = lenders.filter((l) => l.approved_at).length;
     const payload = {
@@ -5881,16 +6246,16 @@ var get_lender_metrics_default = defineTool52({
         entry_count: lenders.length,
         distinct_lenders: new Set(lenders.map((l) => l.name ?? "unknown")).size,
         distinct_deals: new Set(lenders.map((l) => l.deal_id)).size,
-        total_quoted: sum(lenders.map(quote)),
+        total_quoted: sum(lenders.map(quote2)),
         submitted,
         approved,
         passed: lenders.filter((l) => l.passed_at).length,
         declined: lenders.filter((l) => l.declined_at).length,
         submit_to_approve_rate: submitted ? approved / submitted : 0
       },
-      by_stage: groupAggregate(lenders, (l) => l.stage ?? "unknown", quote),
-      by_tracking_status: groupAggregate(lenders, (l) => l.tracking_status ?? "unknown", quote),
-      by_lender: groupAggregate(lenders, (l) => l.name ?? "unknown", quote).slice(0, 100),
+      by_stage: groupAggregate(lenders, (l) => l.stage ?? "unknown", quote2),
+      by_tracking_status: groupAggregate(lenders, (l) => l.tracking_status ?? "unknown", quote2),
+      by_lender: groupAggregate(lenders, (l) => l.name ?? "unknown", quote2).slice(0, 100),
       top_pass_reasons: groupAggregate(
         lenders.filter((l) => l.pass_reason),
         (l) => (l.pass_reason ?? "").slice(0, 120),
@@ -5947,31 +6312,50 @@ var get_metric_targets_default = defineTool53({
 import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z54 } from "npm:zod@^3.23.0";
 var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
+var COMPACT_COLUMNS = {
+  contacts: "id, first_name, last_name, full_name, email, job_title, contact_type, lifecycle_stage, status, lead_source, owner_user_id, crm_company_id, city, state, country, phone_work, phone_mobile, linkedin_url, tags, referral_agreement_on_file, w9_on_file, referral_fee, created_at, updated_at",
+  crm_companies: "id, name, domain, website_url, company_type, status, industry, lifecycle_stage, owner_user_id, hq_city, hq_state, hq_country, phone, tags, last_activity_date, next_activity_date, parent_company_id, created_at, updated_at",
+  deals: "id, company, stage, status, pipeline_id, value, deal_class, referred_by, referred_by_contact_id, crm_company_id, closing_date, created_at, updated_at",
+  master_lenders: "id, name, lender_type, loan_types, tier, appetite_status, active, min_deal, max_deal, industries, geographies, crm_company_id, website, created_at, updated_at"
+};
+var filterSchema = z54.object({
+  column: z54.string().trim().min(1).max(80),
+  op: z54.enum(OPERATORS).default("eq"),
+  value: z54.union([z54.string(), z54.number(), z54.boolean(), z54.null(), z54.array(z54.union([z54.string(), z54.number()]))])
+});
+var quote = (v) => `"${String(v).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+function buildOrExpression(conds) {
+  return conds.map((raw) => {
+    const c = { column: String(raw.column ?? ""), op: raw.op ?? "eq", value: raw.value ?? null };
+    if (!/^[a-z_][a-z0-9_]*$/i.test(c.column)) throw new Error(`Invalid column name in or group: ${c.column}`);
+    if (c.op === "is") {
+      if (!(c.value === null || typeof c.value === "boolean")) throw new Error("`is` needs null, true or false");
+      return `${c.column}.is.${c.value === null ? "null" : String(c.value)}`;
+    }
+    if (c.op === "in") return `${c.column}.in.(${(Array.isArray(c.value) ? c.value : [c.value]).map(quote).join(",")})`;
+    return `${c.column}.${c.op}.${quote(c.value)}`;
+  }).join(",");
+}
 var query_insights_dataset_default = defineTool54({
   name: "query_insights_dataset",
   title: "Query any Insights source dataset",
-  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
+  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns, except wide tables \u2014 contacts, crm_companies, deals, master_lenders \u2014 which default to a compact core set; pass columns="*" for every column), filters (column + operator + value, all ANDed), or_groups (each group is an OR of conditions; groups are ANDed with each other and with filters), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
   inputSchema: {
     dataset: z54.enum(INSIGHTS_DATASETS),
-    columns: z54.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
-    filters: z54.array(
-      z54.object({
-        column: z54.string().trim().min(1).max(80),
-        op: z54.enum(OPERATORS).default("eq"),
-        value: z54.union([z54.string(), z54.number(), z54.boolean(), z54.null(), z54.array(z54.union([z54.string(), z54.number()]))])
-      })
-    ).max(10).optional(),
+    columns: z54.string().trim().max(1e3).optional().describe("Comma-separated column list, or * for all. Defaults to all columns, or a compact core set on wide tables."),
+    filters: z54.array(filterSchema).max(10).optional(),
+    or_groups: z54.array(z54.array(filterSchema).min(2).max(10)).max(5).optional().describe("Each inner array matches rows satisfying ANY of its conditions, e.g. [[{column:'email',op:'is',value:null},{column:'email',op:'eq',value:''}]]."),
     order_by: z54.string().trim().max(80).optional(),
     ascending: z54.boolean().default(false),
     limit: z54.number().int().min(1).max(1e3).default(200),
     offset: z54.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
+  handler: async ({ dataset, columns, filters, or_groups, order_by, ascending, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
-    let q = sb.from(dataset).select(columns?.trim() || "*", { count: "exact" }).range(offset, offset + limit - 1);
+    let q = sb.from(dataset).select(columns?.trim() || COMPACT_COLUMNS[dataset] || "*", { count: "exact" }).range(offset, offset + limit - 1);
     for (const f of filters ?? []) {
       switch (f.op) {
         case "in":
@@ -5986,6 +6370,11 @@ var query_insights_dataset_default = defineTool54({
         }
       }
     }
+    try {
+      for (const g of or_groups ?? []) q = q.or(buildOrExpression(g));
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
     if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
     const { data, error, count } = await q;
     if (error) {
@@ -5998,6 +6387,7 @@ var query_insights_dataset_default = defineTool54({
     const has_more = next < total_count;
     const payload = {
       dataset,
+      columns: columns?.trim() || (COMPACT_COLUMNS[dataset] ? 'compact default (pass columns="*" for every column)' : "*"),
       total_count,
       returned: rows.length,
       offset,
@@ -6131,14 +6521,15 @@ import { z as z56 } from "npm:zod@^3.23.0";
 var list_referral_partners_default = defineTool56({
   name: "list_referral_partners",
   title: "List referral partners",
-  description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
+  description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are INCLUDED with `email: null` and `has_email: false` (pass `require_email: true` to skip them, e.g. for email lists); `missing_email` counts them either way. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
   inputSchema: {
     stages: z56.array(z56.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
+    require_email: z56.boolean().default(false).describe("Skip sources without an email."),
     limit: z56.number().int().min(1).max(1e3).default(200),
     offset: z56.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ stages, limit, offset }, ctx) => {
+  handler: async ({ stages, require_email, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -6160,36 +6551,37 @@ var list_referral_partners_default = defineTool56({
       );
       const ownerName = new Map(owners.map((o) => [o.user_id, o.display_name || [o.first_name, o.last_name].filter(Boolean).join(" ") || null]));
       const wanted = new Set(stages ?? REFERRAL_STAGES);
-      const stage_counts = Object.fromEntries(REFERRAL_STAGES.filter((s) => wanted.has(s)).map((s) => [s, 0]));
+      const stage_counts = Object.fromEntries(REFERRAL_STAGES.filter((s2) => wanted.has(s2)).map((s2) => [s2, 0]));
       let missing_email = 0;
       const rows = [];
-      for (const s of classified) {
-        if (!wanted.has(s.stage)) continue;
-        stage_counts[s.stage] += 1;
-        const c = s.contact_id ? contactById.get(s.contact_id) : void 0;
-        const email = (c?.email || s.manual_email || "").trim();
+      for (const s2 of classified) {
+        if (!wanted.has(s2.stage)) continue;
+        stage_counts[s2.stage] += 1;
+        const c = s2.contact_id ? contactById.get(s2.contact_id) : void 0;
+        const email = (c?.email || s2.manual_email || "").trim();
         if (!email) {
           missing_email += 1;
-          continue;
+          if (require_email) continue;
         }
-        const [fallbackFirst, ...rest] = s.name.split(/\s+/);
-        const companyId2 = c?.crm_company_id ?? s.crm_company_id ?? null;
+        const [fallbackFirst, ...rest] = s2.name.split(/\s+/);
+        const companyId2 = c?.crm_company_id ?? s2.crm_company_id ?? null;
         rows.push({
-          contact_id: s.contact_id,
+          contact_id: s2.contact_id,
           first_name: c ? c.first_name : fallbackFirst ?? null,
           last_name: c ? c.last_name : rest.join(" ") || null,
-          email,
+          email: email || null,
+          has_email: !!email,
           title: c?.job_title ?? null,
-          company_name: (companyId2 ? companyNames.get(companyId2) : void 0) ?? s.manual_company ?? null,
+          company_name: (companyId2 ? companyNames.get(companyId2) : void 0) ?? s2.manual_company ?? null,
           company_id: companyId2,
-          stage: s.stage,
-          stage_entered_at: s.stage_entered_at,
-          updated_at: c?.updated_at ?? s.manual_updated_at ?? null,
+          stage: s2.stage,
+          stage_entered_at: s2.stage_entered_at,
+          updated_at: c?.updated_at ?? s2.manual_updated_at ?? null,
           owner_user_id: c?.owner_user_id ?? null,
           owner: c?.owner_user_id ? ownerName.get(c.owner_user_id) ?? null : null
         });
       }
-      const order = new Map(REFERRAL_STAGES.map((s, i) => [s, i]));
+      const order = new Map(REFERRAL_STAGES.map((s2, i) => [s2, i]));
       rows.sort((a, b) => order.get(b.stage) - order.get(a.stage) || `${a.last_name ?? ""} ${a.first_name ?? ""}`.localeCompare(`${b.last_name ?? ""} ${b.first_name ?? ""}`));
       const page2 = rows.slice(offset, offset + limit);
       const next = offset + page2.length;
@@ -6337,19 +6729,19 @@ function computeDealHoursFees(d) {
   };
 }
 function rollupHoursFees(rows) {
-  const s = (k) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
-  const total_fee = s("total_fee");
-  const total_hours = s("total_hours");
+  const s2 = (k) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const total_fee = s2("total_fee");
+  const total_hours = s2("total_hours");
   const pcts = rows.map((r) => r.success_fee_percent).filter((p) => p > 0);
   return {
     deal_count: rows.length,
-    retainer_fee: s("retainer_fee"),
-    milestone_fee: s("milestone_fee"),
-    closing_fee: s("closing_fee"),
+    retainer_fee: s2("retainer_fee"),
+    milestone_fee: s2("milestone_fee"),
+    closing_fee: s2("closing_fee"),
     total_fee,
     avg_success_fee_percent: pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : null,
-    pre_signing_hours: s("pre_signing_hours"),
-    post_signing_hours: s("post_signing_hours"),
+    pre_signing_hours: s2("pre_signing_hours"),
+    post_signing_hours: s2("post_signing_hours"),
     total_hours,
     revenue_per_hour: total_hours > 0 && total_fee > 0 ? total_fee / total_hours : null,
     missing_fee_information_count: rows.filter((r) => r.missing_fee_information).length
@@ -8679,8 +9071,8 @@ var CATEGORY_ALIASES = {
   "Office & Administration": "Office & Admin",
   "Office Admin": "Office & Admin"
 };
-function normalizeCategoryKey(s) {
-  return String(s || "").toLowerCase().replace(/[\s_/\-&]+/g, " ").trim();
+function normalizeCategoryKey(s2) {
+  return String(s2 || "").toLowerCase().replace(/[\s_/\-&]+/g, " ").trim();
 }
 var NORMALIZED_ALIAS_MAP = (() => {
   const out = {};
@@ -8771,8 +9163,8 @@ function getOriginalOccurrenceDate(entry, effectiveDate) {
   }
   return effectiveDate;
 }
-function parseDate(s) {
-  return /* @__PURE__ */ new Date(s + "T00:00:00");
+function parseDate(s2) {
+  return /* @__PURE__ */ new Date(s2 + "T00:00:00");
 }
 function fmtDate(d) {
   const y = d.getFullYear();
@@ -8985,8 +9377,8 @@ function mergeScheduledIntoWeekly(weekly, entries, options) {
 }
 
 // src/components/cashflow/financeWeeklyBalanceCore.ts
-function parseISO(s) {
-  return /* @__PURE__ */ new Date(s + "T00:00:00");
+function parseISO(s2) {
+  return /* @__PURE__ */ new Date(s2 + "T00:00:00");
 }
 function fmtISO(d) {
   const y = d.getFullYear();
@@ -9190,11 +9582,11 @@ var ACTIVE_STAGE_TOKENS = /* @__PURE__ */ new Set([
   "closed",
   "closed won"
 ]);
-function normalizeStage(s) {
-  return String(s || "").toLowerCase().replace(/[-_/]+/g, " ").replace(/\s+/g, " ").trim();
+function normalizeStage(s2) {
+  return String(s2 || "").toLowerCase().replace(/[-_/]+/g, " ").replace(/\s+/g, " ").trim();
 }
-function isActiveStage(s) {
-  return ACTIVE_STAGE_TOKENS.has(normalizeStage(s));
+function isActiveStage(s2) {
+  return ACTIVE_STAGE_TOKENS.has(normalizeStage(s2));
 }
 function fmtDate2(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -9313,8 +9705,8 @@ function computeCashflowKpis(weekly, weeksFuture, weeksPast, todayISO = (/* @__P
   const fStart = Math.max(0, currentIdx);
   const fEnd = Math.min(sorted.length, fStart + 1 + Math.max(0, weeksFuture));
   const fwd = sorted.slice(fStart, fEnd);
-  const cashIn = fwd.reduce((s, [, e]) => s + (Number(e?.["TOTAL RECEIPTS"]) || 0), 0) || 0;
-  const cashOut = fwd.reduce((s, [, e]) => s + (Number(e?.["TOTAL DISBURSEMENTS"]) || 0), 0) || 0;
+  const cashIn = fwd.reduce((s2, [, e]) => s2 + (Number(e?.["TOTAL RECEIPTS"]) || 0), 0) || 0;
+  const cashOut = fwd.reduce((s2, [, e]) => s2 + (Number(e?.["TOTAL DISBURSEMENTS"]) || 0), 0) || 0;
   let kpiRangeLabel = "\u2014";
   let kpiRangeStart = null;
   let kpiRangeEnd = null;
@@ -9490,7 +9882,7 @@ var DUPLICATE_NOTE = "James is counted in both Debt & Parent, so firm-wide total
 function firmTotal(values) {
   const entered = values.filter((v) => v != null && Number.isFinite(v));
   if (!entered.length) return null;
-  return Math.max(0, entered.reduce((s, v) => s + v, 0) - 1);
+  return Math.max(0, entered.reduce((s2, v) => s2 + v, 0) - 1);
 }
 function headcountMatrix(rows) {
   const byMonth = /* @__PURE__ */ new Map();
@@ -9536,9 +9928,9 @@ function addMonthsKey(key, n2) {
 }
 function ttmPerHead(endMonth, amountByMonth, hcByMonth) {
   const months = Array.from({ length: 12 }, (_, i) => addMonthsKey(endMonth, i - 11));
-  const amount = months.reduce((s, k) => s + (amountByMonth[k] ?? 0), 0);
+  const amount = months.reduce((s2, k) => s2 + (amountByMonth[k] ?? 0), 0);
   const complete = months.every((k) => hcByMonth[k] != null);
-  const avg = complete ? months.reduce((s, k) => s + (hcByMonth[k] ?? 0), 0) / 12 : null;
+  const avg = complete ? months.reduce((s2, k) => s2 + (hcByMonth[k] ?? 0), 0) / 12 : null;
   return { period_end_month: endMonth, ttm_start_month: months[0], ttm_amount: amount, avg_headcount: avg, per_head: avg && avg > 0 ? amount / avg : null };
 }
 
@@ -9556,8 +9948,8 @@ async function monthlyPnl(sb, realmIds, from, to) {
   const rows = await loadAll((a, b) => sb.from("qbo_pnl_snapshots").select("realm_id, fetched_at, period_start, period_end, accounting_method, income_total, gross_profit, operating_expenses, net_operating_income").in("realm_id", realmIds).gte("period_start", from).lte("period_end", to).order("period_start").range(a, b));
   const pick = /* @__PURE__ */ new Map();
   for (const r of rows) {
-    const s = /* @__PURE__ */ new Date(r.period_start + "T00:00:00Z");
-    const e = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+    const s2 = /* @__PURE__ */ new Date(r.period_start + "T00:00:00Z");
+    const e = new Date(Date.UTC(s2.getUTCFullYear(), s2.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
     if (!r.period_start.endsWith("-01") || r.period_end !== e) continue;
     const key = `${r.realm_id}:${r.period_start.slice(0, 7)}`;
     const prev = pick.get(key);
@@ -9602,7 +9994,7 @@ var get_headcount_default = defineTool60({
       for (const m of months) years.set(m.month.slice(0, 4), [...years.get(m.month.slice(0, 4)) ?? [], m]);
       const avg = (xs) => {
         const v = xs.filter((x) => x != null);
-        return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null;
+        return v.length ? v.reduce((s2, x) => s2 + x, 0) / v.length : null;
       };
       const yearly = [...years].map(([year, ms]) => ({ year, ...Object.fromEntries(UNITS.map((u) => [`${u.label}_avg`, avg(ms.map((m) => m[u.label]))])), firm_total_avg: avg(ms.map((m) => m.firm_total)) }));
       const payload = { units: UNITS, note: DUPLICATE_NOTE, month_count: months.length, months, yearly };
@@ -9661,8 +10053,8 @@ var get_harvest_metrics_default = defineTool61({
           people: Object.entries(h?.people ?? {}).map(([name, v]) => ({ name, hours: v.hours, billable_hours: v.billable_hours, utilization_pct: v.hours ? v.billable_hours / v.hours * 100 : null }))
         };
       });
-      const s = (f) => months.reduce((t, m) => t + (f(m) ?? 0), 0);
-      const bh = s((m) => m.billable_hours), rev = s((m) => m.finserv_revenue), gp = s((m) => m.finserv_gross_profit), op = s((m) => m.finserv_operating_profit);
+      const s2 = (f) => months.reduce((t, m) => t + (f(m) ?? 0), 0);
+      const bh = s2((m) => m.billable_hours), rev = s2((m) => m.finserv_revenue), gp = s2((m) => m.finserv_gross_profit), op = s2((m) => m.finserv_operating_profit);
       const people = /* @__PURE__ */ new Map();
       for (const m of months) for (const p of m.people) {
         const t = people.get(p.name) ?? { hours: 0, billable_hours: 0 };
@@ -9674,7 +10066,7 @@ var get_harvest_metrics_default = defineTool61({
         sync: { last_synced_at: state.last_synced_at, sync_through: state.sync_through },
         period: { from: start, to: end },
         totals: {
-          total_hours: s((m) => m.total_hours),
+          total_hours: s2((m) => m.total_hours),
           billable_hours: bh,
           finserv_revenue: rev,
           finserv_gross_profit: gp,
@@ -9951,12 +10343,18 @@ import { z as z68 } from "npm:zod@^3.23.0";
 var merge_lenders_default = defineTool68({
   name: "merge_lenders",
   title: "Merge funding sources",
-  description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
-  inputSchema: { keep_lender_id: z68.string().uuid(), merge_lender_id: z68.string().uuid(), confirm: z68.literal(true), ...writeProvenance },
+  description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. dry_run: true previews the merge (fields filled, children moved, blocking conflicts) by running it in a rolled-back transaction. Does not use the legacy broad merge RPC or reconnect FLEx.",
+  inputSchema: { keep_lender_id: z68.string().uuid(), merge_lender_id: z68.string().uuid(), dry_run: z68.boolean().default(false).describe("Preview only: report fields that would fill on the kept lender, child records that would move, and any conflict that would block the merge. Nothing is changed."), confirm: z68.literal(true).optional().describe("Required for the real merge (not for dry_run)."), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-  handler: async ({ keep_lender_id, merge_lender_id, confirm, source, change_reason }, ctx) => {
+  handler: async ({ keep_lender_id, merge_lender_id, dry_run, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
     if (err) return err;
+    if (keep_lender_id === merge_lender_id) return errorResult("keep_lender_id and merge_lender_id must differ.");
+    if (dry_run) {
+      const { data: data2, error: error2 } = await supabaseForUser(ctx).rpc("mcp_merge_lenders_preview", { p_keep: keep_lender_id, p_merge: merge_lender_id });
+      return error2 ? errorResult(error2.message) : textResult(data2);
+    }
+    if (confirm !== true) return errorResult("confirm: true is required to merge (or pass dry_run: true to preview).");
     const { data, error } = await supabaseForUser(ctx).rpc("mcp_merge_lenders", { p_keep: keep_lender_id, p_merge: merge_lender_id, p_confirm: confirm, p_source: source ?? null, p_change_reason: change_reason ?? null });
     return error ? errorResult(error.message) : textResult(data);
   }
@@ -9965,29 +10363,50 @@ var merge_lenders_default = defineTool68({
 // src/lib/mcp/tools/update-claap-meeting-match.ts
 import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z69 } from "npm:zod@^3.23.0";
+var item = z69.object({
+  meeting_id: z69.string().uuid(),
+  matched_lender_id: z69.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
+  match_status: z69.enum(["matched", "needs_review", "unmatched"]),
+  reason: z69.string().max(1e4).optional(),
+  status: z69.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+}).strict();
 var update_claap_meeting_match_default = defineTool69({
   name: "update_claap_meeting_match",
   title: "Update Claap funding-source match",
-  description: "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
+  description: "Confirm, reassign, or clear Claap meeting funding-source matches after user approval \u2014 one meeting via top-level fields, or up to 25 via `updates` (each applied in its own transaction with an independent result). Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
   inputSchema: {
-    meeting_id: z69.string().uuid(),
-    matched_lender_id: z69.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
-    match_status: z69.enum(["matched", "needs_review", "unmatched"]),
+    meeting_id: z69.string().uuid().optional(),
+    matched_lender_id: z69.string().uuid().nullable().optional(),
+    match_status: z69.enum(["matched", "needs_review", "unmatched"]).optional(),
     reason: z69.string().max(1e4).optional(),
-    status: z69.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+    status: z69.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional(),
+    updates: z69.array(item).min(1).max(25).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
     if (denied) return denied;
-    const { data, error } = await supabaseForUser(ctx).rpc("mcp_update_claap_meeting_match", {
-      p_meeting_id: input.meeting_id,
-      p_matched_lender_id: input.matched_lender_id,
-      p_match_status: input.match_status,
-      p_reason: input.reason ?? null,
-      p_status: input.status ?? null
-    });
-    return error ? errorResult(error.message) : textResult(data);
+    const { updates, ...single } = input;
+    if (updates && single.meeting_id) return errorResult("Provide either updates or a single meeting_id, not both.");
+    if (!updates && (!single.meeting_id || single.matched_lender_id === void 0 || !single.match_status)) {
+      return errorResult("meeting_id, matched_lender_id and match_status are required (or pass updates).");
+    }
+    const sb = supabaseForUser(ctx);
+    const list = updates ?? [single];
+    const results = [];
+    for (const u of list) {
+      const { data, error } = await sb.rpc("mcp_update_claap_meeting_match", {
+        p_meeting_id: u.meeting_id,
+        p_matched_lender_id: u.matched_lender_id,
+        p_match_status: u.match_status,
+        p_reason: u.reason ?? null,
+        p_status: u.status ?? null
+      });
+      if (!updates) return error ? errorResult(error.message) : textResult(data);
+      results.push(error ? { meeting_id: u.meeting_id, success: false, error: error.message } : { meeting_id: u.meeting_id, success: true, result: data });
+    }
+    const failed = results.filter((r) => !r.success).length;
+    return textResult({ total: results.length, succeeded: results.length - failed, failed, results }, { failed });
   }
 });
 
@@ -9997,11 +10416,12 @@ import { z as z70 } from "npm:zod@^3.23.0";
 var list_lender_claap_meetings_default = defineTool70({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
-  description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
+  description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection. match_status (confirmed/suggested/none) is a shorthand for match_statuses. include_transcript defaults to false.",
   inputSchema: {
     lender_ids: z70.array(z70.string().uuid()).max(200).optional(),
     updated_after: z70.string().datetime({ offset: true }).optional(),
     match_statuses: z70.array(z70.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    match_status: z70.enum(["confirmed", "suggested", "none"]).optional().describe("Shorthand filter: confirmed = matched, suggested = needs_review, none = unmatched."),
     include_transcript: z70.boolean().default(false),
     limit: z70.number().int().min(1).max(200).default(50),
     offset: z70.number().int().min(0).max(1e6).default(0)
@@ -10013,7 +10433,7 @@ var list_lender_claap_meetings_default = defineTool70({
     const { data, error } = await supabaseForUser(ctx).rpc("mcp_list_lender_claap_meetings", {
       p_lender_ids: input.lender_ids ?? null,
       p_updated_after: input.updated_after ?? null,
-      p_match_statuses: input.match_statuses ?? null,
+      p_match_statuses: input.match_status ? [{ confirmed: "matched", suggested: "needs_review", none: "unmatched" }[input.match_status]] : input.match_statuses ?? null,
       p_include_transcript: input.include_transcript ?? false,
       p_limit: input.limit ?? 50,
       p_offset: input.offset ?? 0
@@ -10146,13 +10566,1097 @@ var batch_create_outstanding_items_default = defineTool74({
   }
 });
 
+// src/lib/mcp/tools/update-contact.ts
+import { defineTool as defineTool75 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z77 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/crmRecordEdits.ts
+import { z as z76 } from "npm:zod@^3.23.0";
+var s = (max = 500) => z76.string().trim().max(max).nullable().optional();
+var arr2 = () => z76.array(z76.string().trim().min(1).max(320)).max(200).nullable().optional();
+var CONTACT_EDIT_FIELDS = {
+  first_name: s(200),
+  last_name: s(200),
+  email: s(320),
+  additional_emails: arr2(),
+  phone_work: s(100),
+  phone_mobile: s(100),
+  phone_other: s(100),
+  job_title: s(300),
+  contact_type: s(500).describe("Contact type(s); multiple types are joined with ' ; '. See list_field_options contacts.contact_type."),
+  lifecycle_stage: s(100),
+  status: s(100),
+  lead_source: s(300),
+  owner_user_id: z76.string().uuid().nullable().optional(),
+  linkedin_url: s(500),
+  city: s(200),
+  state: s(200),
+  country: s(200),
+  description: z76.string().max(5e4).nullable().optional(),
+  tags: arr2(),
+  crm_company_id: z76.string().uuid().nullable().optional(),
+  referral_agreement_on_file: z76.boolean().nullable().optional(),
+  w9_on_file: z76.boolean().nullable().optional(),
+  referral_fee: s(500),
+  lender_referred_pct: s(100)
+};
+var COMPANY_EDIT_FIELDS = {
+  name: z76.string().trim().min(1).max(300).optional(),
+  domain: s(300),
+  additional_domains: arr2(),
+  website_url: s(500),
+  company_type: s(200),
+  status: s(100),
+  owner_user_id: z76.string().uuid().nullable().optional(),
+  industry: s(200),
+  sub_industry: s(200),
+  employee_count: z76.number().int().nonnegative().nullable().optional(),
+  employee_range: s(100),
+  annual_revenue: z76.number().finite().nullable().optional(),
+  revenue_band: s(100),
+  hq_city: s(200),
+  hq_state: s(200),
+  hq_country: s(200),
+  hq_postal_code: s(50),
+  hq_address: s(1e3),
+  address: s(1e3),
+  regions_served: arr2(),
+  parent_company_id: z76.string().uuid().nullable().optional(),
+  customer_tier: s(100),
+  segment: s(200),
+  lifecycle_stage: s(100),
+  description: z76.string().max(5e4).nullable().optional(),
+  notes: z76.string().max(5e4).nullable().optional(),
+  linkedin_url: s(500),
+  twitter_url: s(500),
+  phone: s(100),
+  main_contact_email: s(320),
+  tags: arr2(),
+  year_founded: z76.number().int().min(1600).max(2200).nullable().optional(),
+  financing_status: s(200),
+  key_products: arr2()
+};
+var editControls = {
+  mode: z76.enum(["replace", "append", "prepend"]).default("replace").describe("Applies to long text (description, and notes on companies): append/prepend adds a blank-line-separated entry."),
+  expected_updated_at: z76.string().datetime({ offset: true }).optional().describe("Optimistic concurrency: fail with the current record if it changed since this timestamp."),
+  dry_run: z76.boolean().default(false).describe("Return the field diff without writing."),
+  source: z76.string().max(1e3).optional(),
+  change_reason: z76.string().max(2e3).optional()
+};
+async function runCrmUpdate(table, id, input, ctx) {
+  const denied = requireAuth(ctx);
+  if (denied) return denied;
+  const { mode, expected_updated_at, dry_run, source, change_reason, contact_id: _c, company_id: _co, ...fields } = input;
+  const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
+  if (!Object.keys(patch).length) return errorResult("No fields to update.");
+  const { data, error } = await supabaseForUser(ctx).rpc("mcp_update_crm_record", {
+    p_table: table,
+    p_id: id,
+    p_patch: patch,
+    p_mode: mode ?? "replace",
+    p_expected_updated_at: expected_updated_at ?? null,
+    p_dry_run: dry_run ?? false,
+    p_source: source ?? null,
+    p_change_reason: change_reason ?? null
+  });
+  if (error) return errorResult(error.message);
+  const result = textResult(data, { record_id: id });
+  return data?.error ? { ...result, isError: true } : result;
+}
+async function runCrmNote(kind, id, input, ctx) {
+  const denied = requireAuth(ctx);
+  if (denied) return denied;
+  const sb = supabaseForUser(ctx);
+  const table = kind === "contact" ? "contact_activities" : "crm_company_activities";
+  const fk = kind === "contact" ? "contact_id" : "crm_company_id";
+  const parent = kind === "contact" ? "contacts" : "crm_companies";
+  const { data: rec, error: recErr } = await sb.from(parent).select("id").eq("id", id).maybeSingle();
+  if (recErr) return errorResult(recErr.message);
+  if (!rec) return errorResult(`${kind} ${id} not found (or not visible to you).`);
+  if (input.idempotency_key) {
+    const { data: existing, error: error2 } = await sb.from(table).select("*").eq(fk, id).eq("metadata->>mcp_idempotency_key", input.idempotency_key).maybeSingle();
+    if (error2) return errorResult(error2.message);
+    if (existing) return textResult({ note: existing, duplicate: true }, { note_id: existing.id, duplicate: true });
+  }
+  const row = {
+    [fk]: id,
+    activity_type: "note",
+    subject: input.subject ?? null,
+    body: input.body,
+    occurred_at: input.occurred_at ?? (/* @__PURE__ */ new Date()).toISOString(),
+    logged_by: ctx.getUserId(),
+    deal_id: input.deal_id ?? null,
+    source: "mcp",
+    metadata: { ...input.idempotency_key ? { mcp_idempotency_key: input.idempotency_key } : {}, ...input.source ? { provenance: input.source } : {} }
+  };
+  const { data, error } = await sb.from(table).insert(row).select("*").maybeSingle();
+  if (error) {
+    if (error.code === "23505" && input.idempotency_key) {
+      const { data: again } = await sb.from(table).select("*").eq(fk, id).eq("metadata->>mcp_idempotency_key", input.idempotency_key).maybeSingle();
+      if (again) return textResult({ note: again, duplicate: true }, { duplicate: true });
+    }
+    return errorResult(error.message);
+  }
+  return textResult({ note: data, duplicate: false }, { note_id: data?.id ?? null, duplicate: false });
+}
+var noteInput = {
+  body: z76.string().trim().min(1).max(2e4),
+  subject: z76.string().trim().max(300).optional(),
+  occurred_at: z76.string().datetime({ offset: true }).optional().describe("When the note/activity happened; defaults to now."),
+  idempotency_key: z76.string().trim().min(1).max(200).optional().describe("Retries with the same key return the existing note instead of adding a duplicate."),
+  deal_id: z76.string().uuid().optional(),
+  source: z76.string().max(1e3).optional()
+};
+
+// src/lib/mcp/tools/update-contact.ts
+var update_contact_default = defineTool75({
+  name: "update_contact",
+  title: "Update CRM contact",
+  description: "Partial update of a CRM contact (contacts) by id. Only supplied fields change; null clears. Editable: first/last name, email, additional_emails, phone_work/phone_mobile/phone_other, job_title, contact_type, lifecycle_stage, status, lead_source, owner_user_id, linkedin_url, city/state/country, description (mode replace/append/prepend), tags, crm_company_id (same workspace only), referral_agreement_on_file, w9_on_file, referral_fee, lender_referred_pct. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff. Use list_field_options for allowed contact_type/lifecycle_stage/status values.",
+  inputSchema: { contact_id: z77.string().uuid(), ...CONTACT_EDIT_FIELDS, ...editControls },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: (input, ctx) => runCrmUpdate("contacts", input.contact_id, input, ctx)
+});
+
+// src/lib/mcp/tools/update-company.ts
+import { defineTool as defineTool76 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z78 } from "npm:zod@^3.23.0";
+var update_company_default = defineTool76({
+  name: "update_company",
+  title: "Update CRM company",
+  description: "Partial update of a CRM company (crm_companies) by id. Only supplied fields change; null clears. Editable: name, domain, additional_domains, website_url, company_type, status, owner_user_id, industry, sub_industry, employee_count/range, annual_revenue, revenue_band, HQ address fields, regions_served, parent_company_id (same workspace), customer_tier, segment, lifecycle_stage, description and notes (mode replace/append/prepend), linkedin/twitter, phone, main_contact_email, tags, year_founded, financing_status, key_products. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff.",
+  inputSchema: { company_id: z78.string().uuid(), ...COMPANY_EDIT_FIELDS, ...editControls },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: (input, ctx) => runCrmUpdate("crm_companies", input.company_id, input, ctx)
+});
+
+// src/lib/mcp/tools/add-contact-note.ts
+import { defineTool as defineTool77 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z79 } from "npm:zod@^3.23.0";
+var add_contact_note_default = defineTool77({
+  name: "add_contact_note",
+  title: "Add contact note",
+  description: "Add a dated note to a CRM contact's activity history (shown on the contact page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
+  inputSchema: { contact_id: z79.string().uuid(), ...noteInput },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: ({ contact_id, ...rest }, ctx) => runCrmNote("contact", contact_id, rest, ctx)
+});
+
+// src/lib/mcp/tools/add-company-note.ts
+import { defineTool as defineTool78 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z80 } from "npm:zod@^3.23.0";
+var add_company_note_default = defineTool78({
+  name: "add_company_note",
+  title: "Add company note",
+  description: "Add a dated note to a CRM company's activity history (shown on the company page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
+  inputSchema: { company_id: z80.string().uuid(), ...noteInput },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: ({ company_id, ...rest }, ctx) => runCrmNote("company", company_id, rest, ctx)
+});
+
+// src/lib/mcp/tools/add-referral-partner.ts
+import { defineTool as defineTool79 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z81 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/referralPartnerWrites.ts
+var REFERRAL_SOURCE_TAG = "Referral Source";
+var splitTypes = (v) => v ? v.split(/\s*;\s*/g).map((s2) => s2.trim()).filter(Boolean) : [];
+var joinTypes = (tags) => {
+  const cleaned = [...new Set(tags.map((t) => t.trim()).filter(Boolean))];
+  return cleaned.length ? cleaned.join(" ; ") : null;
+};
+var hasTag = (v) => splitTypes(v).some((t) => t.toLowerCase() === REFERRAL_SOURCE_TAG.toLowerCase());
+var TIER_STAGE_MESSAGE = "Tier 3/2/1 are calculated automatically from the contact's referred deals (Sales & BD tier rules) and cannot be set directly. Contacts are added at Nurturing and move up as their referred deals progress.";
+async function loadContact(sb, id) {
+  const { data, error } = await sb.from("contacts").select("id, first_name, last_name, full_name, email, phone_mobile, phone_work, contact_type, org_company_id, owner_user_id").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`Contact ${id} not found (or not visible to you).`);
+  return data;
+}
+async function referralRowsForContact(sb, contactId) {
+  const { data, error } = await sb.from("referral_sources").select("*").eq("contact_id", contactId);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+async function updateContactAudited(sb, id, patch, source, reason) {
+  if (!Object.keys(patch).length) return null;
+  const { data, error } = await sb.rpc("mcp_update_crm_record", {
+    p_table: "contacts",
+    p_id: id,
+    p_patch: patch,
+    p_mode: "replace",
+    p_expected_updated_at: null,
+    p_dry_run: false,
+    p_source: source ?? null,
+    p_change_reason: reason ?? null
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// src/lib/mcp/tools/add-referral-partner.ts
+var add_referral_partner_default = defineTool79({
+  name: "add_referral_partner",
+  title: "Add contact to Referral Source pipeline",
+  description: `Put an existing CRM contact into the Referral Source pipeline (Sales & BD) at Nurturing \u2014 the same as the app's "Add to Nurturing" button: tags the contact type "${REFERRAL_SOURCE_TAG}" (audited) and creates its referral_sources entry. Optional owner, notes and referral agreement/fee fields. ${TIER_STAGE_MESSAGE} Idempotent: an existing entry is returned unchanged apart from supplied fields.`,
+  inputSchema: {
+    contact_id: z81.string().uuid(),
+    stage: z81.enum(["Nurturing", "Tier 3", "Tier 2", "Tier 1"]).default("Nurturing"),
+    owner_user_id: z81.string().uuid().optional(),
+    notes: z81.string().max(1e4).optional(),
+    referral_agreement_on_file: z81.boolean().optional(),
+    w9_on_file: z81.boolean().optional(),
+    referral_fee: z81.string().max(500).optional(),
+    lender_referred_pct: z81.string().max(100).optional(),
+    source: z81.string().max(1e3).optional(),
+    change_reason: z81.string().max(2e3).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (input.stage && input.stage !== "Nurturing") return errorResult(TIER_STAGE_MESSAGE);
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    try {
+      const c = await loadContact(sb, input.contact_id);
+      const name = c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email;
+      if (!name) return errorResult("The contact needs a name or email before it can be added to the pipeline.");
+      const patch = {};
+      if (!hasTag(c.contact_type)) patch.contact_type = joinTypes([...splitTypes(c.contact_type), REFERRAL_SOURCE_TAG]);
+      if (input.owner_user_id !== void 0) patch.owner_user_id = input.owner_user_id;
+      for (const k of ["referral_agreement_on_file", "w9_on_file", "referral_fee", "lender_referred_pct"]) if (input[k] !== void 0) patch[k] = input[k];
+      const contactUpdate = await updateContactAudited(sb, c.id, patch, input.source, input.change_reason);
+      let rows = await referralRowsForContact(sb, c.id);
+      let created = false;
+      if (!rows.length) {
+        const { data, error } = await sb.from("referral_sources").insert({
+          name,
+          email: c.email,
+          phone: c.phone_mobile ?? c.phone_work ?? null,
+          contact_id: c.id,
+          contact_name: name,
+          contact_email: c.email,
+          user_id: userId,
+          company_id: c.org_company_id,
+          notes: input.notes ?? null,
+          relationship_owner_id: input.owner_user_id ?? null
+        }).select("*");
+        if (error) return errorResult(error.message);
+        rows = data ?? [];
+        created = true;
+      } else if (input.notes !== void 0 || input.owner_user_id !== void 0) {
+        const upd = {};
+        if (input.notes !== void 0) upd.notes = input.notes;
+        if (input.owner_user_id !== void 0) upd.relationship_owner_id = input.owner_user_id;
+        const { data, error } = await sb.from("referral_sources").update(upd).eq("contact_id", c.id).select("*");
+        if (error) return errorResult(error.message);
+        rows = data ?? [];
+      }
+      return textResult({ contact_id: c.id, stage: "Nurturing", created, referral_source: rows[0] ?? null, contact_diff: contactUpdate?.diff ?? {} }, { contact_id: c.id, created });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/update-referral-partner.ts
+import { defineTool as defineTool80 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z82 } from "npm:zod@^3.23.0";
+var update_referral_partner_default = defineTool80({
+  name: "update_referral_partner",
+  title: "Update Referral Source partner",
+  description: `Update a contact that is in the Referral Source pipeline: owner (contact owner and relationship owner), notes on its referral entry (mode replace/append), referral_agreement_on_file, w9_on_file, referral_fee and lender_referred_pct. Contact field changes are audited with source/change_reason. ${TIER_STAGE_MESSAGE} Passing stage "Nurturing" is accepted as a no-op; other stages are rejected.`,
+  inputSchema: {
+    contact_id: z82.string().uuid(),
+    stage: z82.enum(["Nurturing", "Tier 3", "Tier 2", "Tier 1"]).optional(),
+    owner_user_id: z82.string().uuid().nullable().optional(),
+    notes: z82.string().max(1e4).nullable().optional(),
+    notes_mode: z82.enum(["replace", "append"]).default("replace"),
+    referral_agreement_on_file: z82.boolean().nullable().optional(),
+    w9_on_file: z82.boolean().nullable().optional(),
+    referral_fee: z82.string().max(500).nullable().optional(),
+    lender_referred_pct: z82.string().max(100).nullable().optional(),
+    source: z82.string().max(1e3).optional(),
+    change_reason: z82.string().max(2e3).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (input.stage && input.stage !== "Nurturing") return errorResult(TIER_STAGE_MESSAGE);
+    const sb = supabaseForUser(ctx);
+    try {
+      const c = await loadContact(sb, input.contact_id);
+      let rows = await referralRowsForContact(sb, c.id);
+      if (!rows.length && !hasTag(c.contact_type)) return errorResult("This contact is not in the Referral Source pipeline; use add_referral_partner first.");
+      const patch = {};
+      if (input.owner_user_id !== void 0) patch.owner_user_id = input.owner_user_id;
+      for (const k of ["referral_agreement_on_file", "w9_on_file", "referral_fee", "lender_referred_pct"]) if (input[k] !== void 0) patch[k] = input[k];
+      const contactUpdate = await updateContactAudited(sb, c.id, patch, input.source, input.change_reason);
+      if (rows.length && (input.notes !== void 0 || input.owner_user_id !== void 0)) {
+        const upd = {};
+        if (input.owner_user_id !== void 0) upd.relationship_owner_id = input.owner_user_id;
+        if (input.notes !== void 0) {
+          const prev = String(rows[0].notes ?? "");
+          upd.notes = input.notes_mode === "append" && prev && input.notes ? `${prev}
+
+${input.notes}` : input.notes;
+        }
+        const { data, error } = await sb.from("referral_sources").update(upd).eq("contact_id", c.id).select("*");
+        if (error) return errorResult(error.message);
+        rows = data ?? [];
+      } else if (!rows.length && input.notes !== void 0) {
+        return errorResult("This contact has no referral entry to hold notes (it was tagged without one); use add_referral_partner to create it.");
+      }
+      if (!Object.keys(patch).length && input.notes === void 0 && input.owner_user_id === void 0) return errorResult("No fields to update.");
+      return textResult({ contact_id: c.id, referral_source: rows[0] ?? null, contact_diff: contactUpdate?.diff ?? {} }, { contact_id: c.id });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/remove-referral-partner.ts
+import { defineTool as defineTool81 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z83 } from "npm:zod@^3.23.0";
+var remove_referral_partner_default = defineTool81({
+  name: "remove_referral_partner",
+  title: "Remove contact from Referral Source pipeline",
+  description: `Remove a contact from the Referral Source pipeline: deletes its referral_sources entry and removes the "${REFERRAL_SOURCE_TAG}" contact type (audited). The contact itself and its deals are kept. Requires confirm:true. Note: a contact credited as the referrer on Active Pipeline deals still appears in Tier 3/2/1, because tiers are calculated from referred deals.`,
+  inputSchema: { contact_id: z83.string().uuid(), confirm: z83.literal(true), source: z83.string().max(1e3).optional(), change_reason: z83.string().max(2e3).optional() },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ contact_id, source, change_reason }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const sb = supabaseForUser(ctx);
+    try {
+      const c = await loadContact(sb, contact_id);
+      const rows = await referralRowsForContact(sb, c.id);
+      if (rows.length) {
+        const { data, error } = await sb.from("referral_sources").delete().eq("contact_id", c.id).select("id");
+        if (error) return errorResult(error.message);
+        if ((data ?? []).length !== rows.length) return errorResult("Some referral entries could not be removed (permission denied).");
+      }
+      const remaining = splitTypes(c.contact_type).filter((t) => t.toLowerCase() !== REFERRAL_SOURCE_TAG.toLowerCase());
+      const changed = remaining.length !== splitTypes(c.contact_type).length;
+      const upd = changed ? await updateContactAudited(sb, c.id, { contact_type: joinTypes(remaining) }, source, change_reason) : null;
+      const { count } = await sb.from("deals").select("id", { count: "exact", head: true }).eq("referred_by_contact_id", c.id);
+      return textResult({
+        contact_id: c.id,
+        removed_referral_entries: rows.map((r) => r.id),
+        contact_type_removed: changed,
+        contact_diff: upd?.diff ?? {},
+        referred_deal_count: count ?? 0,
+        note: (count ?? 0) > 0 ? "This contact is still credited on referred deals, so it can still appear in a Tier stage." : void 0
+      }, { contact_id: c.id });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/list-channel-partners.ts
+import { defineTool as defineTool82 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z84 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/channelPartners.ts
+var STAGE_LABELS = { prospect: "Prospect", nurturing: "Nurturing", trial: "Trial", engaged: "Engaged" };
+async function callerCompanyId(sb, userId) {
+  const { data, error } = await sb.from("company_members").select("company_id").eq("user_id", userId ?? "").limit(1).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.company_id) throw new Error("forbidden: the signed-in user is not a member of a workspace.");
+  return data.company_id;
+}
+async function hydratePartners(sb, rows, withHistory) {
+  const ids = rows.map((r) => r.id);
+  const ownerIds = [...new Set(rows.map((r) => r.owner_user_id).filter((v) => !!v))];
+  const [notesRes, ownersRes, histRes] = await Promise.all([
+    ids.length ? sb.from("channel_partner_status_notes").select("id, channel_partner_id, note, created_by, created_at").in("channel_partner_id", ids).order("created_at", { ascending: false }).limit(withHistory ? 500 : 2e3) : Promise.resolve({ data: [], error: null }),
+    ownerIds.length ? sb.from("profiles_public").select("user_id, display_name, first_name, last_name").in("user_id", ownerIds) : Promise.resolve({ data: [], error: null }),
+    withHistory && ids.length ? sb.from("channel_partner_history").select("id, channel_partner_id, event_type, from_stage, to_stage, occurred_at, actor_user_id").in("channel_partner_id", ids).order("occurred_at", { ascending: false }).limit(500) : Promise.resolve({ data: [], error: null })
+  ]);
+  for (const r of [notesRes, ownersRes, histRes]) if (r.error) throw new Error(r.error.message);
+  const notes = notesRes.data ?? [];
+  const owners = new Map((ownersRes.data ?? []).map((o) => [o.user_id, o.display_name || [o.first_name, o.last_name].filter(Boolean).join(" ") || null]));
+  return rows.map((r) => {
+    const mine = notes.filter((n2) => n2.channel_partner_id === r.id);
+    const co = r.crm_companies ?? {};
+    return {
+      id: r.id,
+      crm_company_id: r.crm_company_id,
+      company_name: co.name ?? null,
+      domain: co.domain ?? null,
+      stage: r.stage,
+      stage_label: STAGE_LABELS[r.stage] ?? r.stage,
+      owner_user_id: r.owner_user_id,
+      owner: r.owner_user_id ? owners.get(r.owner_user_id) ?? null : null,
+      status_note: mine[0]?.note ?? null,
+      status_note_updated_at: mine[0]?.created_at ?? null,
+      last_contact_at: co.last_activity_date ?? null,
+      next_activity_at: co.next_activity_date ?? null,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      ...withHistory ? { status_note_history: mine, stage_history: (histRes.data ?? []).filter((h) => h.channel_partner_id === r.id) } : {}
+    };
+  });
+}
+var PARTNER_SELECT = "id, company_id, crm_company_id, stage, owner_user_id, created_by, created_at, updated_at, crm_companies(name, domain, last_activity_date, next_activity_date)";
+
+// src/lib/mcp/tools/list-channel-partners.ts
+var list_channel_partners_default = defineTool82({
+  name: "list_channel_partners",
+  title: "List channel partners",
+  description: "Read-only. Lists the Channel Partner pipeline on the BD page (separate from Referral Sources): id, linked CRM company, stage (prospect/nurturing/trial/engaged), owner, current status note, last contact (company's last activity) and next activity date. Filter by stage, owner or company name. Paginated.",
+  inputSchema: {
+    stages: z84.array(z84.enum(CHANNEL_PARTNER_STAGES)).max(4).optional(),
+    owner_user_id: z84.string().uuid().optional(),
+    query: z84.string().trim().max(200).optional().describe("Company name contains (case-insensitive)."),
+    limit: z84.number().int().min(1).max(500).default(100),
+    offset: z84.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ stages, owner_user_id, query, limit, offset }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const sb = supabaseForUser(ctx);
+    try {
+      const companyId = await callerCompanyId(sb, ctx.getUserId());
+      let q = sb.from("channel_partners").select(query ? PARTNER_SELECT.replace("crm_companies(", "crm_companies!inner(") : PARTNER_SELECT, { count: "exact" }).eq("company_id", companyId).order("updated_at", { ascending: false }).range(offset, offset + limit - 1);
+      if (stages?.length) q = q.in("stage", stages);
+      if (owner_user_id) q = q.eq("owner_user_id", owner_user_id);
+      if (query) q = q.ilike("crm_companies.name", `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+      const { data, error, count } = await q;
+      if (error) return errorResult(error.message);
+      const partners = await hydratePartners(sb, data ?? [], false);
+      const total = count ?? partners.length;
+      const next = offset + partners.length;
+      const payload = { total_count: total, returned: partners.length, offset, next_offset: next < total ? next : null, has_more: next < total, partners };
+      return textResult(payload, payload);
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/get-channel-partner.ts
+import { defineTool as defineTool83 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z85 } from "npm:zod@^3.23.0";
+var get_channel_partner_default = defineTool83({
+  name: "get_channel_partner",
+  title: "Get channel partner",
+  description: "Read one Channel Partner by partner id or CRM company id: stage, owner, current status note plus full status-note history, stage/activity history, last contact and next activity date.",
+  inputSchema: { partner_id: z85.string().uuid().optional(), crm_company_id: z85.string().uuid().optional() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ partner_id, crm_company_id }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (!partner_id && !crm_company_id) return errorResult("Provide partner_id or crm_company_id.");
+    const sb = supabaseForUser(ctx);
+    try {
+      let q = sb.from("channel_partners").select(PARTNER_SELECT).limit(1);
+      q = partner_id ? q.eq("id", partner_id) : q.eq("crm_company_id", crm_company_id);
+      const { data, error } = await q.maybeSingle();
+      if (error) return errorResult(error.message);
+      if (!data) return errorResult("Channel partner not found (or not visible to you).");
+      const [partner] = await hydratePartners(sb, [data], true);
+      return textResult({ partner }, { partner_id: partner.id });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/create-channel-partner.ts
+import { defineTool as defineTool84 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z86 } from "npm:zod@^3.23.0";
+var create_channel_partner_default = defineTool84({
+  name: "create_channel_partner",
+  title: "Create channel partner",
+  description: "Add an existing CRM company to the Channel Partner pipeline (BD page), like the app's Add Partner action. Defaults: stage prospect, owner = you. Optional first status note. Refuses if the company is already a channel partner (returns the existing id). Stage history is recorded automatically. Create the CRM company first with create_company if needed.",
+  inputSchema: {
+    crm_company_id: z86.string().uuid(),
+    stage: z86.enum(CHANNEL_PARTNER_STAGES).default("prospect"),
+    owner_user_id: z86.string().uuid().optional(),
+    status_note: z86.string().trim().min(1).max(5e3).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ crm_company_id, stage, owner_user_id, status_note }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    try {
+      const companyId = await callerCompanyId(sb, userId);
+      const { data: existing } = await sb.from("channel_partners").select("id").eq("company_id", companyId).eq("crm_company_id", crm_company_id).maybeSingle();
+      if (existing) return { ...textResult({ error: "already_exists", partner_id: existing.id, message: "This company is already a channel partner; use update_channel_partner." }), isError: true };
+      const { data, error } = await sb.from("channel_partners").insert({
+        company_id: companyId,
+        crm_company_id,
+        stage: stage ?? "prospect",
+        owner_user_id: owner_user_id ?? userId,
+        created_by: userId
+      }).select(PARTNER_SELECT).maybeSingle();
+      if (error) return errorResult(error.message);
+      if (!data) return errorResult("Channel partner was not created (company not in your workspace or permission denied).");
+      if (status_note) {
+        const { error: nErr } = await sb.from("channel_partner_status_notes").insert({ channel_partner_id: data.id, company_id: companyId, note: status_note, created_by: userId });
+        if (nErr) return errorResult(`Partner created, but the status note failed: ${nErr.message}`);
+      }
+      const [partner] = await hydratePartners(sb, [data], true);
+      return textResult({ partner, created: true }, { partner_id: partner.id });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/update-channel-partner.ts
+import { defineTool as defineTool85 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z87 } from "npm:zod@^3.23.0";
+var update_channel_partner_default = defineTool85({
+  name: "update_channel_partner",
+  title: "Update channel partner",
+  description: "Update a Channel Partner: stage (prospect/nurturing/trial/engaged; history recorded automatically) and owner, and/or replace the current status note (the previous note stays in visible history, as in the app). Returns the updated partner with a diff. 'Last contact' is the linked company's last activity date \u2014 log contact with add_company_note. There is no separate stored 'next step' field; put next steps in the status note.",
+  inputSchema: {
+    partner_id: z87.string().uuid(),
+    stage: z87.enum(CHANNEL_PARTNER_STAGES).optional(),
+    owner_user_id: z87.string().uuid().nullable().optional(),
+    status_note: z87.string().trim().min(1).max(5e3).optional().describe("New current status note; earlier notes remain in history.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ partner_id, stage, owner_user_id, status_note }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (stage === void 0 && owner_user_id === void 0 && status_note === void 0) return errorResult("No fields to update.");
+    const sb = supabaseForUser(ctx);
+    try {
+      const { data: before, error: bErr } = await sb.from("channel_partners").select(PARTNER_SELECT).eq("id", partner_id).maybeSingle();
+      if (bErr) return errorResult(bErr.message);
+      if (!before) return errorResult("Channel partner not found (or not visible to you).");
+      const b = before;
+      const diff = {};
+      const upd = {};
+      if (stage !== void 0 && stage !== b.stage) {
+        upd.stage = stage;
+        diff.stage = { old: b.stage, new: stage };
+      }
+      if (owner_user_id !== void 0 && owner_user_id !== b.owner_user_id) {
+        upd.owner_user_id = owner_user_id;
+        diff.owner_user_id = { old: b.owner_user_id, new: owner_user_id };
+      }
+      let row = b;
+      if (Object.keys(upd).length) {
+        const { data, error } = await sb.from("channel_partners").update({ ...upd, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", partner_id).select(PARTNER_SELECT).maybeSingle();
+        if (error) return errorResult(error.message);
+        if (!data) return errorResult("Update denied by existing permissions.");
+        row = data;
+      }
+      if (status_note !== void 0) {
+        const [cur] = await hydratePartners(sb, [b], false);
+        if (cur.status_note !== status_note) {
+          const { error } = await sb.from("channel_partner_status_notes").insert({ channel_partner_id: partner_id, company_id: b.company_id, note: status_note, created_by: ctx.getUserId() });
+          if (error) return errorResult(error.message);
+          diff.status_note = { old: cur.status_note, new: status_note };
+        }
+      }
+      const [partner] = await hydratePartners(sb, [row], true);
+      return textResult({ partner, diff }, { partner_id });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/create-attachment-upload-url.ts
+import { defineTool as defineTool86 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z89 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/attachmentTargets.ts
+import { z as z88 } from "npm:zod@^3.23.0";
+var ATTACHMENT_TARGET_TYPES = ["lender", "deal", "contact", "company"];
+var attachmentTargetSchema = {
+  target_type: z88.enum(ATTACHMENT_TARGET_TYPES).describe("Record type to attach to."),
+  target_id: z88.string().uuid().describe("master_lenders.id, deals.id, contacts.id or crm_companies.id.")
+};
+var CONFIG = {
+  lender: { bucket: "lender-attachments", table: "lender_attachments", fk: "lender_name", lookup: "master_lenders" },
+  deal: { bucket: "deal-attachments", table: "deal_attachments", fk: "deal_id", lookup: "deals" },
+  contact: { bucket: "crm-contact-attachments", table: "crm_contact_attachments", fk: "contact_id", lookup: "contacts" },
+  company: { bucket: "crm-company-attachments", table: "crm_company_attachments", fk: "crm_company_id", lookup: "crm_companies" }
+};
+async function resolveAttachmentTarget(sb, userId, type, id) {
+  const cfg = CONFIG[type];
+  const select = type === "lender" ? "id, name, company_id" : type === "deal" ? "id, company, company_id" : type === "contact" ? "id, full_name, org_company_id" : "id, name, org_company_id";
+  const { data, error } = await sb.from(cfg.lookup).select(select).eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`${type} ${id} not found (or not visible to you).`);
+  const row = data;
+  const name = String(row.name ?? row.company ?? row.full_name ?? id);
+  if (type === "lender" && !row.company_id) throw new Error("This funding source has no workspace, so attachments cannot be stored for it.");
+  const folder = type === "lender" ? `${userId}/${name}` : `${userId}/${id}`;
+  return { type, id, name, companyId: row.company_id ?? row.org_company_id ?? null, bucket: cfg.bucket, folder };
+}
+function storedFileName(fileName) {
+  const ext = (fileName.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
+}
+function checkFile(fileName, size) {
+  const contentType = guessContentType(fileName);
+  if (contentType === "application/octet-stream") throw new Error("file_name: unsupported file type (use pdf, doc(x), xls(x), ppt(x), csv, txt, md, png or jpg).");
+  if (!Number.isFinite(size) || size <= 0) throw new Error("File is empty.");
+  if (size > MAX_ATTACHMENT_BYTES) throw new Error("File is larger than 20 MB.");
+  return { contentType };
+}
+async function findDuplicateAttachment(sb, target, fileName, size) {
+  const cfg = CONFIG[target.type];
+  let q = sb.from(cfg.table).select("id, name, size_bytes, created_at").eq("name", fileName).eq("size_bytes", size).limit(1);
+  q = target.type === "lender" ? q.eq("lender_name", target.name).eq("company_id", target.companyId) : q.eq(cfg.fk, target.id);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? [])[0] ?? null;
+}
+async function createAttachmentRow(sb, userId, target, file) {
+  if (target.type === "lender") {
+    const res = await writeLenderRelated(
+      sb,
+      "lender_attachments",
+      "create",
+      target.id,
+      void 0,
+      { name: file.name, file_path: file.path, content_type: file.contentType, size_bytes: file.size, category: file.category },
+      false,
+      file.source,
+      file.changeReason
+    );
+    if ("isError" in res) throw new Error(res.content[0].text);
+    return JSON.parse(res.content[0].text).record;
+  }
+  const cfg = CONFIG[target.type];
+  const row = { [cfg.fk]: target.id, user_id: userId, name: file.name, file_path: file.path, content_type: file.contentType, size_bytes: file.size, category: file.category };
+  if (target.type === "deal") row.source = file.origin;
+  const { data, error } = await sb.from(cfg.table).insert(row).select("*").maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Attachment row was not created (permission denied).");
+  return data;
+}
+async function deleteAttachmentRow(sb, target, rowId) {
+  if (target.type === "lender") {
+    await writeLenderRelated(sb, "lender_attachments", "delete", target.id, rowId, {}, true, "mcp", "Rolled back: uploaded file did not match the upload request");
+    return;
+  }
+  await sb.from(CONFIG[target.type].table).delete().eq("id", rowId);
+}
+async function storeAttachmentBytes(sb, userId, target, fileName, bytes, category, origin, source, changeReason) {
+  const { contentType } = checkFile(fileName, bytes.byteLength);
+  const dup = await findDuplicateAttachment(sb, target, fileName, bytes.byteLength);
+  if (dup) return { skipped: true, reason: "A file with the same name and size is already attached to this record.", existing_attachment: dup };
+  const path = `${target.folder}/${storedFileName(fileName)}`;
+  const { error: upErr } = await sb.storage.from(target.bucket).upload(path, bytes, { contentType });
+  if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`);
+  try {
+    const row = await createAttachmentRow(sb, userId, target, { name: fileName, path, size: bytes.byteLength, contentType, category, source, changeReason, origin });
+    return { skipped: false, attachment: row };
+  } catch (e) {
+    await sb.storage.from(target.bucket).remove([path]);
+    throw e;
+  }
+}
+function encodeUploadToken(t) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(t)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeUploadToken(raw) {
+  try {
+    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+    const t = JSON.parse(decodeURIComponent(escape(atob(b64 + "===".slice((b64.length + 3) % 4)))));
+    if (t.v !== 1 || !ATTACHMENT_TARGET_TYPES.includes(t.t) || typeof t.p !== "string" || typeof t.n !== "string" || typeof t.s !== "number") throw new Error("bad");
+    return t;
+  } catch {
+    throw new Error("upload_token is not valid.");
+  }
+}
+function decodeBase64Bytes(b64) {
+  const bin = atob(b64.replace(/-/g, "+").replace(/_/g, "/").replace(/\s+/g, ""));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// src/lib/mcp/tools/create-attachment-upload-url.ts
+var create_attachment_upload_url_default = defineTool86({
+  name: "create_attachment_upload_url",
+  title: "Create attachment upload URL",
+  description: "Step 1 of a two-step upload for real files (PDFs, decks, spreadsheets) up to 20 MB, for a funding source (lender), deal, contact or company. Returns a short-lived signed `upload_url` (HTTP PUT the raw file bytes with the given Content-Type, valid ~2 hours) and an `upload_token`. Then call complete_attachment_upload with the token to create the attachment record. If a file with the same name and size is already attached to that record, nothing is created and the existing attachment is returned.",
+  inputSchema: {
+    ...attachmentTargetSchema,
+    file_name: z89.string().trim().min(1).max(255).describe("File name with extension, e.g. 'Acme term sheet.pdf'."),
+    size_bytes: z89.number().int().min(1).max(MAX_ATTACHMENT_BYTES).describe("Exact file size in bytes; verified when the upload is completed."),
+    content_type: z89.string().max(200).optional().describe("Informational; the stored type is derived from the extension."),
+    category: z89.string().trim().min(1).max(100).default("general").describe("Attachment category (see list_field_options lender_attachments.category for lenders).")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async ({ target_type, target_id, file_name, size_bytes, category }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const userId = ctx.getUserId();
+    if (!userId) return errorResult("Caller has no user id.");
+    const sb = supabaseForUser(ctx);
+    try {
+      const { contentType } = checkFile(file_name, size_bytes);
+      const target = await resolveAttachmentTarget(sb, userId, target_type, target_id);
+      const dup = await findDuplicateAttachment(sb, target, file_name, size_bytes);
+      if (dup) return textResult({ skipped: true, reason: "A file with the same name and size is already attached to this record.", existing_attachment: dup }, { skipped: true });
+      const path = `${target.folder}/${storedFileName(file_name)}`;
+      const { data, error } = await sb.storage.from(target.bucket).createSignedUploadUrl(path);
+      if (error || !data) return errorResult(`Could not create upload URL: ${error?.message ?? "unknown error"}`);
+      const upload_token = encodeUploadToken({ v: 1, t: target_type, id: target_id, p: path, n: file_name, s: size_bytes, c: category ?? "general", exp: Date.now() + 2 * 36e5 });
+      return textResult({
+        upload_url: data.signedUrl,
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        upload_token,
+        expires_in_seconds: 7200,
+        next_step: "PUT the file bytes to upload_url, then call complete_attachment_upload with upload_token."
+      }, { skipped: false });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/complete-attachment-upload.ts
+import { defineTool as defineTool87 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z90 } from "npm:zod@^3.23.0";
+var complete_attachment_upload_default = defineTool87({
+  name: "complete_attachment_upload",
+  title: "Complete attachment upload",
+  description: "Step 2 of the two-step upload: pass the upload_token from create_attachment_upload_url after PUTting the file. Verifies the file is in storage with the declared size, then creates the attachment record on the lender/deal/contact/company (lender attachments are audited with source/change_reason). Skips if the same name and size is already attached.",
+  inputSchema: { upload_token: z90.string().min(10).max(4e3), source: z90.string().max(1e3).optional(), change_reason: z90.string().max(2e3).optional() },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ upload_token, source, change_reason }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const userId = ctx.getUserId();
+    if (!userId) return errorResult("Caller has no user id.");
+    const sb = supabaseForUser(ctx);
+    try {
+      const tok = decodeUploadToken(upload_token);
+      if (tok.exp < Date.now() - 36e5) return errorResult("upload_token has expired; request a new upload URL.");
+      const target = await resolveAttachmentTarget(sb, userId, tok.t, tok.id);
+      if (!tok.p.startsWith(`${target.folder}/`) || tok.p.includes("..") || tok.p.split("/").length !== target.folder.split("/").length + 1) {
+        return errorResult("upload_token does not match this user or record.");
+      }
+      const { contentType } = checkFile(tok.n, tok.s);
+      const dup = await findDuplicateAttachment(sb, target, tok.n, tok.s);
+      if (dup) {
+        await sb.storage.from(target.bucket).remove([tok.p]);
+        return textResult({ skipped: true, reason: "A file with the same name and size is already attached to this record.", existing_attachment: dup }, { skipped: true });
+      }
+      const row = await createAttachmentRow(sb, userId, target, { name: tok.n, path: tok.p, size: tok.s, contentType, category: tok.c, source, changeReason: change_reason, origin: "mcp_upload" });
+      const fileName = tok.p.split("/").pop();
+      const { data: listed, error: lErr } = await sb.storage.from(target.bucket).list(target.folder, { search: fileName, limit: 5 });
+      const obj = (listed ?? []).find((o) => o.name === fileName);
+      const actual = Number(obj?.metadata?.size ?? NaN);
+      if (lErr || !obj || actual !== tok.s) {
+        await deleteAttachmentRow(sb, target, String(row.id));
+        if (obj) await sb.storage.from(target.bucket).remove([tok.p]);
+        return errorResult(!obj ? "The file was not found in storage. PUT the bytes to upload_url first, then call this again." : `Uploaded size ${actual} does not match declared size ${tok.s}; nothing was attached.`);
+      }
+      return textResult({ skipped: false, attachment: row }, { attachment_id: String(row.id) });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/add-attachment-from-gmail.ts
+import { defineTool as defineTool88 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z91 } from "npm:zod@^3.23.0";
+function collectAttachments(value, out = []) {
+  if (!value || typeof value !== "object") return out;
+  if (Array.isArray(value)) {
+    for (const v of value) collectAttachments(v, out);
+    return out;
+  }
+  for (const [k, v] of Object.entries(value)) {
+    if (k === "attachments" && Array.isArray(v)) out.push(...v);
+    else if (v && typeof v === "object") collectAttachments(v, out);
+  }
+  return out;
+}
+var add_attachment_from_gmail_default = defineTool88({
+  name: "add_attachment_from_gmail",
+  title: "Attach a file from Gmail",
+  description: "Fetch an email attachment server-side through the signed-in user's existing connected mailbox and attach it to a funding source (lender), deal, contact or company. Identify the attachment by attachment_id, or by file_name (looked up on the message). 20 MB limit; skips if the same name and size is already attached to that record.",
+  inputSchema: {
+    ...attachmentTargetSchema,
+    message_id: z91.string().trim().min(1).max(500),
+    attachment_id: z91.string().trim().min(1).max(1e3).optional(),
+    file_name: z91.string().trim().min(1).max(255).optional().describe("Attachment file name on the message; also used as the stored name."),
+    category: z91.string().trim().min(1).max(100).default("correspondence"),
+    source: z91.string().max(1e3).optional(),
+    change_reason: z91.string().max(2e3).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async ({ target_type, target_id, message_id, attachment_id, file_name, category, source, change_reason }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (!attachment_id && !file_name) return errorResult("Provide attachment_id or file_name.");
+    const userId = ctx.getUserId();
+    if (!userId) return errorResult("Caller has no user id.");
+    const sb = supabaseForUser(ctx);
+    try {
+      const target = await resolveAttachmentTarget(sb, userId, target_type, target_id);
+      let attId = attachment_id;
+      let name = file_name;
+      if (!attId || !name) {
+        const { data: data2, error: error2 } = await sb.functions.invoke("gmail-messages", { body: { action: "get", message_id } });
+        if (error2) return errorResult(`Could not read the email (is Gmail connected?): ${error2.message}`);
+        const atts = collectAttachments(data2);
+        const hit = atts.find((a) => attId ? (a.id ?? a.attachment_id) === attId : (a.filename ?? a.name ?? "").toLowerCase() === String(name).toLowerCase());
+        if (!hit) return errorResult(`Attachment not found on the message. Available: ${atts.map((a) => a.filename ?? a.name).filter(Boolean).join(", ") || "none"}`);
+        attId = String(hit.id ?? hit.attachment_id);
+        name = name ?? String(hit.filename ?? hit.name ?? "attachment");
+      }
+      const { data, error } = await sb.functions.invoke("gmail-messages", { body: { action: "get_attachment", message_id, attachment_id: attId } });
+      if (error) return errorResult(`Download failed: ${error.message}`);
+      const b64 = data?.data;
+      if (!b64) return errorResult("The mailbox returned no file content.");
+      const result = await storeAttachmentBytes(sb, userId, target, String(name), decodeBase64Bytes(b64), category ?? "correspondence", "gmail", source, change_reason);
+      return textResult(result, { skipped: result.skipped });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/add-attachment-from-drive.ts
+import { defineTool as defineTool89 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z92 } from "npm:zod@^3.23.0";
+var EXPORT_EXT = {
+  "application/vnd.google-apps.document": "docx",
+  "application/vnd.google-apps.spreadsheet": "xlsx",
+  "application/vnd.google-apps.presentation": "pptx",
+  "application/vnd.google-apps.drawing": "pdf"
+};
+var add_attachment_from_drive_default = defineTool89({
+  name: "add_attachment_from_drive",
+  title: "Attach a file from Google Drive",
+  description: "Download a Google Drive file server-side through the workspace's connected Drive (the same connection the Drive data-room import uses; internal 5th Line users only) and attach it to a funding source (lender), deal, contact or company. Native Google Docs/Sheets/Slides need mime_type and are exported to docx/xlsx/pptx. 20 MB limit; skips if the same name and size is already attached.",
+  inputSchema: {
+    ...attachmentTargetSchema,
+    file_id: z92.string().trim().min(5).max(300).describe("Drive file id (or a Drive link containing it)."),
+    file_name: z92.string().trim().min(1).max(255).describe("Name to store, with extension (e.g. 'Lender deck.pdf')."),
+    mime_type: z92.string().max(200).optional().describe("Drive mimeType; required for native Google Docs/Sheets/Slides."),
+    category: z92.string().trim().min(1).max(100).default("general"),
+    source: z92.string().max(1e3).optional(),
+    change_reason: z92.string().max(2e3).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async ({ target_type, target_id, file_id, file_name, mime_type, category, source, change_reason }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const userId = ctx.getUserId();
+    if (!userId) return errorResult("Caller has no user id.");
+    const sb = supabaseForUser(ctx);
+    try {
+      const target = await resolveAttachmentTarget(sb, userId, target_type, target_id);
+      const id = file_id.match(/[-\w]{20,}/)?.[0] ?? file_id;
+      const { data, error } = await sb.functions.invoke("drive-folder-import", { body: { action: "download", fileId: id, mimeType: mime_type ?? "" } });
+      if (error) return errorResult(`Drive download failed (file not shared with the connected Drive, or access not allowed): ${error.message}`);
+      const b64 = data?.base64;
+      if (!b64) return errorResult("Drive returned no file content.");
+      const ext = mime_type ? EXPORT_EXT[mime_type] : void 0;
+      const name = ext && !file_name.toLowerCase().endsWith(`.${ext}`) ? `${file_name}.${ext}` : file_name;
+      const result = await storeAttachmentBytes(sb, userId, target, name, decodeBase64Bytes(b64), category ?? "general", "google_drive", source, change_reason);
+      return textResult(result, { skipped: result.skipped });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/list-lender-contacts.ts
+import { defineTool as defineTool90 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z93 } from "npm:zod@^3.23.0";
+var list_lender_contacts_default = defineTool90({
+  name: "list_lender_contacts",
+  title: "List funding source contacts",
+  description: "Read-only. List every row in a funding source's multi-contact list (lender_contacts) with its row id (use as contact_id in upsert_lender_contact / delete_lender_contact), name, title, email, phone, location, notes, is_primary and linked CRM contact id.",
+  inputSchema: { lender_id: z93.string().uuid() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lender_id }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const sb = supabaseForUser(ctx);
+    const { data: lender, error: lErr } = await sb.from("master_lenders").select("id, name").eq("id", lender_id).maybeSingle();
+    if (lErr) return errorResult(lErr.message);
+    if (!lender) return errorResult("Funding source not found (or not visible to you).");
+    const { data, error } = await sb.from("lender_contacts").select("id, name, title, email, phone, city, state, country, geography, notes, is_primary, contact_id, created_at, updated_at").eq("lender_id", lender_id).order("is_primary", { ascending: false }).order("name").limit(500);
+    if (error) return errorResult(error.message);
+    const contacts = (data ?? []).map(({ contact_id, ...r }) => ({ ...r, crm_contact_id: contact_id }));
+    return textResult({ lender_id, lender_name: lender.name, count: contacts.length, contacts }, { lender_id, count: contacts.length });
+  }
+});
+
+// src/lib/mcp/tools/list-field-options.ts
+import { defineTool as defineTool91 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z94 } from "npm:zod@^3.23.0";
+var list_field_options_default = defineTool91({
+  name: "list_field_options",
+  title: "List allowed field values",
+  description: `Read-only. Return the option list the app's dropdowns and filters use for a field, so writes use valid values. Supported table.column keys: ${FIELD_OPTION_KEYS.join(", ")}. Pass one or more as fields, or table + column. create_lender/update_lender reject values outside these lists unless allow_new_options: true.`,
+  inputSchema: {
+    fields: z94.array(z94.enum(FIELD_OPTION_KEYS)).min(1).max(FIELD_OPTION_KEYS.length).optional(),
+    table: z94.string().trim().max(80).optional(),
+    column: z94.string().trim().max(80).optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ fields, table, column }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const keys = fields ?? (table && column ? [`${table}.${column}`] : [...FIELD_OPTION_KEYS]);
+    const bad = keys.filter((k) => !FIELD_OPTION_KEYS.includes(k));
+    if (bad.length) return errorResult(`Unsupported field(s): ${bad.join(", ")}. Supported: ${FIELD_OPTION_KEYS.join(", ")}.`);
+    const sb = supabaseForUser(ctx);
+    try {
+      const companyId = keys.includes("contacts.contact_type") ? await callerCompanyId(sb, ctx.getUserId()) : null;
+      const options = await Promise.all(keys.map((k) => loadFieldOptions(sb, k, companyId)));
+      return textResult({ options }, { count: options.length });
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/list-unmatched-claap-meetings.ts
+import { defineTool as defineTool92 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z95 } from "npm:zod@^3.23.0";
+var list_unmatched_claap_meetings_default = defineTool92({
+  name: "list_unmatched_claap_meetings",
+  title: "List unmatched Claap meetings",
+  description: "Read-only. Claap meetings with no confirmed funding-source match (unmatched, or only a suggested match awaiting review). Filter by date range, participant email or email domain, and title text. Returns meeting id, title, date, participants, recording URL and any suggested lender with its reason. Use link_claap_meeting_to_lender or update_claap_meeting_match to resolve.",
+  inputSchema: {
+    include: z95.enum(["both", "unmatched", "suggested"]).default("both"),
+    started_after: z95.string().datetime({ offset: true }).optional(),
+    started_before: z95.string().datetime({ offset: true }).optional(),
+    participant_email: z95.string().trim().max(320).optional(),
+    participant_domain: z95.string().trim().max(253).optional().describe("e.g. firstncc.com"),
+    title_contains: z95.string().trim().max(200).optional(),
+    limit: z95.number().int().min(1).max(200).default(50),
+    offset: z95.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    const sb = supabaseForUser(ctx);
+    const statuses = input.include === "unmatched" ? ["unmatched"] : input.include === "suggested" ? ["needs_review"] : ["unmatched", "needs_review"];
+    let ids = null;
+    if (input.participant_email || input.participant_domain) {
+      let pq = sb.from("claap_meeting_participants").select("meeting_id").limit(5e3);
+      if (input.participant_email) pq = pq.ilike("email", input.participant_email.replace(/[\\%_]/g, (c) => `\\${c}`));
+      if (input.participant_domain) pq = pq.ilike("domain", input.participant_domain.replace(/^@/, "").replace(/[\\%_]/g, (c) => `\\${c}`));
+      const { data: data2, error: error2 } = await pq;
+      if (error2) return errorResult(error2.message);
+      ids = [...new Set((data2 ?? []).map((r) => r.meeting_id))];
+      if (!ids.length) return textResult({ total_count: 0, returned: 0, has_more: false, next_offset: null, meetings: [] });
+    }
+    let q = sb.from("claap_meetings").select("id, claap_id, title, started_at, recording_url, match_status, matched_lender_id, match_reason, match_confidence, status", { count: "exact" }).in("match_status", statuses).order("started_at", { ascending: false, nullsFirst: false }).range(input.offset, input.offset + input.limit - 1);
+    if (ids) q = q.in("id", ids.slice(0, 1e3));
+    if (input.started_after) q = q.gte("started_at", input.started_after);
+    if (input.started_before) q = q.lt("started_at", input.started_before);
+    if (input.title_contains) q = q.ilike("title", `%${input.title_contains.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    const { data, error, count } = await q;
+    if (error) return errorResult(error.message);
+    const rows = data ?? [];
+    const meetingIds = rows.map((r) => r.id);
+    const lenderIds = [...new Set(rows.map((r) => r.matched_lender_id).filter((v) => typeof v === "string"))];
+    const [partsRes, lendersRes] = await Promise.all([
+      meetingIds.length ? sb.from("claap_meeting_participants").select("meeting_id, name, email, domain, is_internal").in("meeting_id", meetingIds) : Promise.resolve({ data: [], error: null }),
+      lenderIds.length ? sb.from("master_lenders").select("id, name").in("id", lenderIds) : Promise.resolve({ data: [], error: null })
+    ]);
+    if (partsRes.error) return errorResult(partsRes.error.message);
+    if (lendersRes.error) return errorResult(lendersRes.error.message);
+    const parts = partsRes.data ?? [];
+    const lenderName = new Map((lendersRes.data ?? []).map((l) => [l.id, l.name]));
+    const meetings = rows.map((r) => ({
+      meeting_id: r.id,
+      claap_id: r.claap_id,
+      title: r.title,
+      started_at: r.started_at,
+      recording_url: r.recording_url,
+      match_status: r.match_status,
+      review_status: r.status,
+      participants: parts.filter((p) => p.meeting_id === r.id).map(({ meeting_id: _m, ...p }) => p),
+      suggested_match: r.match_status === "needs_review" && r.matched_lender_id ? { lender_id: r.matched_lender_id, lender_name: lenderName.get(r.matched_lender_id) ?? null, reason: r.match_reason, confidence: r.match_confidence } : null
+    }));
+    const total = count ?? meetings.length;
+    const next = input.offset + meetings.length;
+    const payload = { total_count: total, returned: meetings.length, offset: input.offset, next_offset: next < total ? next : null, has_more: next < total, meetings };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/link-claap-meeting-to-lender.ts
+import { defineTool as defineTool93 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z96 } from "npm:zod@^3.23.0";
+var link_claap_meeting_to_lender_default = defineTool93({
+  name: "link_claap_meeting_to_lender",
+  title: "Link Claap meeting to funding source",
+  description: "Manually link any Claap meeting to a funding source, even when no suggestion exists. Identify the meeting by meeting_id (claap_meetings.id) or recording_id (claap_recordings.id). Confirms the match (locked as a manual decision, audited) and optionally sets the matched contact (a CRM contact in the same workspace). Organizer/admin update permissions apply; no deal routing runs.",
+  inputSchema: {
+    meeting_id: z96.string().uuid().optional(),
+    recording_id: z96.string().uuid().optional(),
+    lender_id: z96.string().uuid(),
+    contact_id: z96.string().uuid().optional().describe("Optional CRM contacts.id to record as the matched contact."),
+    reason: z96.string().max(1e4).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ meeting_id, recording_id, lender_id, contact_id, reason }, ctx) => {
+    const denied = requireAuth(ctx);
+    if (denied) return denied;
+    if (!meeting_id === !recording_id) return errorResult("Provide exactly one of meeting_id or recording_id.");
+    const sb = supabaseForUser(ctx);
+    let id = meeting_id;
+    if (recording_id) {
+      const { data: rec, error: error2 } = await sb.from("claap_recordings").select("id, external_id").eq("id", recording_id).maybeSingle();
+      if (error2) return errorResult(error2.message);
+      if (!rec?.external_id) return errorResult("Recording not found (or not visible to you).");
+      const { data: m, error: mErr } = await sb.from("claap_meetings").select("id").eq("claap_id", rec.external_id).limit(1).maybeSingle();
+      if (mErr) return errorResult(mErr.message);
+      if (!m) return errorResult("No Claap meeting record exists for this recording yet.");
+      id = m.id;
+    }
+    const { data, error } = await sb.rpc("mcp_update_claap_meeting_match", {
+      p_meeting_id: id,
+      p_matched_lender_id: lender_id,
+      p_match_status: "matched",
+      p_reason: reason ?? "Manually linked via connector",
+      p_status: null
+    });
+    if (error) return errorResult(error.message);
+    let contact = null;
+    if (contact_id) {
+      const { data: meeting } = await sb.from("claap_meetings").select("company_id").eq("id", id).maybeSingle();
+      const { data: c, error: cErr } = await sb.from("contacts").select("id, full_name, email, org_company_id").eq("id", contact_id).maybeSingle();
+      if (cErr) return errorResult(`Lender linked, but contact lookup failed: ${cErr.message}`);
+      if (!c || c.org_company_id !== meeting?.company_id) return errorResult("Lender linked, but the contact is not in the meeting's workspace; contact not set.");
+      const { data: upd, error: uErr } = await sb.from("claap_meetings").update({ matched_contact_id: contact_id, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", id).select("id");
+      if (uErr || !upd?.length) return errorResult(`Lender linked, but setting the contact was denied: ${uErr?.message ?? "permission denied"}`);
+      contact = c;
+    }
+    return textResult({ meeting_id: id, linked: true, result: data, contact }, { meeting_id: id });
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "tgkksvazruzbghssnxde";
 var mcp_default = defineMcp({
   name: "naitive",
   title: "naitive",
   version: "0.1.0",
-  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `get_deal_note` (read one note's full content), `add_deal_note_entry` (prepend/append an entry to a Deal Space note such as \"Q&A Notes\", creating it if missing, with idempotency_key dedupe \u2014 never overwrites), `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. `get_deal_hours_fees` returns Hours & Fees per deal (retainer, milestone, success fee %, closing fee, total fee, pre/post-signing hours, revenue per hour, optional weekly logged hours) with per-pipeline and overall rollups. `get_headcount` returns monthly headcount by entity plus firm total; `get_harvest_metrics` returns Harvest hours, utilization, and FinServ revenue/gross-profit/profit per billable hour; `get_per_head_metrics` returns rolling TTM revenue and gross profit per head (debt, finserv or firm); `get_finserv_client_metrics` returns point-in-time FinServ Active Clients and Total MRR per month/quarter/year matching the dashboard. All of them apply the same global test-deal exclusions and RLS scoping as the UI. Open Items: `list_outstanding_items`, `create_outstanding_item`, `update_outstanding_item`, and `batch_create_outstanding_items` manage the Deal Space widget. Status inputs are requested (Requested, default), received (Received), submitted (Submitted); priorities normal (default), high, urgent. open_only means incomplete (not both received and submitted), unlike the item-type UI tab. lender_id is deal_lenders.id, not master_lenders.id. assigned_to is opaque text, currently unused in the widget. Writes require explicit user approval. Metadata idempotency keys cannot be changed; archived duplicates return existing rows. Append notes preserves history; no delete tool or email action. Use offset for listing pagination.",
+  instructions: "Tools for the naitive deal-management platform. Callers act as the signed-in naitive user; all reads and writes respect the user's company scoping and access. Use `list_deals`/`get_deal` to inspect deals \u2014 `list_deals` applies NO implicit pipeline/owner/stage filter and returns deals from every pipeline the caller can see, with `total_count`/`next_offset`/`has_more` for full pagination and a `pipeline_breakdown`; pair it with `list_pipelines` (all pipelines, their stages and deal counts) to confirm coverage across pipelines \u2014 `update_deal` to move stage or edit fields, `add_deal_status_note` to add or replace the status note on a deal (the Status Note box on the deal page), `list_tasks`/`create_task`/`complete_task` for task work, `search_contacts`/`search_companies`/`create_contact`/`create_company` for CRM lookups (both searches are paginated and accept fields=* for every column), `get_contact` for one contact's complete record plus linked company, deals, logged activities, field-level change history, AI field suggestions, attachments and funding-source/partner links, `get_company` for one CRM company's complete record plus its contacts, deals, full activity history, attachments, team, contact-match history, parent/child companies, linked funding sources and tasks, `search_lenders` (paginated directory search, fields=* returns every master_lenders column), `get_lender` (one funding source's complete record plus contacts, notes, attachments, change history and linked deals), `update_lender` (partial write to master_lenders columns \u2014 criteria, deal size, industries, geographies, referral terms and the LEGACY single contact_name/contact_title/contact_phone columns \u2014 audited per field), `upsert_lender_contact` (add or update one entry in the SEPARATE multi-contact `lender_contacts` list, with automatic single-primary enforcement; not interchangeable with `update_lender`), `create_lender` (add a NEW funding source; rejects duplicate names \u2014 use `update_lender` for existing ones), `delete_lender_contact` (remove a duplicate/wrong lender_contacts row, confirm required), `add_lender_attachment`/`list_lender_attachments`/`delete_lender_attachment` (funding-source documents such as NDAs, one-pagers and referral agreements) and `add_lender_to_deal` for the funding-source directory, `list_deal_funding_sources` to read the lenders attached to a specific deal (matches the deal's Funding Sources tab), and \u2014 for deep deal context \u2014 `search_deal_notes`, `get_deal_note` (read one note's full content), `add_deal_note_entry` (prepend/append an entry to a Deal Space note such as \"Q&A Notes\", creating it if missing, with idempotency_key dedupe \u2014 never overwrites), `list_deal_activity`, `search_deal_documents`, `get_deal_document`, `search_deal_emails`, and `search_deal_recordings` to retrieve notes, timeline events, files, email history, and meeting transcripts scoped to a specific deal. Daily rundown tools (`get_daily_rundown`, `add_daily_rundown_item`, `update_daily_rundown_item`, `complete_daily_rundown_item`, `reorder_daily_rundown_items`) manage the personal dashboard rundown \u2014 access is restricted to jturner@5thline.co and enforced at the database (RLS) and edge-function layers. Insights analytics tools give full read access to everything on the Insights page: `list_insights_dashboards` enumerates dashboards, saved widget layouts, and custom formula metrics; `get_pipeline_metrics` returns deal-pipeline aggregates (value, fees, counts) broken down by stage, status, type, manager, owner, pipeline, and month for any timeframe; `get_funnel_velocity` returns stage conversion and time-in-stage analytics; `get_revenue_metrics` returns QuickBooks invoiced revenue by month/customer/entity plus P&L snapshots; `get_lender_metrics` returns funding-source funnel analytics; `get_metric_targets` returns Master Plan targets and manual inputs for plan-vs-actual comparisons; and `query_insights_dataset` is a read-only, fully paginated escape hatch over every underlying dataset (including deal write-ups, memos, checklists, attachments, financials and ownership). Use `describe_schema` first to discover exact column names and allowed enum values, then `list_deals` with fields=* to extract complete deal records in bulk across all pipelines. `list_referral_partners` (read-only) returns the contacts in the Referral Source pipeline (Nurturing, Tier 3, Tier 2, Tier 1) with name, email, title, company, stage, stage-entered date, last updated and owner, plus per-stage counts and a missing-email count \u2014 use it to build email lists. `get_sales_calls_weekly` returns the weekly Sales Calls count (Debt or FinServ) shown on the Sales Dashboard. `get_deal_hours_fees` returns Hours & Fees per deal (retainer, milestone, success fee %, closing fee, total fee, pre/post-signing hours, revenue per hour, optional weekly logged hours) with per-pipeline and overall rollups. `get_headcount` returns monthly headcount by entity plus firm total; `get_harvest_metrics` returns Harvest hours, utilization, and FinServ revenue/gross-profit/profit per billable hour; `get_per_head_metrics` returns rolling TTM revenue and gross profit per head (debt, finserv or firm); `get_finserv_client_metrics` returns point-in-time FinServ Active Clients and Total MRR per month/quarter/year matching the dashboard. All of them apply the same global test-deal exclusions and RLS scoping as the UI. Open Items: `list_outstanding_items`, `create_outstanding_item`, `update_outstanding_item`, and `batch_create_outstanding_items` manage the Deal Space widget. Status inputs are requested (Requested, default), received (Received), submitted (Submitted); priorities normal (default), high, urgent. open_only means incomplete (not both received and submitted), unlike the item-type UI tab. lender_id is deal_lenders.id, not master_lenders.id. assigned_to is opaque text, currently unused in the widget. Writes require explicit user approval. Metadata idempotency keys cannot be changed; archived duplicates return existing rows. Append notes preserves history; no delete tool or email action. Use offset for listing pagination. CRM edits: `update_contact`/`update_company` (partial, audited, dry_run, expected_updated_at, append/prepend for description/notes) and `add_contact_note`/`add_company_note` (idempotency_key prevents duplicates). Referral Source pipeline: `add_referral_partner`/`update_referral_partner`/`remove_referral_partner` (contacts enter at Nurturing; Tier 3/2/1 are computed from referred deals), and `list_referral_partners` now includes sources without email (has_email:false). Channel Partners (BD page, separate from referral sources): `list_channel_partners`, `get_channel_partner`, `create_channel_partner`, `update_channel_partner`. Files: `create_attachment_upload_url` + `complete_attachment_upload` for real files up to 20 MB on a lender, deal, contact or company, or `add_attachment_from_gmail` / `add_attachment_from_drive` to fetch server-side; duplicates (same name and size) are skipped. `list_lender_contacts` returns lender_contacts row ids; `upsert_lender_contact` updates a same-email/same-name contact instead of duplicating (force_create overrides) and only checks the CRM company when crm_contact_id changes. `list_field_options` returns allowed dropdown values; `create_lender`/`update_lender` reject unknown option values unless allow_new_options:true, and `update_lender` supports array_mode add/remove. Claap: `list_unmatched_claap_meetings`, `link_claap_meeting_to_lender`, batch `update_claap_meeting_match` (updates[] up to 25), and `list_lender_claap_meetings` match_status confirmed/suggested/none. `merge_lenders` supports dry_run. `query_insights_dataset` returns compact columns on wide tables by default (columns=\"*\" for all) and supports or_groups.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -10263,7 +11767,26 @@ var mcp_default = defineMcp({
     list_outstanding_items_default,
     create_outstanding_item_default,
     update_outstanding_item_default,
-    batch_create_outstanding_items_default
+    batch_create_outstanding_items_default,
+    update_contact_default,
+    update_company_default,
+    add_contact_note_default,
+    add_company_note_default,
+    add_referral_partner_default,
+    update_referral_partner_default,
+    remove_referral_partner_default,
+    list_channel_partners_default,
+    get_channel_partner_default,
+    create_channel_partner_default,
+    update_channel_partner_default,
+    create_attachment_upload_url_default,
+    complete_attachment_upload_default,
+    add_attachment_from_gmail_default,
+    add_attachment_from_drive_default,
+    list_lender_contacts_default,
+    list_field_options_default,
+    list_unmatched_claap_meetings_default,
+    link_claap_meeting_to_lender_default
   ]
 });
 

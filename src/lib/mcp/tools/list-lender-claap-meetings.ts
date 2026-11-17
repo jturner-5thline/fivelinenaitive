@@ -5,11 +5,12 @@ import { supabaseForUser, requireAuth, textResult, errorResult } from "../supaba
 export default defineTool({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
-  description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
+  description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection. match_status (confirmed/suggested/none) is a shorthand for match_statuses. include_transcript defaults to false.",
   inputSchema: {
     lender_ids: z.array(z.string().uuid()).max(200).optional(),
     updated_after: z.string().datetime({ offset: true }).optional(),
     match_statuses: z.array(z.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    match_status: z.enum(["confirmed", "suggested", "none"]).optional().describe("Shorthand filter: confirmed = matched, suggested = needs_review, none = unmatched."),
     include_transcript: z.boolean().default(false),
     limit: z.number().int().min(1).max(200).default(50),
     offset: z.number().int().min(0).max(1000000).default(0),
@@ -21,7 +22,7 @@ export default defineTool({
     const { data, error } = await supabaseForUser(ctx).rpc("mcp_list_lender_claap_meetings", {
       p_lender_ids: input.lender_ids ?? null,
       p_updated_after: input.updated_after ?? null,
-      p_match_statuses: input.match_statuses ?? null,
+      p_match_statuses: input.match_status ? [{ confirmed: "matched", suggested: "needs_review", none: "unmatched" }[input.match_status]] : input.match_statuses ?? null,
       p_include_transcript: input.include_transcript ?? false,
       p_limit: input.limit ?? 50,
       p_offset: input.offset ?? 0,

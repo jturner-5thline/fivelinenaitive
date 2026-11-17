@@ -62,7 +62,21 @@ describe("Claap MCP refresh", () => {
   it("rejects unrecognized matching and queue statuses", () => {
     expect(() => update.inputSchema.match_status.parse("manually_linked")).toThrow();
     expect(() => update.inputSchema.status.parse("done")).toThrow();
-    expect(() => update.inputSchema.matched_lender_id.parse(undefined)).toThrow();
+  });
+  it("requires meeting, lender and status for a single update and caps batches at 25", async () => {
+    const res = await update.handler({ meeting_id: id, match_status: "matched" }, ctx);
+    expect(res.isError).toBe(true);
+    expect(rpc).not.toHaveBeenCalled();
+    const item = { meeting_id: id, matched_lender_id: null, match_status: "unmatched" };
+    expect(() => update.inputSchema.updates.parse(Array(26).fill(item))).toThrow();
+  });
+  it("applies each batch item independently and reports failures", async () => {
+    rpc.mockResolvedValueOnce({ data: { ok: true } }).mockResolvedValueOnce({ error: { message: "denied" } });
+    const item = { meeting_id: id, matched_lender_id: null, match_status: "unmatched" };
+    const res = await update.handler({ updates: [item, item] }, ctx);
+    const body = JSON.parse(res.content[0].text);
+    expect(body.succeeded).toBe(1);
+    expect(body.failed).toBe(1);
   });
   it("defaults to no transcript and bounded pagination", async () => {
     rpc.mockResolvedValue({ data: { meetings: [], has_more: false } });

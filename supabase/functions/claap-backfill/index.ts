@@ -1,6 +1,7 @@
 import { requireInternal } from "../_shared/requestAuth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { shouldDefer, getQuotaStatus } from "../_shared/claap-quota.ts";
+import { loadLenderMatchInputs, pickLenderMatch } from "../_shared/claapLenderMatch.ts";
 
 // Also count list-endpoint pulls against the daily Claap quota — every
 // /v1/recordings page consumes a real API call and needs to be visible to
@@ -215,46 +216,19 @@ async function runSmartMatching(
     }
   }
 
-  // 2. LENDER MATCH
+  // 2. LENDER MATCH — participant domain (unique within the workspace) or exact name in title only.
   if (configCompanyId) {
-    if (titleLower) {
-      const { data: lenders } = await supabaseAdmin.from("master_lenders").select("id, name").eq("company_id", configCompanyId).limit(500);
-      if (lenders) {
-        for (const lender of lenders) {
-          const ln = normalizeName(lender.name);
-          if (ln.length >= 3 && titleLower.includes(ln)) {
-            result.matched = true; result.matchType = "lender"; result.matchSource = `Lender name in title: "${lender.name}"`;
-            result.lenderId = lender.id; result.callType = "Lender Call"; result.confidence = 75;
-            const { data: dl } = await supabaseAdmin.from("deal_lenders").select("deal_id").eq("name", lender.name).limit(10);
-            if (dl) result.dealIds = dl.map(d => d.deal_id);
-            return result;
-          }
-          if (diceCoefficient(ln, normalizeName(title || "")) > 0.45) {
-            result.matched = true; result.matchType = "lender"; result.matchSource = `Fuzzy lender name match: "${lender.name}"`;
-            result.lenderId = lender.id; result.callType = "Lender Call"; result.confidence = 55;
-            return result;
-          }
-        }
-      }
-    }
-    for (const domain of externalDomains) {
-      const { data: lc } = await supabaseAdmin.from("lender_contacts").select("lender_id, email").ilike("email", `%@${domain}`).limit(5);
-      if (lc && lc.length > 0) {
-        result.matched = true; result.matchType = "lender"; result.matchSource = `Lender contact domain match: ${domain}`;
-        result.lenderId = lc[0].lender_id; result.callType = "Lender Call"; result.confidence = 65;
-        return result;
-      }
-    }
-    for (const p of externalParticipants) {
-      if (!p.name) continue;
-      const { data: lc } = await supabaseAdmin.from("lender_contacts").select("lender_id, name").ilike("name", `%${p.name}%`).limit(3);
-      if (lc && lc.length > 0) {
-        result.matched = true; result.matchType = "lender"; result.matchSource = `Lender contact name match: ${p.name}`;
-        result.lenderId = lc[0].lender_id; result.callType = "Lender Call"; result.confidence = 55;
-        return result;
-      }
+    const { lenders: lenderList, domainContacts } = await loadLenderMatchInputs(supabaseAdmin, configCompanyId, externalDomains);
+    const lenderMatch = pickLenderMatch({ title, externalDomains, lenders: lenderList, domainContacts });
+    if (lenderMatch) {
+      result.matched = true; result.matchType = "lender"; result.matchSource = lenderMatch.source;
+      result.lenderId = lenderMatch.lenderId; result.callType = "Lender Call"; result.confidence = lenderMatch.confidence;
+      const { data: dl } = await supabaseAdmin.from("deal_lenders").select("deal_id").eq("master_lender_id", lenderMatch.lenderId).limit(10);
+      if (dl) result.dealIds = dl.map((d: { deal_id: string }) => d.deal_id);
+      return result;
     }
   }
+
 
   // 3. COMPANY MATCH
   for (const domain of externalDomains) {

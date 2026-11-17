@@ -1,4 +1,5 @@
 import { requireInternal } from "../_shared/requestAuth.ts";
+import { titleHasExactName } from "../_shared/claapLenderMatch.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { callClaude } from "../_shared/claudeChat.ts";
@@ -491,9 +492,12 @@ serve(async (req) => {
             });
           }
         }
-        // Direct lender match by attendee email domain (master directory)
+        // Direct lender match by attendee email domain (master directory). A domain
+        // shared by several lenders only suggests the one named exactly in the title.
         if (lenderByDomain[domain]) {
-          for (const ld of lenderByDomain[domain]) {
+          const candidates = lenderByDomain[domain];
+          const picks = candidates.length === 1 ? candidates : candidates.filter((ld) => titleHasExactName(meeting.title || "", ld.name));
+          for (const ld of picks) {
             const k = `lender:${ld.name}`;
             if (!seenLabels.has(k)) {
               seenLabels.add(k);
@@ -502,27 +506,8 @@ serve(async (req) => {
                 lender_name: ld.name,
                 label: ld.name,
                 score: 80,
-                reasons: [`Attendee domain @${domain} matches lender "${ld.name}" (directory)`],
+                reasons: [candidates.length === 1 ? `Attendee domain @${domain} matches lender "${ld.name}" (directory)` : `Shared domain @${domain} + exact lender name in title: "${ld.name}"`],
               });
-            }
-          }
-        }
-        // Lender match by name token vs domain
-        for (const lname of allLenderNames) {
-          const core = lname.toLowerCase().replace(/[^a-z0-9]/g, "");
-          const dCore = domain.replace(/\.(com|io|co|net|org|ai|us|uk)$/i, "").replace(/[^a-z0-9]/g, "");
-          if (core.length > 3 && dCore && (dCore.includes(core) || core.includes(dCore))) {
-            const k = `lender:${lname}`;
-            if (!seenLabels.has(k)) {
-              seenLabels.add(k);
-              extraSuggestions.push({
-                match_type: "lender",
-                lender_name: lname,
-                label: lname,
-                score: 60,
-                reasons: [`Attendee domain @${domain} matches lender "${lname}"`],
-              });
-              break;
             }
           }
         }
@@ -550,22 +535,18 @@ serve(async (req) => {
             });
           }
         }
+        // Lenders are suggested from the title only on an exact full-name match.
         for (const lname of allLenderNames) {
           const k = `lender:${lname}`;
           if (seenLabels.has(k)) continue;
-          const lt = tokenize(lname);
-          if (lt.length === 0) continue;
-          let overlap = 0;
-          const matched: string[] = [];
-          for (const t of lt) if (titleTokens.has(t)) { overlap++; matched.push(t); }
-          if (overlap >= 2) {
+          if (titleHasExactName(meeting.title || "", lname)) {
             seenLabels.add(k);
             extraSuggestions.push({
               match_type: "lender",
               lender_name: lname,
               label: lname,
-              score: 50,
-              reasons: [`Title mentions lender "${lname}" [${matched.join(", ")}]`],
+              score: 60,
+              reasons: [`Exact lender name in title: "${lname}"`],
             });
           }
         }

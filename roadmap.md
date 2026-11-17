@@ -1,5 +1,10 @@
 # Roadmap
 
+## MCP extension (CRM edits, partners, uploads, lender contacts, options, Claap, fixes)
+- [x] 19 new tools and 9 updated tools; 125-tool manifest extracted. New audit table and RPCs; lender-contact CRM check only on link changes.
+- [x] 23 new/updated unit tests (148 MCP tests pass); rolled-back SQL run as James verified contact/company edits, lender-contact edit/delete/relink and merge preview. Claap matcher functions deployed.
+- [ ] Live Claude use requires republish + connector refresh. Real merges are blocked for everyone by an existing lender_match_rules policy that reads auth.users (not changed; needs approval).
+
 ## Contact CSV generated-name fix
 - [x] Prevent Full Name writes while retaining full-name-only import and existing Record ID matching.
 - [x] Eight regression tests passed; signed-in 1280x1800 preview intercepted 18 existing-contact updates with no generated-name payloads and showed success. Automatic build and new-test/schema lint passed; existing affected-file lint errors remain. No live writes or dependency removals; published app, mobile and real persistence unverified.

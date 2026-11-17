@@ -60,10 +60,22 @@ describe("expanded lender write contract", () => {
     expect(result.isError).toBe(true); expect(rpc).not.toHaveBeenCalled();
   });
   it("requires explicit true for related deletes, archive and merge", () => {
-    for (const t of [defineLenderRelatedTool("lender_pass_patterns", "delete", "delete_pattern"), deleteLender, mergeLenders]) {
+    for (const t of [defineLenderRelatedTool("lender_pass_patterns", "delete", "delete_pattern"), deleteLender]) {
       const schema = (t as unknown as Tool).inputSchema.confirm;
       expect(() => schema.parse(false)).toThrow(); expect(() => schema.parse(undefined)).toThrow(); expect(schema.parse(true)).toBe(true);
     }
+  });
+  it("merge requires confirm:true unless dry_run, and dry_run never calls the real merge", async () => {
+    const merge = mergeLenders as unknown as Tool;
+    expect(() => merge.inputSchema.confirm.parse(false)).toThrow();
+    const other = "33333333-3333-4333-8333-333333333333";
+    const res = await merge.handler({ keep_lender_id: id, merge_lender_id: other }, ctx);
+    expect(res.isError).toBe(true);
+    expect(rpc).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({ data: { dry_run: true, can_merge: false } });
+    await merge.handler({ keep_lender_id: id, merge_lender_id: other, dry_run: true }, ctx);
+    expect(rpc).toHaveBeenCalledWith("mcp_merge_lenders_preview", { p_keep: id, p_merge: other });
+    expect(rpc).not.toHaveBeenCalledWith("mcp_merge_lenders", expect.anything());
   });
   it("reports related-record RLS failures, not success", async () => {
     rpc.mockResolvedValue({ error: { message: "row-level policy denied" } });

@@ -25,7 +25,7 @@ export default defineTool({
   name: "get_lender",
   title: "Get funding source / lender detail",
   description:
-    "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows — contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans — and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
+    "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows — contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans — and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Also returns `contact_ids` (lender_contacts row ids) and `attachment_ids` (lender_attachments row ids). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
   inputSchema: {
     lender_id: z.string().uuid().optional(),
     name: z.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
@@ -110,6 +110,10 @@ export default defineTool({
       );
 
       payload.related = related;
+      // Row ids for direct follow-up calls (upsert/delete_lender_contact, update/delete_lender_attachment).
+      const ids = (v: unknown) => (Array.isArray(v) ? (v as Array<Record<string, unknown>>).map((r) => r.id) : []);
+      payload.contact_ids = ids(related.contacts);
+      payload.attachment_ids = ids(related.attachments);
     }
 
     return textResult(payload, { lender_id: id, name: String(lender.name ?? "") });

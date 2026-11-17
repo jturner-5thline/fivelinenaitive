@@ -8,14 +8,15 @@ export default defineTool({
   name: "list_referral_partners",
   title: "List referral partners",
   description:
-    "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 — the same classification the app shows — with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
+    "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 — the same classification the app shows — with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are INCLUDED with `email: null` and `has_email: false` (pass `require_email: true` to skip them, e.g. for email lists); `missing_email` counts them either way. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
   inputSchema: {
     stages: z.array(z.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
+    require_email: z.boolean().default(false).describe("Skip sources without an email."),
     limit: z.number().int().min(1).max(1000).default(200),
     offset: z.number().int().min(0).default(0),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ stages, limit, offset }, ctx) => {
+  handler: async ({ stages, require_email, limit, offset }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
@@ -43,14 +44,18 @@ export default defineTool({
         stage_counts[s.stage] += 1;
         const c = s.contact_id ? contactById.get(s.contact_id) : undefined;
         const email = (c?.email || s.manual_email || "").trim();
-        if (!email) { missing_email += 1; continue; }
+        if (!email) {
+          missing_email += 1;
+          if (require_email) continue;
+        }
         const [fallbackFirst, ...rest] = s.name.split(/\s+/);
         const companyId = c?.crm_company_id ?? s.crm_company_id ?? null;
         rows.push({
           contact_id: s.contact_id,
           first_name: c ? c.first_name : fallbackFirst ?? null,
           last_name: c ? c.last_name : rest.join(" ") || null,
-          email,
+          email: email || null,
+          has_email: !!email,
           title: c?.job_title ?? null,
           company_name: (companyId ? companyNames.get(companyId) : undefined) ?? s.manual_company ?? null,
           company_id: companyId,
