@@ -698,3366 +698,805 @@ var get_finserv_client_metrics_default = defineTool2({
   }
 });
 
-// src/lib/mcp/tools/list-pipelines.ts
+// src/lib/mcp/tools/get-dashboard-tile-values.ts
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z3 } from "npm:zod@^3.23.0";
-var list_pipelines_default = defineTool3({
-  name: "list_pipelines",
-  title: "List pipelines",
-  description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
-  inputSchema: {
-    include_deal_counts: z3.boolean().default(true)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ include_deal_counts }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.from("deal_pipelines").select("id, name, is_default, company_id, stages, created_at").order("created_at", { ascending: true });
-    if (error) return errorResult(error.message);
-    const pipelines = (data ?? []).map((p) => {
-      const stages = Array.isArray(p.stages) ? p.stages : [];
-      return {
-        id: p.id,
-        name: p.name ?? null,
-        is_default: p.is_default ?? false,
-        company_id: p.company_id ?? null,
-        stages: stages.map((s) => ({ id: s?.id ?? null, label: s?.label ?? s?.id ?? null })),
-        deal_count: null,
-        active_deal_count: null,
-        on_hold_deal_count: null,
-        closed_deal_count: null,
-        by_stage: null
-      };
-    });
-    let unassigned = null;
-    let excludedTestDeals = 0;
-    if (include_deal_counts) {
-      const rows = [];
-      const pageSize = 1e3;
-      for (let offset = 0; ; offset += pageSize) {
-        const { data: page, error: dealErr } = await sb.from("deals").select("id, company, stage, status, on_hold, pipeline_id").order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
-        if (dealErr) return errorResult(dealErr.message);
-        const chunk = page ?? [];
-        rows.push(...chunk);
-        if (chunk.length < pageSize) break;
-      }
-      const kept = rows.filter((r) => !isExcludedDealName(r.company));
-      excludedTestDeals = rows.length - kept.length;
-      const isClosed = (r) => {
-        const s = `${r.status ?? ""} ${r.stage ?? ""}`.toLowerCase();
-        return s.includes("closed") || s.includes("lost") || s.includes("dead");
-      };
-      const bucket = (subset) => ({
-        deal_count: subset.length,
-        on_hold_deal_count: subset.filter((r) => r.on_hold).length,
-        closed_deal_count: subset.filter((r) => isClosed(r)).length,
-        active_deal_count: subset.filter((r) => !r.on_hold && !isClosed(r)).length
-      });
-      for (const p of pipelines) {
-        const subset = kept.filter((r) => r.pipeline_id === p.id);
-        const b = bucket(subset);
-        p.deal_count = b.deal_count;
-        p.active_deal_count = b.active_deal_count;
-        p.on_hold_deal_count = b.on_hold_deal_count;
-        p.closed_deal_count = b.closed_deal_count;
-        const labels = new Map(p.stages.map((s) => [s.id ?? "", s.label ?? s.id ?? ""]));
-        const counts = /* @__PURE__ */ new Map();
-        for (const r of subset) {
-          const key = r.stage ?? "unknown";
-          counts.set(key, (counts.get(key) ?? 0) + 1);
-        }
-        p.by_stage = Array.from(counts.entries()).map(([stage_id, count]) => ({
-          stage_id,
-          stage_label: labels.get(stage_id) ?? stage_id,
-          count
-        }));
-      }
-      unassigned = bucket(kept.filter((r) => !r.pipeline_id));
-    }
-    const payload = {
-      count: pipelines.length,
-      pipelines,
-      unassigned_deals: unassigned,
-      excluded_test_deals: include_deal_counts ? excludedTestDeals : null,
-      notes: include_deal_counts ? "Counts exclude global test deals; 'closed' is inferred from status/stage text containing closed/lost/dead." : null
-    };
-    return textResult(payload, payload);
-  }
-});
 
-// src/lib/mcp/tools/get-deal.ts
-import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z4 } from "npm:zod@^3.23.0";
-function contactName(contact) {
-  const composed = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
-  if (composed) return composed;
-  const fullName = contact.full_name?.trim();
-  if (fullName && fullName.toLowerCase() !== contact.email?.toLowerCase()) return fullName;
-  return contact.email ?? "Unnamed contact";
+// src/lib/mcp/dashboardPeriods.ts
+var pad = (n2) => String(n2).padStart(2, "0");
+var lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+function monthKeysBetween(start, end) {
+  let [y, m] = start.slice(0, 7).split("-").map(Number);
+  const [ey, em] = end.slice(0, 7).split("-").map(Number);
+  const out = [];
+  while ((y < ey || y === ey && m <= em) && out.length < 240) {
+    out.push(`${y}-${pad(m)}`);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return out;
 }
-var DEAL_CHILD_TABLES = [
-  ["milestones", "deal_milestones"],
-  ["stage_history", "deal_stage_history"],
-  ["stage_history_notes", "deal_stage_history_notes"],
-  ["status_notes", "deal_status_notes"],
-  ["status_report_drafts", "deal_status_report_drafts"],
-  ["flag_notes", "deal_flag_notes"],
-  ["ownership", "deal_ownership"],
-  ["advance_reasons", "deal_advance_reasons"],
-  ["aliases", "deal_aliases"],
-  ["access_requests", "deal_access_requests"],
-  ["audit_log", "deal_audit_log"],
-  ["checklist_status", "deal_checklist_status"],
-  ["attachments", "deal_attachments"],
-  ["writeups", "deal_writeups"],
-  ["memos", "deal_memos"],
-  ["memo_approvals", "deal_memo_approvals"],
-  ["memo_comments", "deal_memo_comments"],
-  ["memo_views", "deal_memo_views"],
-  ["memo_audit_logs", "deal_memo_audit_logs"],
-  ["notes", "deal_space_notes"],
-  ["space_documents", "deal_space_documents"],
-  ["space_conversations", "deal_space_conversations"],
-  ["space_financials", "deal_space_financials"],
-  ["financial_data", "deal_financial_data"],
-  ["financial_files", "deal_financial_files"],
-  ["financial_insights", "deal_financial_insights"],
-  ["computed_metrics", "deal_computed_metrics"],
-  ["drive_folders", "deal_drive_folders"],
-  ["data_room_folders", "deal_data_room_custom_folders"],
-  ["document_exclusions", "deal_document_exclusions"],
-  ["emails", "deal_emails"],
-  ["email_prompts", "deal_email_prompts"],
-  ["client_requests", "client_requests"],
-  ["meeting_history", "deal_meeting_history"],
-  ["meeting_links", "meeting_deal_links"],
-  ["meeting_holds", "meeting_holds"],
-  ["call_transcripts", "deal_call_transcripts"],
-  ["claap_recordings", "deal_claap_recordings"],
-  ["calendar_items", "deal_calendar_items"],
-  ["activity", "deal_activity"],
-  ["ai_settings", "deal_ai_settings"],
-  ["ai_status_snapshots", "deal_ai_status_snapshots"],
-  ["research_cache", "deal_research_cache"],
-  ["fit_profiles", "deal_fit_profiles"],
-  ["kpi_links", "deal_kpi_links"],
-  ["saas_model", "deal_saas_model"],
-  ["saas_mappings", "deal_saas_mappings"],
-  ["saas_sensitivity", "deal_saas_sensitivity"],
-  ["finserv_projects", "finserv_deal_projects"],
-  ["lender_recommendation_exclusions", "deal_lender_recommendation_exclusions"],
-  ["pending_suggestions", "pending_deal_suggestions"],
-  ["pending_notifications", "pending_deal_notifications"]
-];
-var CHILD_ROW_LIMIT = 200;
-var get_deal_default = defineTool4({
-  name: "get_deal",
-  title: "Get deal",
-  description: "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
-  inputSchema: {
-    deal_id: z4.string().uuid(),
-    include_tasks: z4.boolean().default(true),
-    include_lenders: z4.boolean().default(true),
-    include_related: z4.boolean().default(false),
-    include_task_detail: z4.boolean().default(false)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, include_tasks, include_lenders, include_related, include_task_detail }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const denied = await assertDealAccess(sb, ctx, deal_id, "get_deal");
-    if (denied) return denied;
-    const { data: deal, error } = await sb.from("deals").select("*").eq("id", deal_id).maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!deal) return errorResult("Deal not found or you do not have access.");
-    const [tasksRes, lendersRes, contactLinksRes, companyRes, aliasesRes] = await Promise.all([
-      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
-      include_lenders ? sb.from("deal_lenders").select("id, name, master_lender_id, tracking_status, stage, substage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null }),
-      sb.from("contact_deals").select("contact_id, role, created_at").eq("deal_id", deal_id).order("created_at", { ascending: true }),
-      deal.crm_company_id ? sb.from("crm_companies").select("id, name, domain").eq("id", deal.crm_company_id).eq("org_company_id", deal.company_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
-      sb.from("deal_aliases").select("alias").eq("deal_id", deal_id).order("created_at", { ascending: true })
-    ]);
-    if (contactLinksRes.error) return errorResult(contactLinksRes.error.message);
-    if (companyRes.error) return errorResult(companyRes.error.message);
-    if (aliasesRes.error) return errorResult(aliasesRes.error.message);
-    const contactLinks = contactLinksRes.data ?? [];
-    const contactIds = contactLinks.map((link) => link.contact_id).filter(Boolean);
-    let clientContacts = [];
-    if (contactIds.length > 0) {
-      const { data: contacts, error: contactsError } = await sb.from("contacts").select("id, first_name, last_name, full_name, email, job_title").in("id", contactIds);
-      if (contactsError) return errorResult(contactsError.message);
-      const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
-      clientContacts = contactLinks.map((link) => {
-        const contact = contactsById.get(link.contact_id);
-        if (!contact) return null;
-        return {
-          id: contact.id,
-          name: contactName(contact),
-          email: contact.email ?? null,
-          job_title: contact.job_title ?? null,
-          role: link.role ?? null,
-          is_primary: (link.role ?? "").toLowerCase() === "primary"
-        };
-      }).filter((contact) => contact !== null).sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
-    }
-    const [dealWithLabels] = await withStageLabels(sb, [deal]);
-    const related = {};
-    if (include_related) {
-      const results = await Promise.all(
-        DEAL_CHILD_TABLES.map(async ([key, table]) => {
-          const { data, error: childError } = await sb.from(table).select("*").eq("deal_id", deal_id).limit(CHILD_ROW_LIMIT);
-          if (childError) return [key, { error: childError.message }];
-          return [key, data ?? []];
-        })
-      );
-      for (const [key, value] of results) {
-        if (Array.isArray(value) && value.length === 0) continue;
-        related[key] = value;
-      }
-      const noteIds = (related.notes ?? []).map((r) => r.id).filter(Boolean);
-      const conversationIds = (related.space_conversations ?? []).map((r) => r.id).filter(Boolean);
-      const documentIds = (related.space_documents ?? []).map((r) => r.id).filter(Boolean);
-      const nested = [
-        ["note_versions", "deal_space_note_versions", "note_id", noteIds],
-        ["note_comments", "deal_space_note_comments", "note_id", noteIds],
-        ["space_messages", "deal_space_messages", "conversation_id", conversationIds],
-        ["document_summaries", "deal_space_document_summaries", "document_id", documentIds]
-      ];
-      await Promise.all(
-        nested.map(async ([key, table, column, ids]) => {
-          if (ids.length === 0) return;
-          const { data, error: nestedError } = await sb.from(table).select("*").in(column, ids.slice(0, CHILD_ROW_LIMIT)).limit(500);
-          if (nestedError) {
-            related[key] = { error: nestedError.message };
-            return;
-          }
-          if ((data ?? []).length > 0) related[key] = data;
-        })
-      );
-    }
-    let taskDetail;
-    if (include_task_detail) {
-      const taskIds = (tasksRes.data ?? []).map((t) => t.id).filter(Boolean);
-      taskDetail = {};
-      if (taskIds.length > 0) {
-        const taskChildren = [
-          ["comments", "task_comments"],
-          ["attachments", "task_attachments"],
-          ["collaborators", "task_collaborators"],
-          ["followers", "task_followers"],
-          ["watchers", "task_watchers"],
-          ["mentions", "task_mentions"],
-          ["dependencies", "task_dependencies"],
-          ["label_assignments", "task_label_assignments"],
-          ["tag_assignments", "task_tag_assignments"],
-          ["time_entries", "task_time_entries"],
-          ["activity", "task_activity"]
-        ];
-        await Promise.all(
-          taskChildren.map(async ([key, table]) => {
-            const { data, error: taskError } = await sb.from(table).select("*").in("task_id", taskIds).limit(500);
-            if (!taskDetail) return;
-            if (taskError) {
-              taskDetail[key] = { error: taskError.message };
-              return;
-            }
-            if ((data ?? []).length > 0) taskDetail[key] = data;
-          })
-        );
-      }
-    }
-    return textResult({
-      deal: dealWithLabels,
-      client_contacts: clientContacts,
-      crm_company: companyRes.data ?? null,
-      aliases: (aliasesRes.data ?? []).map(({ alias }) => alias),
-      tasks: tasksRes.data ?? [],
-      lenders: lendersRes.data ?? [],
-      ...include_related ? { related } : {},
-      ...taskDetail ? { task_detail: taskDetail } : {}
-    }, { deal_id });
+function resolvePeriod(period) {
+  const mm2 = /^(\d{4})-(\d{2})$/.exec(period);
+  if (mm2) {
+    const y = Number(mm2[1]);
+    const m = Number(mm2[2]);
+    if (m < 1 || m > 12) throw new Error(`Invalid month period: ${period}`);
+    const start = `${y}-${pad(m)}-01`;
+    const end = `${y}-${pad(m)}-${pad(lastDay(y, m))}`;
+    return { period, start, end, months: [`${y}-${pad(m)}`] };
   }
-});
-
-// src/lib/mcp/tools/update-deal.ts
-import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z5 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/statusNotes.ts
-var EMPTY = /* @__PURE__ */ new Set(["", "<p></p>", "<p><br></p>"]);
-var isEmpty = (s) => EMPTY.has(String(s ?? "").trim());
-function toHtml(note) {
-  if (/<\/?(p|ul|ol|li|br|strong|em)\b/i.test(note)) return note;
-  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return note.split(/\r?\n/).map((l) => l.trim() ? `<p>${esc(l)}</p>` : "<p></p>").join("");
+  const qm = /^(\d{4})-Q([1-4])$/i.exec(period);
+  if (qm) {
+    const y = Number(qm[1]);
+    const q = Number(qm[2]);
+    const sm = (q - 1) * 3 + 1;
+    const em = sm + 2;
+    const start = `${y}-${pad(sm)}-01`;
+    const end = `${y}-${pad(em)}-${pad(lastDay(y, em))}`;
+    return { period: `${y}-Q${q}`, start, end, months: monthKeysBetween(start, end) };
+  }
+  throw new Error(`Invalid period "${period}" \u2014 use YYYY-MM or YYYY-QN.`);
 }
-function combine(existing, note, mode) {
-  const next = toHtml(note);
-  if (mode === "replace" || isEmpty(existing)) return next;
-  const sep = "<p></p>";
-  return mode === "prepend" ? `${next}${sep}${existing}` : `${existing}${sep}${next}`;
+function resolveCustom(from, to) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) throw new Error("custom view needs from/to as YYYY-MM-DD");
+  if (from > to) throw new Error("from must be on or before to");
+  return { period: `${from}..${to}`, start: from, end: to, months: monthKeysBetween(from, to) };
 }
-async function writeDealStatusNote(sb, ctx, deal_id, note, mode, source) {
-  if (!note.trim()) return { error: "Note cannot be empty." };
-  const { data: deal, error: readErr } = await sb.from("deals").select("id, notes").eq("id", deal_id).maybeSingle();
-  if (readErr) return { error: readErr.message };
-  if (!deal) return { error: `Deal ${deal_id} not found or you do not have access to it.` };
-  const existing = String(deal.notes ?? "");
-  const updated = combine(existing, note, mode);
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  const { data: row, error: updErr } = await sb.from("deals").update({ notes: updated, notes_updated_at: now }).eq("id", deal_id).select("id, notes, notes_updated_at").maybeSingle();
-  if (updErr) return { error: updErr.message };
-  if (!row) return { error: `You do not have permission to edit deal ${deal_id}.` };
-  const userId = ctx.getUserId?.() ?? null;
-  if (!isEmpty(existing) && existing !== updated) {
-    const { error } = await sb.from("deal_status_notes").insert({ deal_id, note: existing.trim(), user_id: userId });
-    if (error) console.error("[status-note] history insert failed", error.message);
-  }
-  const { error: actErr } = await sb.from("deal_activity").insert({
-    deal_id,
-    user_id: userId,
-    source,
-    action_type: "status_note_updated",
-    before: { notes: existing },
-    after: { notes: updated, mode }
-  });
-  if (actErr) console.error("[status-note] activity insert failed", actErr.message);
-  const r = row;
-  return { deal_id, notes: r.notes ?? updated, notes_updated_at: r.notes_updated_at ?? now };
+function zoneOffsetMinutes(timeZone, at) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).formatToParts(at);
+  const get = (t) => Number(parts.find((p) => p.type === t)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - at.getTime()) / 6e4);
 }
-
-// src/lib/mcp/tools/update-deal.ts
-var update_deal_default = defineTool5({
-  name: "update_deal",
-  title: "Update deal",
-  description: "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional crm_company_id links an accessible CRM company in the same workspace, with atomic MCP deal activity and no-op identical retries. Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed; omitted new fields retain existing behavior. Returns the updated deal with crm_company_id, pipeline_id, pipeline_name, stage and stage_label. Requires user approval.",
-  inputSchema: {
-    deal_id: z5.string().uuid(),
-    crm_company_id: z5.string().uuid().optional().describe("Accessible CRM company UUID in this deal's workspace; only sets deals.crm_company_id."),
-    pipeline_id: z5.string().uuid().optional().describe("Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."),
-    stage: z5.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
-    value: z5.number().nonnegative().optional(),
-    closing_date: z5.string().nullable().optional().describe("ISO date, or null to clear."),
-    deal_owner: z5.string().trim().max(200).optional(),
-    manager: z5.string().trim().max(200).optional(),
-    narrative: z5.string().max(2e4).optional(),
-    is_flagged: z5.boolean().optional(),
-    flag_notes: z5.string().max(2e3).nullable().optional(),
-    notes: z5.string().trim().min(1).max(2e3).optional().describe("Replaces the Status Note text; previous note is archived and the change is logged. Use add_deal_status_note to prepend.")
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { deal_id, pipeline_id, crm_company_id, notes, ...rest } = input;
-    if (pipeline_id !== void 0 && input.stage === void 0) return errorResult("stage is required when pipeline_id is passed.");
-    const patch = {};
-    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
-    if (Object.keys(patch).length === 0 && notes === void 0 && crm_company_id === void 0) return errorResult("No fields to update.");
-    const sb = supabaseForUser(ctx);
-    if (crm_company_id !== void 0) {
-      if (pipeline_id === void 0 && typeof patch.stage === "string") {
-        const { data: current, error: error3 } = await sb.from("deals").select("pipeline_id").eq("id", deal_id).maybeSingle();
-        if (error3) return errorResult(error3.message);
-        if (!current) return errorResult("Deal not found or you do not have permission to update it.");
-        patch.stage = await resolveStageInput(sb, current.pipeline_id, patch.stage);
-      }
-      const { data: data2, error: error2 } = await sb.rpc("mcp_update_deal_company", {
-        p_deal_id: deal_id,
-        p_crm_company_id: crm_company_id,
-        p_pipeline_id: pipeline_id ?? null,
-        p_patch: patch
-      });
-      if (error2) return errorResult(error2.message);
-      if (!data2) return errorResult("Deal not found or you do not have permission to update it.");
-      let result = data2;
-      if (notes !== void 0 && data2.notes !== notes) {
-        const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
-        if ("error" in res) return errorResult(`Deal updated, but Status Note update failed: ${res.error}`);
-        result = { ...data2, notes: res.notes, notes_updated_at: res.notes_updated_at };
-      }
-      const [updated2] = await withStageLabels(sb, [result]);
-      return textResult(updated2, { deal_id });
-    }
-    if (pipeline_id !== void 0) {
-      const { data: data2, error: error2 } = await sb.rpc("mcp_update_deal_pipeline", {
-        p_deal_id: deal_id,
-        p_pipeline_id: pipeline_id,
-        p_patch: patch
-      });
-      if (error2) return errorResult(error2.message);
-      if (!data2) return errorResult("Deal not found or you do not have permission to update it.");
-      if (notes !== void 0) {
-        const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
-        if ("error" in res) return errorResult(`Pipeline/stage updated, but Status Note update failed: ${res.error}`);
-        return textResult({ ...data2, notes: res.notes, notes_updated_at: res.notes_updated_at }, { deal_id });
-      }
-      return textResult(data2, { deal_id });
-    }
-    if (notes !== void 0) {
-      const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
-      if ("error" in res) return errorResult(res.error);
-    }
-    if (typeof patch.stage === "string") {
-      const { data: current } = await sb.from("deals").select("pipeline_id").eq("id", deal_id).maybeSingle();
-      patch.stage = await resolveStageInput(sb, current?.pipeline_id, patch.stage);
-    }
-    const q = Object.keys(patch).length ? sb.from("deals").update(patch).eq("id", deal_id).select().maybeSingle() : sb.from("deals").select().eq("id", deal_id).maybeSingle();
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Deal not found or you do not have permission to update it.");
-    const [updated] = await withStageLabels(sb, [data]);
-    return textResult(updated, { deal_id });
-  }
-});
-
-// src/lib/mcp/tools/link-deal-contact.ts
-import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z7 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/dealRelationships.ts
-import { z as z6 } from "npm:zod@^3.23.0";
-var contactLinkSchema = {
-  deal_id: z6.string().uuid(),
-  contact_id: z6.string().uuid().optional().describe("Existing contact UUID; provide this or email, not both."),
-  email: z6.string().trim().email().max(320).optional().describe("Existing contact email in the deal workspace; never creates contacts.")
-};
-var aliasSchema = {
-  deal_id: z6.string().uuid(),
-  alias: z6.string().trim().min(1).max(500).describe("Deal alias; matching ignores case and collapses whitespace.")
-};
-async function mutateDealRelationship(action, input, ctx) {
-  const denied = requireAuth(ctx);
-  if (denied) return denied;
-  if (action.endsWith("contact") && Boolean(input.contact_id) === Boolean(input.email)) {
-    return errorResult("Provide contact_id or email, not both.");
-  }
-  const { deal_id, ...fields } = input;
-  const p_input = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
-  const { data, error } = await supabaseForUser(ctx).rpc("mcp_mutate_deal_relationship", { p_deal_id: deal_id, p_action: action, p_input });
-  if (error) return errorResult(error.message);
-  return textResult(data, { deal_id });
+function zonedTime(ymd, hms, timeZone) {
+  const naive = /* @__PURE__ */ new Date(`${ymd}T${hms}Z`);
+  const off = zoneOffsetMinutes(timeZone, naive);
+  const guess = new Date(naive.getTime() - off * 6e4);
+  const off2 = zoneOffsetMinutes(timeZone, guess);
+  return off2 === off ? guess : new Date(naive.getTime() - off2 * 6e4);
 }
-
-// src/lib/mcp/tools/link-deal-contact.ts
-var link_deal_contact_default = defineTool6({
-  name: "link_deal_contact",
-  title: "Link deal contact",
-  description: "Link an existing workspace contact to a deal by contact_id or email. Optionally set or update role; omitted role is preserved. Returns the link plus contact name, email and company. Caller-scoped, atomic MCP deal activity; identical retries are no-ops. Never creates a contact. Requires user approval.",
-  inputSchema: { ...contactLinkSchema, role: z7.string().max(200).optional().describe("Deal-specific contact role, e.g. Client \u2013 CFO; only changed when supplied.") },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: (input, ctx) => mutateDealRelationship("link_deal_contact", input, ctx)
-});
-
-// src/lib/mcp/tools/unlink-deal-contact.ts
-import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var unlink_deal_contact_default = defineTool7({
-  name: "unlink_deal_contact",
-  title: "Unlink deal contact",
-  description: "Remove only an existing contact's contact_deals link by deal_id and contact_id or email; never delete the contact. Caller-scoped, atomic MCP deal activity only when changed; already-unlinked retries succeed as no-ops. Requires user approval.",
-  inputSchema: contactLinkSchema,
-  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-  handler: (input, ctx) => mutateDealRelationship("unlink_deal_contact", input, ctx)
-});
-
-// src/lib/mcp/tools/add-deal-alias.ts
-import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var add_deal_alias_default = defineTool8({
-  name: "add_deal_alias",
-  title: "Add deal alias",
-  description: "Add a deal alias with lowercased, trimmed, collapsed-whitespace alias_normalized. Unique per deal; equivalent retries return the existing alias without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
-  inputSchema: aliasSchema,
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: (input, ctx) => mutateDealRelationship("add_deal_alias", input, ctx)
-});
-
-// src/lib/mcp/tools/remove-deal-alias.ts
-import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var remove_deal_alias_default = defineTool9({
-  name: "remove_deal_alias",
-  title: "Remove deal alias",
-  description: "Remove only the matching alias on this deal, ignoring case and collapsing whitespace. Already-absent retries succeed without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
-  inputSchema: aliasSchema,
-  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-  handler: (input, ctx) => mutateDealRelationship("remove_deal_alias", input, ctx)
-});
-
-// src/lib/mcp/tools/add-deal-status-note.ts
-import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z8 } from "npm:zod@^3.23.0";
-var add_deal_status_note_default = defineTool10({
-  name: "add_deal_status_note",
-  title: "Add deal status note",
-  description: "Add or replace the status note on a deal (the Status Note box on the deal page).",
-  inputSchema: {
-    deal_id: z8.string().uuid(),
-    note: z8.string().trim().min(1, "Note cannot be empty.").max(2e3),
-    mode: z8.enum(["prepend", "append", "replace"]).default("prepend").describe("prepend (default) keeps history below a blank line; replace overwrites."),
-    source: z8.string().trim().min(1).max(100).default("Claude deal-update").describe("Attribution recorded in the activity log.")
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async ({ deal_id, note, mode, source }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const res = await writeDealStatusNote(supabaseForUser(ctx), ctx, deal_id, note, mode, source);
-    if ("error" in res) return errorResult(res.error);
-    return textResult(res, { deal_id: res.deal_id, notes_updated_at: res.notes_updated_at });
-  }
-});
-
-// src/lib/mcp/tools/list-tasks.ts
-import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z9 } from "npm:zod@^3.23.0";
-var list_tasks_default = defineTool11({
-  name: "list_tasks",
-  title: "List tasks",
-  description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
-  inputSchema: {
-    deal_id: z9.string().uuid().optional(),
-    status: z9.enum(["not_started", "pending", "in_progress", "completed", "complete"]).optional(),
-    assigned_to: z9.string().uuid().optional().describe("User id the task is assigned to."),
-    query: z9.string().trim().max(200).optional(),
-    limit: z9.number().int().min(1).max(200).default(50)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, status, assigned_to, query, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let q = sb.from("tasks").select(
-      "id, title, description, status, priority, due_date, completed_at, assigned_to, assigned_by, task_type, deal_id, contact_id, crm_company_id, company_id, created_at"
-    ).order("due_date", { ascending: true, nullsFirst: false }).limit(limit);
-    if (deal_id) q = q.eq("deal_id", deal_id);
-    if (status) q = q.eq("status", status);
-    if (assigned_to) q = q.eq("assigned_to", assigned_to);
-    if (query) q = q.ilike("title", `%${query}%`);
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    const rows = data ?? [];
-    return textResult(rows, { count: rows.length, tasks: rows });
-  }
-});
-
-// src/lib/mcp/tools/create-task.ts
-import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z10 } from "npm:zod@^3.23.0";
-var create_task_default = defineTool12({
-  name: "create_task",
-  title: "Create task",
-  description: "Create a task, optionally tied to a deal, contact, or company. Returns the created row.",
-  inputSchema: {
-    title: z10.string().trim().min(1).max(500),
-    description: z10.string().max(1e4).optional(),
-    due_date: z10.string().nullable().optional().describe("ISO date."),
-    priority: z10.enum(["low", "medium", "high", "urgent"]).optional(),
-    assigned_to: z10.string().uuid().optional().describe("User id to assign the task to."),
-    deal_id: z10.string().uuid().optional(),
-    contact_id: z10.string().uuid().optional(),
-    company_id: z10.string().uuid().optional()
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const row = {
-      title: input.title,
-      status: "not_started",
-      created_by: ctx.getUserId()
-    };
-    for (const k of ["description", "due_date", "priority", "assigned_to", "deal_id", "contact_id", "company_id"]) {
-      if (input[k] !== void 0) row[k] = input[k];
-    }
-    const { data, error } = await sb.from("tasks").insert(row).select().maybeSingle();
-    if (error) return errorResult(error.message);
-    return textResult(data, { task_id: data?.id });
-  }
-});
-
-// src/lib/mcp/tools/complete-task.ts
-import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z11 } from "npm:zod@^3.23.0";
-var complete_task_default = defineTool13({
-  name: "complete_task",
-  title: "Complete task",
-  description: "Mark a task as completed.",
-  inputSchema: { task_id: z11.string().uuid() },
-  annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ task_id }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.from("tasks").update({ status: "completed", completed_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", task_id).select().maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Task not found or not accessible.");
-    return textResult(data);
-  }
-});
-
-// src/lib/mcp/orFilter.ts
-function orIlike(value) {
-  const raw = String(value ?? "").slice(0, 200);
-  const likeEscaped = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const quoted = `%${likeEscaped}%`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return `"${quoted}"`;
-}
-
-// src/lib/mcp/tools/search-contacts.ts
-import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z12 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
-var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
-var search_contacts_default = defineTool14({
-  name: "search_contacts",
-  title: "Search contacts",
-  description: 'Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more \u2014 keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: "*"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact\'s full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.',
-  inputSchema: {
-    query: z12.string().trim().min(1).max(200).optional().describe("Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."),
-    fields: z12.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list. Defaults to a summary set.'),
-    contact_type: z12.string().trim().max(100).optional(),
-    tag: z12.string().trim().max(100).optional().describe("Match a single tag in the contact's tags array."),
-    crm_company_id: z12.string().uuid().optional(),
-    city: z12.string().trim().max(100).optional(),
-    state: z12.string().trim().max(100).optional(),
-    country: z12.string().trim().max(100).optional(),
-    has_email: z12.boolean().optional(),
-    order_by: z12.string().trim().max(80).default("created_at"),
-    ascending: z12.boolean().default(false),
-    limit: z12.number().int().min(1).max(500).default(50),
-    offset: z12.number().int().min(0).default(0)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { query, fields, contact_type, tag, crm_company_id, city, state, country, has_email, order_by, ascending, limit, offset } = input;
-    const sb = supabaseForUser(ctx);
-    let select = DEFAULT_FIELDS;
-    if (fields) {
-      const f = fields.trim();
-      if (f === "*") select = "*";
-      else {
-        if (!FIELD_RE.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
-        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
-        cols.add("id");
-        select = [...cols].join(", ");
-      }
-    }
-    let q = sb.from("contacts").select(select, { count: "exact" }).range(offset, offset + limit - 1);
-    if (query) {
-      const like = orIlike(query);
-      q = q.or(
-        `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},job_title.ilike.${like},phone_mobile.ilike.${like},phone_work.ilike.${like},linkedin_url.ilike.${like}`
-      );
-    }
-    if (contact_type) q = q.eq("contact_type", contact_type);
-    if (tag) q = q.contains("tags", [tag]);
-    if (crm_company_id) q = q.eq("crm_company_id", crm_company_id);
-    if (city) q = q.ilike("city", city);
-    if (state) q = q.ilike("state", state);
-    if (country) q = q.ilike("country", country);
-    if (has_email === true) q = q.not("email", "is", null);
-    if (has_email === false) q = q.is("email", null);
-    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
-    const { data, error, count } = await q;
-    if (error) return errorResult(error.message);
-    const rows = data ?? [];
-    const contacts = rows.map((c) => ({
-      ...c,
-      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || null,
-      phone: c.phone_mobile || c.phone_work || c.phone_other || null
-    }));
-    const total_count = count ?? contacts.length;
-    const next = offset + contacts.length;
-    const has_more = next < total_count;
-    return textResult(
-      { contacts, total_count, returned: contacts.length, offset, next_offset: has_more ? next : null, has_more },
-      { count: contacts.length, total_count, offset, next_offset: has_more ? next : null, has_more }
-    );
-  }
-});
-
-// src/lib/mcp/tools/get-contact.ts
-import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z13 } from "npm:zod@^3.23.0";
-var CHILD_TABLES = [
-  { table: "contact_activities", column: "contact_id", key: "activities", limit: 300, order: "occurred_at" },
-  { table: "contact_audit_log", column: "contact_id", key: "change_history", limit: 500, order: "created_at" },
-  { table: "contact_company_associations", column: "contact_id", key: "company_associations", limit: 100 },
-  { table: "contact_field_suggestions", column: "contact_id", key: "field_suggestions", limit: 200 },
-  { table: "contact_field_suggestion_audit", column: "contact_id", key: "field_suggestion_audit", limit: 200 },
-  { table: "crm_contact_attachments", column: "contact_id", key: "attachments", limit: 200 },
-  { table: "lender_contacts", column: "contact_id", key: "lender_links", limit: 100 },
-  { table: "partner_contacts", column: "contact_id", key: "partner_links", limit: 100 },
-  { table: "crm_company_activities", column: "contact_id", key: "company_activities", limit: 200 },
-  { table: "tasks", column: "contact_id", key: "tasks", limit: 300, order: "created_at" },
-  { table: "channel_entries", column: "contact_id", key: "channel_entries", limit: 100 },
-  { table: "referral_sources", column: "contact_id", key: "referral_sources", limit: 100 },
-  { table: "ai_action_log", column: "contact_id", key: "ai_actions", limit: 300, order: "created_at" },
-  {
-    table: "claap_meeting_participants",
-    column: "contact_id",
-    key: "meeting_participation",
-    limit: 300
-  }
-];
-var get_contact_default = defineTool15({
-  name: "get_contact",
-  title: "Get contact detail",
-  description: "Return the COMPLETE record for one CRM contact \u2014 every column on `contacts` (all custom and standard fields: names, all phone numbers, email(s), job title, geography/city/state/country, LinkedIn, tags, contact type, source, owner, last-contact timestamps, notes and every custom field) \u2014 plus its related rows: linked CRM company record, company associations, deals the contact is attached to (with deal name/stage/pipeline), logged activities, full field-level change history, AI field suggestions and their audit trail, attachments, and any funding-source or partner links. Look up by `contact_id`, or by `email` or partial `name` (ambiguous name matches return the candidates to choose from).",
-  inputSchema: {
-    contact_id: z13.string().uuid().optional(),
-    email: z13.string().trim().max(320).optional(),
-    name: z13.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
-    include_related: z13.boolean().default(true).describe("Include company, deals, activities, change history, suggestions, attachments and links.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ contact_id, email, name, include_related }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!contact_id && !email && !name) return errorResult("Provide contact_id, email or name.");
-    const sb = supabaseForUser(ctx);
-    let contact = null;
-    if (contact_id) {
-      const { data, error } = await sb.from("contacts").select("*").eq("id", contact_id).maybeSingle();
-      if (error) return errorResult(error.message);
-      contact = data ?? null;
-    } else if (email) {
-      const { data, error } = await sb.from("contacts").select("*").ilike("email", email).limit(5);
-      if (error) return errorResult(error.message);
-      contact = (data ?? [])[0] ?? null;
-    } else {
-      const like = orIlike(name);
-      const { data, error } = await sb.from("contacts").select("*").or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like}`).limit(10);
-      if (error) return errorResult(error.message);
-      const matches = data ?? [];
-      if (matches.length > 1) {
-        const target = String(name).toLowerCase();
-        const exact = matches.find(
-          (m) => String(m.full_name ?? "").toLowerCase() === target || [m.first_name, m.last_name].filter(Boolean).join(" ").toLowerCase() === target
-        );
-        if (!exact) {
-          return textResult(
-            {
-              ambiguous: true,
-              message: "Multiple contacts match that name; call get_contact again with one of these ids.",
-              matches: matches.map((m) => ({
-                id: m.id,
-                name: m.full_name ?? [m.first_name, m.last_name].filter(Boolean).join(" "),
-                email: m.email,
-                job_title: m.job_title
-              }))
-            },
-            { count: matches.length }
-          );
-        }
-        contact = exact;
-      } else {
-        contact = matches[0] ?? null;
-      }
-    }
-    if (!contact) return errorResult("Contact not found (or not visible to this user).");
-    const id = contact.id;
-    const payload = { contact };
-    if (include_related) {
-      const related = {};
-      const crmCompanyId = contact.crm_company_id;
-      if (crmCompanyId) {
-        const { data: company, error: cErr } = await sb.from("crm_companies").select("*").eq("id", crmCompanyId).maybeSingle();
-        related.crm_company = cErr ? { error: cErr.message } : company ?? null;
-      } else {
-        related.crm_company = null;
-      }
-      const { data: dealLinks, error: dErr } = await sb.from("contact_deals").select("id, deal_id, role, created_at, deals:deal_id(id, company, stage, status, pipeline_id)").eq("contact_id", id).limit(500);
-      related.deals = dErr ? { error: dErr.message } : (dealLinks ?? []).map((r) => ({
-        ...r,
-        deal_name: r.deals?.company ?? null,
-        pipeline_id: r.deals?.pipeline_id ?? null
-      }));
-      await Promise.all(
-        CHILD_TABLES.map(async ({ table, column, key, limit, order }) => {
-          let q = sb.from(table).select("*").eq(column, id).limit(limit);
-          if (order) q = q.order(order, { ascending: false, nullsFirst: false });
-          const { data, error } = await q;
-          related[key] = error ? { error: error.message } : data ?? [];
-        })
-      );
-      const addr = String(contact.email ?? "").trim().toLowerCase();
-      if (addr) {
-        const mailSources = [
-          { table: "emails", key: "emails_received", order: "received_at" },
-          { table: "gmail_messages", key: "gmail_messages", order: "received_at" },
-          { table: "gmail_sent_messages", key: "gmail_sent_messages", order: "sent_at" }
-        ];
-        await Promise.all(
-          mailSources.map(async ({ table, key, order }) => {
-            const { data, error } = await sb.from(table).select("*").or(`from_email.ilike.${addr},to_emails.cs.{"${addr}"}`).order(order, { ascending: false, nullsFirst: false }).limit(200);
-            if (!error) {
-              related[key] = data ?? [];
-              return;
-            }
-            const { data: toData, error: toErr } = await sb.from(table).select("*").contains("to_emails", [addr]).limit(200);
-            related[key] = toErr ? { error: toErr.message } : toData ?? [];
-          })
-        );
-      }
-      const { data: recordings, error: recErr } = await sb.from("event_claap_recordings").select("*").contains("contact_ids", [id]).limit(200);
-      related.claap_recordings = recErr ? { error: recErr.message } : recordings ?? [];
-      payload.related = related;
-    }
-    return textResult(payload, {
-      contact_id: id,
-      name: String(contact.full_name ?? [contact.first_name, contact.last_name].filter(Boolean).join(" "))
-    });
-  }
-});
-
-// src/lib/mcp/tools/search-companies.ts
-import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z14 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS2 = "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at, updated_at";
-var FIELD_RE2 = /^[a-zA-Z0-9_,\s]+$/;
-var search_companies_default = defineTool16({
-  name: "search_companies",
-  title: "Search companies",
-  description: 'Search CRM companies by name, domain or website, with optional filters (industry, company_type, status, lifecycle_stage, city, state, country, tag, owner, has_deals). Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: "*"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies. Use `get_company` for one company\'s full record plus contacts, deals, activity history and attachments.',
-  inputSchema: {
-    query: z14.string().trim().min(1).max(200).optional(),
-    fields: z14.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list.'),
-    industry: z14.string().trim().max(120).optional().describe("Case-insensitive partial match on industry or sub_industry."),
-    company_type: z14.string().trim().max(120).optional(),
-    status: z14.string().trim().max(120).optional(),
-    lifecycle_stage: z14.string().trim().max(120).optional(),
-    city: z14.string().trim().max(120).optional(),
-    state: z14.string().trim().max(120).optional(),
-    country: z14.string().trim().max(120).optional(),
-    tag: z14.string().trim().max(120).optional().describe("Match a single tag in the company's tags array."),
-    owner_user_id: z14.string().uuid().optional(),
-    limit: z14.number().int().min(1).max(500).default(50),
-    offset: z14.number().int().min(0).default(0),
-    order_by: z14.string().trim().max(80).default("created_at"),
-    ascending: z14.boolean().default(false)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, fields, industry, company_type, status, lifecycle_stage, city, state, country, tag, owner_user_id, limit, offset, order_by, ascending }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let select = DEFAULT_FIELDS2;
-    if (fields) {
-      const f = fields.trim();
-      if (f === "*") select = "*";
-      else {
-        if (!FIELD_RE2.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
-        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
-        cols.add("id");
-        cols.add("name");
-        select = [...cols].join(", ");
-      }
-    }
-    let q = sb.from("crm_companies").select(select, { count: "exact" }).range(offset, offset + limit - 1);
-    if (query) {
-      const like = orIlike(query);
-      q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
-    }
-    if (industry) q = q.or(`industry.ilike.${orIlike(industry)},sub_industry.ilike.${orIlike(industry)}`);
-    if (company_type) q = q.ilike("company_type", company_type);
-    if (status) q = q.ilike("status", status);
-    if (lifecycle_stage) q = q.ilike("lifecycle_stage", lifecycle_stage);
-    if (city) q = q.ilike("hq_city", `%${city}%`);
-    if (state) q = q.ilike("hq_state", `%${state}%`);
-    if (country) q = q.ilike("hq_country", `%${country}%`);
-    if (tag) q = q.contains("tags", [tag]);
-    if (owner_user_id) q = q.eq("owner_user_id", owner_user_id);
-    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
-    const { data, error, count } = await q;
-    if (error) return errorResult(error.message);
-    const companies = data ?? [];
-    const total_count = count ?? companies.length;
-    const next = offset + companies.length;
-    const has_more = next < total_count;
-    return textResult(
-      { companies, total_count, returned: companies.length, offset, next_offset: has_more ? next : null, has_more },
-      { count: companies.length, total_count, offset, next_offset: has_more ? next : null, has_more }
-    );
-  }
-});
-
-// src/lib/mcp/tools/get-company.ts
-import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z15 } from "npm:zod@^3.23.0";
-var CHILD_TABLES2 = [
-  { table: "crm_company_activities", column: "crm_company_id", key: "activities", limit: 500, order: "created_at" },
-  { table: "crm_company_attachments", column: "crm_company_id", key: "attachments", limit: 200 },
-  { table: "crm_company_team", column: "crm_company_id", key: "team", limit: 200 },
-  { table: "contact_company_associations", column: "company_id", key: "contact_associations", limit: 500 },
-  { table: "master_lenders", column: "crm_company_id", key: "funding_sources", limit: 200 },
-  { table: "tasks", column: "crm_company_id", key: "tasks", limit: 300, order: "created_at" }
-];
-var get_company_default = defineTool17({
-  name: "get_company",
-  title: "Get company detail",
-  description: "Return the COMPLETE record for one CRM company \u2014 every column on `crm_companies` (name, domains, industry/sub-industry, type, status, lifecycle stage, employee count/range, revenue/ARR/MRR/contract values, contract and renewal dates, HQ address/city/state/country/postal, regions served, key products, description, socials, phone, tags, owner, source system/external ids, custom fields, notes, timestamps) \u2014 plus its related rows: contacts at the company, deals linked to it (with deal name, stage, status, pipeline), full activity history, attachments, team members, contact-to-company match/association history, linked funding sources, tasks, and the parent/child company records. Look up by `company_id`, `domain`, or partial `name` (ambiguous name matches return the candidates to choose from).",
-  inputSchema: {
-    company_id: z15.string().uuid().optional(),
-    domain: z15.string().trim().max(253).optional(),
-    name: z15.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
-    include_related: z15.boolean().default(true).describe("Include contacts, deals, activities, attachments, team, funding sources, tasks and match history.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ company_id, domain, name, include_related }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!company_id && !domain && !name) return errorResult("Provide company_id, domain or name.");
-    const sb = supabaseForUser(ctx);
-    let company = null;
-    if (company_id) {
-      const { data, error } = await sb.from("crm_companies").select("*").eq("id", company_id).maybeSingle();
-      if (error) return errorResult(error.message);
-      company = data ?? null;
-    } else if (domain) {
-      const like = orIlike(domain);
-      const { data, error } = await sb.from("crm_companies").select("*").or(`domain.ilike.${like},domain_normalized.ilike.${like},website_url.ilike.${like}`).limit(5);
-      if (error) return errorResult(error.message);
-      company = (data ?? [])[0] ?? null;
-    } else {
-      const like = `%${name}%`;
-      const { data, error } = await sb.from("crm_companies").select("*").ilike("name", like).limit(10);
-      if (error) return errorResult(error.message);
-      const matches = data ?? [];
-      if (matches.length > 1) {
-        const target = String(name).toLowerCase();
-        const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === target);
-        if (!exact) {
-          return textResult(
-            {
-              ambiguous: true,
-              message: "Multiple companies match that name; call get_company again with one of these ids.",
-              matches: matches.map((m) => ({
-                id: m.id,
-                name: m.name,
-                domain: m.domain,
-                industry: m.industry,
-                status: m.status
-              }))
-            },
-            { count: matches.length }
-          );
-        }
-        company = exact;
-      } else {
-        company = matches[0] ?? null;
-      }
-    }
-    if (!company) return errorResult("Company not found (or not visible to this user).");
-    const id = company.id;
-    const payload = { company };
-    if (include_related) {
-      const related = {};
-      const { data: contacts, error: ctErr } = await sb.from("contacts").select("*").eq("crm_company_id", id).limit(500);
-      related.contacts = ctErr ? { error: ctErr.message } : contacts ?? [];
-      const { data: deals, error: dErr } = await sb.from("deals").select("id, company, stage, status, pipeline_id, value, created_at, updated_at").eq("crm_company_id", id).limit(500);
-      related.deals = dErr ? { error: dErr.message } : (deals ?? []).map((d) => ({ ...d, deal_name: d.company ?? null }));
-      const parentId = company.parent_company_id;
-      if (parentId) {
-        const { data: parent, error: pErr } = await sb.from("crm_companies").select("*").eq("id", parentId).maybeSingle();
-        related.parent_company = pErr ? { error: pErr.message } : parent ?? null;
-      } else {
-        related.parent_company = null;
-      }
-      const { data: children, error: chErr } = await sb.from("crm_companies").select("id, name, domain, industry, status").eq("parent_company_id", id).limit(200);
-      related.child_companies = chErr ? { error: chErr.message } : children ?? [];
-      await Promise.all(
-        CHILD_TABLES2.map(async ({ table, column, key, limit, order }) => {
-          let q = sb.from(table).select("*").eq(column, id).limit(limit);
-          if (order) q = q.order(order, { ascending: false, nullsFirst: false });
-          const { data, error } = await q;
-          related[key] = error ? { error: error.message } : data ?? [];
-        })
-      );
-      const { data: matchAudit, error: maErr } = await sb.from("contact_company_match_audit").select("*").eq("proposed_company_id", id).limit(200);
-      related.company_match_audit = maErr ? { error: maErr.message } : matchAudit ?? [];
-      payload.related = related;
-    }
-    return textResult(payload, { company_id: id, name: String(company.name ?? "") });
-  }
-});
-
-// src/lib/mcp/tools/create-contact.ts
-import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z16 } from "npm:zod@^3.23.0";
-var create_contact_default = defineTool18({
-  name: "create_contact",
-  title: "Create contact",
-  description: "Create a CRM contact. Provide at minimum an email or first_name/last_name.",
-  inputSchema: {
-    first_name: z16.string().trim().max(200).optional(),
-    last_name: z16.string().trim().max(200).optional(),
-    email: z16.string().trim().email().optional(),
-    phone: z16.string().trim().max(50).optional().describe("Stored as mobile phone."),
-    website_url: z16.string().trim().max(500).optional().describe("Contact domain (matches to company)."),
-    job_title: z16.string().trim().max(200).optional()
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!input.email && !input.first_name && !input.last_name) {
-      return errorResult("Provide at least email or first_name/last_name.");
-    }
-    const sb = supabaseForUser(ctx);
-    const { phone, ...rest } = input;
-    const row = { created_by: ctx.getUserId() };
-    for (const [k, v] of Object.entries(rest)) if (v !== void 0) row[k] = v;
-    if (phone !== void 0) row.phone_mobile = phone;
-    const { data, error } = await sb.from("contacts").insert(row).select("id, first_name, last_name, email, phone_mobile, website_url, job_title").maybeSingle();
-    if (error) return errorResult(error.message);
-    return textResult(data, { contact_id: data?.id });
-  }
-});
-
-// src/lib/mcp/tools/create-company.ts
-import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z17 } from "npm:zod@^3.23.0";
-var create_company_default = defineTool19({
-  name: "create_company",
-  title: "Create company",
-  description: "Create a CRM company record.",
-  inputSchema: {
-    name: z17.string().trim().min(1).max(300),
-    domain: z17.string().trim().max(300).optional(),
-    website_url: z17.string().trim().max(500).optional(),
-    industry: z17.string().trim().max(200).optional(),
-    hq_city: z17.string().trim().max(200).optional(),
-    hq_state: z17.string().trim().max(200).optional()
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const row = { created_by: ctx.getUserId() };
-    for (const [k, v] of Object.entries(input)) if (v !== void 0) row[k] = v;
-    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, domain, website_url, hq_city, hq_state").maybeSingle();
-    if (error) return errorResult(error.message);
-    return textResult(data, { company_id: data?.id });
-  }
-});
-
-// src/lib/mcp/tools/search-lenders.ts
-import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z18 } from "npm:zod@^3.23.0";
-var DEFAULT_FIELDS3 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
-var search_lenders_default = defineTool20({
-  name: "search_lenders",
-  title: "Search funding sources / lenders",
-  description: 'Search the master funding-source (lender) directory. By default returns a summary card per lender; pass fields="*" to get EVERY column on master_lenders (criteria, leverage, revenue/EBITDA minimums, industries to avoid, excluded geographies, referral terms, NDA, sync metadata, address, notes) or a comma-separated column list. Filters: name query, deal_size (min_deal <= size <= max_deal), lender_type, tier, appetite_status, active, industry, geography, loan_type. Results are paginated \u2014 the response returns total_count, returned, offset, next_offset and has_more; keep calling with next_offset to walk the entire directory. Use `get_lender` for one lender\'s full record plus contacts, notes, attachments, change history and linked deals.',
-  inputSchema: {
-    query: z18.string().trim().max(200).optional(),
-    deal_size: z18.number().nonnegative().optional(),
-    lender_type: z18.string().trim().max(100).optional(),
-    tier: z18.string().trim().max(60).optional(),
-    appetite_status: z18.string().trim().max(60).optional(),
-    active: z18.boolean().optional(),
-    industry: z18.string().trim().max(120).optional().describe("Matches a value in the lender's industries array."),
-    geography: z18.string().trim().max(120).optional().describe("Matches a value in the lender's geographies array."),
-    loan_type: z18.string().trim().max(120).optional().describe("Matches a value in the lender's loan_types array."),
-    fields: z18.string().trim().max(2e3).optional().describe('"*" for every column, or a comma-separated column list. Defaults to a summary set.'),
-    limit: z18.number().int().min(1).max(500).default(25),
-    offset: z18.number().int().min(0).default(0)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ query, deal_size, lender_type, tier, appetite_status, active, industry, geography, loan_type, fields, limit, offset }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let select = DEFAULT_FIELDS3;
-    if (fields) {
-      if (fields.trim() === "*") select = "*";
-      else if (!/^[a-zA-Z0-9_,\s]+$/.test(fields)) return errorResult('fields may only contain column names, commas and spaces, or be "*".');
-      else {
-        const cols = new Set(fields.split(",").map((f) => f.trim()).filter(Boolean));
-        cols.add("id");
-        cols.add("name");
-        select = Array.from(cols).join(", ");
-      }
-    }
-    let q = sb.from("master_lenders").select(select, { count: "exact" }).order("name", { ascending: true }).range(offset, offset + limit - 1);
-    if (query) q = q.ilike("name", `%${query}%`);
-    if (lender_type) q = q.ilike("lender_type", `%${lender_type}%`);
-    if (tier) q = q.eq("tier", tier);
-    if (appetite_status) q = q.eq("appetite_status", appetite_status);
-    if (active !== void 0) q = q.eq("active", active);
-    if (industry) q = q.contains("industries", [industry]);
-    if (geography) q = q.contains("geographies", [geography]);
-    if (loan_type) q = q.contains("loan_types", [loan_type]);
-    if (deal_size !== void 0) {
-      q = q.or(`min_deal.is.null,min_deal.lte.${deal_size}`).or(`max_deal.is.null,max_deal.gte.${deal_size}`);
-    }
-    const { data, error, count } = await q;
-    if (error) return errorResult(error.message);
-    const rows = (data ?? []).map((r) => ({
-      ...r,
-      min_deal_size: r.min_deal ?? null,
-      max_deal_size: r.max_deal ?? null
-    }));
-    const total = count ?? rows.length;
-    const hasMore = offset + rows.length < total;
-    return textResult(
-      {
-        lenders: rows,
-        total_count: total,
-        returned: rows.length,
-        offset,
-        next_offset: hasMore ? offset + rows.length : null,
-        has_more: hasMore
-      },
-      { count: rows.length, total_count: total, offset, has_more: hasMore }
-    );
-  }
-});
-
-// src/lib/mcp/tools/get-lender.ts
-import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z19 } from "npm:zod@^3.23.0";
-var CHILD_TABLES3 = [
-  { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
-  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
-  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
-  { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
-  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
-  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
-  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
-  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
-  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
-  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
-];
-var get_lender_default = defineTool21({
-  name: "get_lender",
-  title: "Get funding source / lender detail",
-  description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
-  inputSchema: {
-    lender_id: z19.string().uuid().optional(),
-    name: z19.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
-    include_related: z19.boolean().default(true).describe("Include contacts, notes, history, attachments and deal links.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ lender_id, name, include_related }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!lender_id && !name) return errorResult("Provide lender_id or name.");
-    const sb = supabaseForUser(ctx);
-    let lender = null;
-    if (lender_id) {
-      const { data, error } = await sb.from("master_lenders").select("*").eq("id", lender_id).maybeSingle();
-      if (error) return errorResult(error.message);
-      lender = data ?? null;
-    } else {
-      const { data, error } = await sb.from("master_lenders").select("*").ilike("name", `%${name}%`).limit(5);
-      if (error) return errorResult(error.message);
-      const matches = data ?? [];
-      if (matches.length > 1) {
-        const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === String(name).toLowerCase());
-        if (!exact) {
-          return textResult(
-            {
-              ambiguous: true,
-              message: "Multiple funding sources match that name; call get_lender again with one of these ids.",
-              matches: matches.map((m) => ({ id: m.id, name: m.name, lender_type: m.lender_type }))
-            },
-            { count: matches.length }
-          );
-        }
-        lender = exact;
-      } else {
-        lender = matches[0] ?? null;
-      }
-    }
-    if (!lender) return errorResult("Funding source not found (or not visible to this user).");
-    const id = lender.id;
-    const payload = { lender };
-    if (include_related) {
-      const related = {};
-      const lenderName = String(lender.name ?? "");
-      const { data: dealLinks, error: dlErr } = await sb.from("deal_lenders").select(
-        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, created_at, updated_at, deals:deal_id(id, company, stage, status, pipeline_id)"
-      ).eq("master_lender_id", id).order("last_status_change_at", { ascending: false, nullsFirst: false }).limit(500);
-      related.deals = dlErr ? { error: dlErr.message } : (dealLinks ?? []).map((r) => ({
-        ...r,
-        deal_name: r.deals?.company ?? null,
-        pipeline_id: r.deals?.pipeline_id ?? null
-      }));
-      const dealLenderIds = dlErr ? [] : (dealLinks ?? []).map((r) => r.id);
-      await Promise.all(
-        CHILD_TABLES3.map(async ({ table, column, key, limit }) => {
-          let q = sb.from(table).select("*").limit(limit);
-          if (column === "lender_name") q = q.eq("lender_name", lenderName);
-          else if (column === "deal_lender_id") {
-            if (dealLenderIds.length === 0) {
-              related[key] = [];
-              return;
-            }
-            q = q.in("deal_lender_id", dealLenderIds.slice(0, 200));
-          } else q = q.eq(column, id);
-          const { data, error } = await q;
-          related[key] = error ? { error: error.message } : data ?? [];
-        })
-      );
-      payload.related = related;
-    }
-    return textResult(payload, { lender_id: id, name: String(lender.name ?? "") });
-  }
-});
-
-// src/lib/mcp/tools/update-lender.ts
-import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z21 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/lenderWrites.ts
-async function resolveLenderId(sb, lender_id, name) {
-  if (lender_id) return { id: lender_id };
-  if (!name) return { error: errorResult("Provide lender_id or name_lookup.") };
-  const { data, error } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${name}%`).limit(5);
-  if (error) return { error: errorResult(error.message) };
-  const matches = data ?? [];
-  if (matches.length === 0) return { error: errorResult("Funding source not found (or not visible to this user).") };
-  if (matches.length > 1) {
-    const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === String(name).toLowerCase());
-    if (!exact) {
-      return {
-        error: textResult(
-          {
-            ambiguous: true,
-            message: "Multiple funding sources match that name; call again with one of these ids.",
-            matches: matches.map((m) => ({ id: m.id, name: m.name, lender_type: m.lender_type }))
-          },
-          { count: matches.length }
-        )
-      };
-    }
-    return { id: exact.id };
-  }
-  return { id: matches[0].id };
-}
-
-// src/lib/mcp/lenderFields.ts
-import { z as z20 } from "npm:zod@^3.23.0";
-var str = (max = 2e3) => z20.string().max(max).nullable().optional();
-var arr = () => z20.array(z20.string().trim().min(1).max(200)).nullable().optional();
-var num = () => z20.number().finite().nullable().optional();
-var timestamp = () => z20.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
-var CRITERIA_CONFIDENCE_MEANINGS = {
-  imported: "Imported criteria; not independently verified.",
-  verified_call: "Confirmed by the lender on a recorded call.",
-  verified_email: "Confirmed by the lender in writing.",
-  verified_attachment: "Confirmed by a lender-produced document (one-pager, term sheet, or deck)."
-};
-var LENDER_FIELD_SCHEMA = {
-  lender_type: str(200),
-  loan_types: arr(),
-  sub_debt: str(500),
-  cash_burn: str(500),
-  sponsorship: str(500),
-  min_revenue: num(),
-  ebitda_min: num(),
-  min_deal: num(),
-  max_deal: num(),
-  sweet_spot_min: num(),
-  sweet_spot_max: num(),
-  min_gross_margin_pct: num(),
-  max_leverage: num(),
-  industries: arr(),
-  industries_to_avoid: arr(),
-  b2b_b2c: str(200),
-  refinancing: str(500),
-  company_requirements: str(5e3),
-  deal_structure_notes: str(1e4),
-  geo: str(500),
-  geographies: arr(),
-  geographies_excluded: arr(),
-  sponsor_requirement: str(500),
-  tier: str(50),
-  active: z20.boolean().nullable().optional(),
-  appetite_status: str(100),
-  tags: arr(),
-  website: str(500),
-  linkedin_url: str(500),
-  address: str(500),
-  city: str(200),
-  state: str(200),
-  country: str(200),
-  phone: str(100),
-  email: str(320),
-  contact_name: str(200),
-  contact_title: str(200),
-  contact_phone: str(100),
-  contact_geography: str(200),
-  relationship_owners: str(500),
-  referral_lender: str(200),
-  referral_fee_offered: str(500),
-  referral_agreement: str(500),
-  nda: str(500),
-  funding_source_notes: str(2e4),
-  about_notes: str(2e4),
-  lender_one_pager_url: str(1e3),
-  criteria_reviewed_at: z20.string().trim().refine((v) => !Number.isNaN(Date.parse(v)), { message: "criteria_reviewed_at must be an ISO date or timestamp, e.g. 2026-09-14" }).nullable().optional().describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
-  criteria_confidence: z20.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
-  upfront_checklist: str(1e4).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
-  post_term_sheet_checklist: str(1e4).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
-  crm_company_id: z20.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
-  onboarded_to_flex: str(500),
-  gift_address: str(1e3),
-  sync_source: str(200).describe("Inert historical metadata; does not reconnect FLEx."),
-  flex_lender_id: str(500),
-  last_synced_from_flex: timestamp(),
-  external_created_by: str(500),
-  external_last_modified: timestamp(),
-  resp_emails_sent: z20.number().int().nonnegative().nullable().optional(),
-  resp_replies_received: z20.number().int().nonnegative().nullable().optional(),
-  resp_reply_rate: num(),
-  resp_median_hours_to_reply: num(),
-  resp_reply_rate_excl_mass: num(),
-  resp_last_reply_date: timestamp(),
-  resp_rating: str(200),
-  resp_emails_sent_l12m: z20.number().int().nonnegative().nullable().optional(),
-  resp_reply_rate_l12m: num(),
-  resp_window_label: str(500),
-  resp_updated_at: timestamp()
-};
-var LENDER_FIELD_NAMES = Object.keys(LENDER_FIELD_SCHEMA);
-async function validateLenderPatch(sb, patch) {
-  if (typeof patch.criteria_reviewed_at === "string") {
-    patch.criteria_reviewed_at = new Date(patch.criteria_reviewed_at).toISOString();
-  }
-  if (typeof patch.criteria_confidence === "string") {
-    const value = patch.criteria_confidence.trim();
-    const allowed = new Set(Object.keys(CRITERIA_CONFIDENCE_MEANINGS));
-    if (!allowed.has(value)) {
-      return `Invalid criteria_confidence "${value}". Allowed values: ${[...allowed].sort().join(", ")}.`;
-    }
-    patch.criteria_confidence = value;
-  }
-  if (typeof patch.crm_company_id === "string") {
-    const { data, error } = await sb.from("crm_companies").select("id").eq("id", patch.crm_company_id).maybeSingle();
-    if (error) return `crm_company_id: ${error.message}`;
-    if (!data) return `crm_company_id: no CRM company ${patch.crm_company_id} exists (or it is not visible to you).`;
-  }
-  if (patch.min_deal != null && patch.max_deal != null && Number(patch.min_deal) > Number(patch.max_deal)) {
-    return "min_deal: must be less than or equal to max_deal.";
-  }
-  return null;
-}
-
-// src/lib/mcp/tools/update-lender.ts
-var lenderUpdateItem = z21.object({
-  lender_id: z21.string().uuid().optional(),
-  name_lookup: z21.string().trim().min(1).max(200).optional(),
-  name: z21.string().trim().min(1).max(200).optional(),
-  ...LENDER_FIELD_SCHEMA,
-  mode: z21.enum(["replace", "append", "prepend"]).optional(),
-  expected_updated_at: z21.string().datetime({ offset: true }).optional(),
-  dry_run: z21.boolean().optional(),
-  source: z21.string().max(1e3).optional(),
-  change_reason: z21.string().max(2e3).optional()
-}).strict();
-var update_lender_default = defineTool22({
-  name: "update_lender",
-  title: "Update funding source / lender",
-  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
-  inputSchema: { ...lenderUpdateItem.shape, updates: z21.array(lenderUpdateItem).min(1).max(25).optional() },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { updates, ...single } = input;
-    if (updates && Object.keys(single).some((k) => !["dry_run", "source", "change_reason", "mode"].includes(k))) {
-      return errorResult("Provide either updates or a single lender edit. Only mode, dry_run, source and change_reason may be batch defaults.");
-    }
-    const sb = supabaseForUser(ctx);
-    const results = [];
-    for (const value of updates ?? [single]) {
-      const item = { mode: input.mode, dry_run: input.dry_run, source: input.source, change_reason: input.change_reason, ...value };
-      const { lender_id, name_lookup, mode, expected_updated_at, dry_run, source, change_reason, ...fields } = item;
-      try {
-        const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
-        if (!Object.keys(patch).length) throw new Error("No fields to update.");
-        const invalid = await validateLenderPatch(sb, patch);
-        if (invalid) throw new Error(invalid);
-        const resolved = await resolveLenderId(sb, lender_id, name_lookup);
-        if ("error" in resolved) {
-          if (!updates) return resolved.error;
-          results.push({ lender_id: lender_id ?? null, success: false, error: resolved.error.content });
-          continue;
-        }
-        const { data, error } = await sb.rpc("mcp_update_lender", {
-          p_lender_id: resolved.id,
-          p_patch: patch,
-          p_mode: mode ?? "replace",
-          p_expected_updated_at: expected_updated_at ?? null,
-          p_dry_run: dry_run ?? false,
-          p_source: source ?? null,
-          p_change_reason: change_reason ?? null
-        });
-        if (error) throw new Error(error.message);
-        if (!updates) return { ...textResult(data), ...data?.error ? { isError: true } : {} };
-        results.push({ lender_id: resolved.id, success: !data?.error, ...data });
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        if (!updates) return errorResult(message);
-        results.push({ lender_id: lender_id ?? null, success: false, error: message });
-      }
-    }
-    return textResult({ results });
-  }
-});
-
-// src/lib/mcp/tools/upsert-lender-contact.ts
-import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z24 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/lenderRelatedWrites.ts
-import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z23 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/lenderRelatedFields.ts
-import { z as z22 } from "npm:zod@^3.23.0";
-var LENDER_RELATED_FIELDS = {
-  lender_fit_attributes: {
-    summary: z22.string().max(2e4).nullable().optional(),
-    positive_signals: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
-    negative_signals: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
-    exclusions: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
-    nuanced_preferences: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional()
-  },
-  lender_disqualifications: {
-    deal_id: z22.string().uuid().optional(),
-    deal_lender_id: z22.string().uuid().nullable().optional(),
-    reason_category: z22.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
-    reason_details: z22.string().max(2e4).nullable().optional(),
-    deal_size: z22.number().finite().nullable().optional(),
-    deal_industry: z22.string().max(2e4).nullable().optional(),
-    deal_geography: z22.string().max(2e4).nullable().optional()
-  },
-  lender_doc_flags: {
-    has_nda: z22.boolean().optional(),
-    has_marketing: z22.boolean().optional()
-  },
-  funding_source_acquisition_plans: {
-    year: z22.number().int().optional(),
-    cadence: z22.string().max(2e4).optional(),
-    period: z22.number().int().optional(),
-    target_count: z22.number().int().optional()
-  },
-  lender_match_rules: {
-    rule_type: z22.string().max(2e4).optional(),
-    applies_when: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
-    reason: z22.string().max(2e4).optional(),
-    delta: z22.number().int().nullable().optional(),
-    active: z22.boolean().optional()
-  },
-  lender_pass_detections: {
-    deal_id: z22.string().uuid().optional(),
-    deal_lender_id: z22.string().uuid().nullable().optional(),
-    gmail_message_id: z22.string().max(2e4).optional(),
-    thread_id: z22.string().max(2e4).nullable().optional(),
-    sender_email: z22.string().max(2e4).nullable().optional(),
-    sender_name: z22.string().max(2e4).nullable().optional(),
-    confidence: z22.string().max(2e4).optional(),
-    is_pass: z22.boolean().optional(),
-    reason_summary: z22.string().max(2e4).nullable().optional(),
-    source_quote: z22.string().max(2e4).nullable().optional(),
-    status: z22.string().max(2e4).optional(),
-    edited_reason: z22.string().max(2e4).nullable().optional(),
-    raw_classification: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional()
-  },
-  lender_pass_patterns: {
-    reason_category: z22.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
-    pattern_type: z22.string().max(2e4).optional(),
-    pattern_value: z22.string().max(2e4).optional(),
-    confidence_score: z22.number().finite().nullable().optional()
-  },
-  lender_sync_requests: {
-    source_system: z22.string().max(2e4).optional(),
-    source_lender_id: z22.string().max(2e4).nullable().optional(),
-    request_type: z22.string().max(2e4).optional(),
-    incoming_data: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
-    changes_diff: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
-    status: z22.string().max(2e4).optional(),
-    processing_notes: z22.string().max(2e4).nullable().optional(),
-    confidence: z22.string().max(2e4).nullable().optional(),
-    suggested_action: z22.string().max(2e4).nullable().optional(),
-    match_candidates: z22.record(z22.unknown()).or(z22.array(z22.unknown())).optional(),
-    match_reason: z22.string().max(2e4).nullable().optional(),
-    conflict_count: z22.number().int().optional(),
-    contact_change_count: z22.number().int().optional(),
-    assigned_reviewer_id: z22.string().uuid().nullable().optional()
-  },
-  lender_sync_request_decisions: {
-    request_id: z22.string().uuid().optional(),
-    field_name: z22.string().max(2e4).optional(),
-    scope: z22.string().max(2e4).optional(),
-    existing_value: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
-    incoming_value: z22.record(z22.unknown()).or(z22.array(z22.unknown())).nullable().optional(),
-    action: z22.string().max(2e4).optional(),
-    notes: z22.string().max(2e4).nullable().optional()
-  },
-  lender_duplicate_dismissals: {
-    dismissal_key: z22.string().max(2e4).optional(),
-    lender_ids: z22.array(z22.string().uuid()).max(100).optional()
-  },
-  lender_history_warning_dismissals: {
-    deal_id: z22.string().uuid().optional()
-  }
-};
-
-// src/lib/mcp/lenderRelatedWrites.ts
-var writeProvenance = {
-  source: z23.string().max(1e3).optional(),
-  change_reason: z23.string().max(2e3).optional()
-};
-async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, confirm, source, reason) {
-  const { data, error } = await sb.rpc("mcp_write_lender_related", {
-    p_table: table,
-    p_action: action,
-    p_lender_id: lenderId,
-    p_record_id: recordId ?? null,
-    p_patch: Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== void 0)),
-    p_confirm: confirm ?? false,
-    p_source: source ?? null,
-    p_change_reason: reason ?? null
-  });
-  if (error) return errorResult(`${table} ${action}: ${error.message}`);
-  return textResult(data);
-}
-function defineLenderRelatedTool(table, action, name) {
-  const fields = LENDER_RELATED_FIELDS[table];
-  return defineTool23({
-    name,
-    title: `${action} ${table.replace(/_/g, " ")}`,
-    description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
-    inputSchema: {
-      lender_id: z23.string().uuid(),
-      record_id: action === "create" ? z23.string().uuid().optional().describe("Not used on creation; IDs are generated.") : z23.string().uuid(),
-      ...action === "delete" ? { confirm: z23.literal(true) } : fields,
-      ...writeProvenance
-    },
-    annotations: { readOnlyHint: false, destructiveHint: action === "delete", idempotentHint: false, openWorldHint: false },
-    handler: async (input, ctx) => {
-      const authErr = requireAuth(ctx);
-      if (authErr) return authErr;
-      const { lender_id, record_id, source, change_reason, confirm, ...patch } = input;
-      return writeLenderRelated(supabaseForUser(ctx), table, action, lender_id, record_id, patch, confirm, source, change_reason);
-    }
-  });
-}
-
-// src/lib/mcp/tools/upsert-lender-contact.ts
-var upsert_lender_contact_default = defineTool24({
-  name: "upsert_lender_contact",
-  title: "Add or update a funding source contact",
-  description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
-  inputSchema: {
-    lender_id: z24.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
-    contact_id: z24.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
-    name: z24.string().trim().max(200).optional(),
-    title: z24.string().trim().max(200).nullable().optional(),
-    email: z24.string().trim().max(320).nullable().optional(),
-    phone: z24.string().trim().max(100).nullable().optional(),
-    city: z24.string().trim().max(200).nullable().optional(),
-    state: z24.string().trim().max(200).nullable().optional(),
-    country: z24.string().trim().max(200).nullable().optional(),
-    geography: z24.string().trim().max(200).nullable().optional(),
-    notes: z24.string().max(1e4).nullable().optional(),
-    is_primary: z24.boolean().optional(),
-    crm_contact_id: z24.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
-    ...writeProvenance
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { lender_id, contact_id, crm_contact_id, source, change_reason, ...rest } = input;
-    const patch = {};
-    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
-    if (crm_contact_id !== void 0) patch.contact_id = crm_contact_id;
-    const sb = supabaseForUser(ctx);
-    const { data: lender, error: lenderErr } = await sb.from("master_lenders").select("id, name").eq("id", lender_id).maybeSingle();
-    if (lenderErr) return errorResult(lenderErr.message);
-    if (!lender) return errorResult("Funding source not found (or not visible to this user).");
-    let before = null;
-    if (contact_id) {
-      const { data, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).eq("lender_id", lender_id).maybeSingle();
-      if (error) return errorResult(error.message);
-      if (!data) return errorResult("Contact not found on this funding source (or not visible to this user).");
-      before = data;
-    } else if (!patch.name) {
-      return errorResult("A `name` is required when creating a new contact.");
-    }
-    const result = await writeLenderRelated(sb, "lender_contacts", contact_id ? "update" : "create", lender_id, contact_id, patch, false, source, change_reason);
-    if ("isError" in result) return result;
-    const payload = JSON.parse(result.content[0].text);
-    const row = payload.record;
-    const fields = Object.keys(patch).filter((k) => JSON.stringify(before?.[k]) !== JSON.stringify(row?.[k]));
-    return textResult({ contact: row, changed_fields: fields, created: !contact_id, demoted_primary_contact_ids: payload.demoted_primary_contact_ids }, { lender_id, contact_id: row.id, created: !contact_id });
-  }
-});
-
-// src/lib/mcp/tools/create-lender.ts
-import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z25 } from "npm:zod@^3.23.0";
-var create_lender_default = defineTool25({
-  name: "create_lender",
-  title: "Create funding source / lender",
-  description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
-  inputSchema: {
-    name: z25.string().trim().min(1).max(200).describe("Name of the new funding source."),
-    ...LENDER_FIELD_SCHEMA,
-    ...writeProvenance
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (input, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { name, source, change_reason, ...rest } = input;
-    const cleanName = name.trim();
-    const fields = {};
-    for (const [k, v] of Object.entries(rest)) if (v !== void 0) fields[k] = v;
-    const sb = supabaseForUser(ctx);
-    const invalid = await validateLenderPatch(sb, fields);
-    if (invalid) return errorResult(invalid);
-    const escaped = cleanName.replace(/[\\%_]/g, (c) => `\\${c}`);
-    const { data: similar, error: dupErr } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${escaped}%`).limit(50);
-    if (dupErr) return errorResult(dupErr.message);
-    const dupes = (similar ?? []).filter(
-      (r) => String(r.name ?? "").trim().toLowerCase() === cleanName.toLowerCase()
-    );
-    if (dupes.length > 0) {
-      return {
-        ...textResult(
-          {
-            error: "duplicate",
-            field: "name",
-            message: `A funding source named "${cleanName}" already exists. Use update_lender with one of these ids instead.`,
-            matches: dupes.map((d) => ({ id: d.id, name: d.name, lender_type: d.lender_type }))
-          },
-          { duplicate: true, count: dupes.length }
-        ),
-        isError: true
-      };
-    }
-    const { data, error } = await sb.rpc("mcp_create_lender", { p_patch: { ...fields, name: cleanName }, p_source: source ?? null, p_change_reason: change_reason ?? null });
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Funding source was not created (permission denied).");
-    return textResult(data);
-  }
-});
-
-// src/lib/mcp/tools/delete-lender-contact.ts
-import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z26 } from "npm:zod@^3.23.0";
-var delete_lender_contact_default = defineTool26({
-  name: "delete_lender_contact",
-  title: "Delete a funding source contact",
-  description: "Permanently remove one contact from a funding source's multi-contact list (`lender_contacts`), e.g. a duplicate or wrong entry. Requires `confirm: true`. Logged to `lender_audit_logs`. Deleting the primary contact leaves the lender with no primary; promote another with `upsert_lender_contact` (is_primary: true) \u2014 there is never more than one primary.",
-  inputSchema: {
-    contact_id: z26.string().uuid(),
-    confirm: z26.literal(true).describe("Must be true to confirm the permanent deletion."),
-    ...writeProvenance
-  },
-  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ contact_id, confirm, source, change_reason }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data: before, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!before) return errorResult("contact_id: contact not found (or not visible to this user).");
-    const lenderId = before.lender_id;
-    const deleted = await writeLenderRelated(sb, "lender_contacts", "delete", lenderId, contact_id, {}, confirm, source, change_reason);
-    if ("isError" in deleted) return deleted;
-    const { data: remaining } = await sb.from("lender_contacts").select("id, name, is_primary").eq("lender_id", lenderId);
-    const rem = remaining ?? [];
-    return textResult(
-      { deleted: true, contact: before, remaining_contacts: rem, has_primary: rem.some((r) => r.is_primary) },
-      { contact_id, lender_id: lenderId, deleted: true }
-    );
-  }
-});
-
-// src/lib/mcp/tools/add-lender-attachment.ts
-import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z27 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/lenderAttachments.ts
-var LENDER_ATTACHMENT_BUCKET = "lender-attachments";
-var LENDER_ATTACHMENT_CATEGORIES = [
-  "general",
-  "nda",
-  "marketing_materials",
-  "contracts",
-  "presentations",
-  "due_diligence",
-  "term_sheets",
-  "correspondence",
-  "referral_agreement",
-  "other"
-];
-var MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-var MIME = {
-  pdf: "application/pdf",
-  txt: "text/plain",
-  csv: "text/csv",
-  md: "text/markdown",
-  doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  xls: "application/vnd.ms-excel",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg"
-};
-function guessContentType(fileName) {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  return MIME[ext] ?? "application/octet-stream";
-}
-function decodeBase64(b64) {
-  const clean = b64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
-  const bin = atob(clean);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+function salesV2DataYears(p) {
+  const [sy, sm] = p.start.split("-").map(Number);
+  const startDate = p.months.length === 1 ? new Date(Date.UTC(sy, sm - 1 - 2, 1)) : new Date(Date.UTC(sy, sm - 1, 1));
+  const ey = Number(p.end.slice(0, 4));
+  const out = [];
+  for (let y = startDate.getUTCFullYear(); y <= ey; y += 1) out.push(y);
   return out;
 }
 
-// src/lib/mcp/tools/add-lender-attachment.ts
-var add_lender_attachment_default = defineTool27({
-  name: "add_lender_attachment",
-  title: "Attach a document to a funding source",
-  description: "Upload a document (NDA, one-pager, referral agreement, etc.) to a funding source's Attachments, exactly as the app's upload does. Provide the file as `content_base64` OR as a public https `url` to fetch (max 20 MB). Category 'nda' marks the funding source as having an NDA and 'marketing_materials' as having marketing materials in the app. Does not change the legacy `nda` / `referral_agreement` / `lender_one_pager_url` text columns \u2014 use `update_lender` for those. Returns the new attachment row.",
-  inputSchema: {
-    lender_id: z27.string().uuid(),
-    file_name: z27.string().trim().min(1).max(255).describe("File name including extension, e.g. 'Acme NDA.pdf'."),
-    category: z27.enum(LENDER_ATTACHMENT_CATEGORIES).default("general"),
-    content_base64: z27.string().min(1).optional().describe("File bytes, base64-encoded (a data: URL prefix is accepted)."),
-    url: z27.string().url().optional().describe("Public https URL to download the file from."),
-    content_type: z27.string().max(200).optional().describe("MIME type; inferred from the file extension when omitted."),
-    ...writeProvenance
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-  handler: async ({ lender_id, file_name, category, content_base64, url, content_type, source, change_reason }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!!content_base64 === !!url) return errorResult("Provide exactly one of `content_base64` or `url`.");
-    const sb = supabaseForUser(ctx);
-    const { data: lender, error: lErr } = await sb.from("master_lenders").select("id, name, company_id").eq("id", lender_id).maybeSingle();
-    if (lErr) return errorResult(lErr.message);
-    if (!lender) return errorResult("lender_id: funding source not found (or not visible to this user).");
-    if (!lender.company_id) return errorResult("lender_id: this funding source has no company, so attachments cannot be stored for it.");
-    let bytes;
-    let type = content_type || guessContentType(file_name);
-    if (content_base64) {
-      try {
-        bytes = decodeBase64(content_base64);
-      } catch {
-        return errorResult("content_base64: not valid base64.");
-      }
-    } else {
-      if (!url || !url.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
-      let res;
-      try {
-        res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(15e3) });
-      } catch (e) {
-        return errorResult(`url: download failed (${e.message}).`);
-      }
-      if (!res.ok) return errorResult(`url: download failed with HTTP ${res.status}.`);
-      const len = Number(res.headers.get("content-length") ?? 0);
-      if (len > MAX_ATTACHMENT_BYTES) return errorResult("url: file is larger than 20 MB.");
-      bytes = new Uint8Array(await res.arrayBuffer());
-      if (!content_type) type = res.headers.get("content-type")?.split(";")[0] || type;
-    }
-    if (bytes.byteLength === 0) return errorResult("File is empty.");
-    if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
-    const extType = guessContentType(file_name);
-    if (extType === "application/octet-stream") return errorResult("file_name: unsupported file type.");
-    type = extType;
-    const userId = ctx.getUserId();
-    if (!userId) return errorResult("Caller has no user id.");
-    const ext = (file_name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
-    const storedName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-    const filePath = `${userId}/${lender.name}/${storedName}`;
-    const { error: upErr } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).upload(filePath, bytes, { contentType: type });
-    if (upErr) return errorResult(`Storage upload failed: ${upErr.message}`);
-    const result = await writeLenderRelated(sb, "lender_attachments", "create", lender_id, void 0, {
-      name: file_name,
-      file_path: filePath,
-      content_type: type,
-      size_bytes: bytes.byteLength,
-      category
-    }, false, source, change_reason);
-    if ("isError" in result) {
-      await sb.storage.from(LENDER_ATTACHMENT_BUCKET).remove([filePath]);
-      return result;
-    }
-    const row = JSON.parse(result.content[0].text).record;
-    return textResult({ attachment: row }, { attachment_id: row.id, lender_id });
-  }
-});
+// src/utils/excludedDeals.ts
+var EXCLUDED_DEAL_NAMES = /* @__PURE__ */ new Set([
+  "test - niki's store",
+  "example deal"
+]);
+function isExcludedDealName2(name) {
+  if (!name) return false;
+  const normalized = name.toLowerCase().trim();
+  if (EXCLUDED_DEAL_NAMES.has(normalized)) return true;
+  if (normalized === "test" || normalized.startsWith("test ")) return true;
+  return false;
+}
 
-// src/lib/mcp/tools/list-lender-attachments.ts
-import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z28 } from "npm:zod@^3.23.0";
-var list_lender_attachments_default = defineTool28({
-  name: "list_lender_attachments",
-  title: "List funding source attachments",
-  description: "List the documents attached to a funding source (NDAs, one-pagers, referral agreements\u2026) with a signed download URL valid for 1 hour.",
-  inputSchema: { lender_id: z28.string().uuid() },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ lender_id }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data: lender, error: lErr } = await sb.from("master_lenders").select("id, name, company_id").eq("id", lender_id).maybeSingle();
-    if (lErr) return errorResult(lErr.message);
-    if (!lender) return errorResult("lender_id: funding source not found (or not visible to this user).");
-    let q = sb.from("lender_attachments").select("*").eq("lender_name", lender.name).order("created_at", { ascending: false }).limit(200);
-    if (lender.company_id) q = q.eq("company_id", lender.company_id);
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    const rows = await Promise.all(
-      (data ?? []).map(async (r) => {
-        const { data: signed } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).createSignedUrl(String(r.file_path), 3600);
-        return { ...r, download_url: signed?.signedUrl ?? null };
-      })
-    );
-    return textResult({ lender_id, lender_name: lender.name, attachments: rows }, { count: rows.length });
-  }
-});
-
-// src/lib/mcp/tools/delete-lender-attachment.ts
-import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z29 } from "npm:zod@^3.23.0";
-var delete_lender_attachment_default = defineTool29({
-  name: "delete_lender_attachment",
-  title: "Delete a funding source attachment",
-  description: "Permanently delete one funding source attachment (file and record). Requires `confirm: true`. Only the person who uploaded a file can delete it (same rule as the app).",
-  inputSchema: {
-    attachment_id: z29.string().uuid(),
-    confirm: z29.literal(true).describe("Must be true to confirm the permanent deletion."),
-    ...writeProvenance
-  },
-  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ attachment_id, confirm, source, change_reason }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data: att, error } = await sb.from("lender_attachments").select("*").eq("id", attachment_id).maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!att) return errorResult("attachment_id: attachment not found (or not visible to this user).");
-    if (att.user_id !== ctx.getUserId()) return errorResult("attachment_id: only the user who uploaded this file can delete it.");
-    let lq = sb.from("master_lenders").select("id").eq("name", att.lender_name).limit(1);
-    if (att.company_id) lq = lq.eq("company_id", att.company_id);
-    const { data: lender } = await lq.maybeSingle();
-    if (!lender?.id) return errorResult("Attachment lender not found; no file or record deleted.");
-    const deleted = await writeLenderRelated(sb, "lender_attachments", "delete", lender.id, attachment_id, {}, confirm, source, change_reason);
-    if ("isError" in deleted) return deleted;
-    const { error: stErr } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).remove([att.file_path]);
-    return textResult(
-      { deleted: true, attachment: att, storage_warning: stErr ? stErr.message : null },
-      { attachment_id, deleted: true }
-    );
-  }
-});
-
-// src/lib/mcp/tools/add-lender-to-deal.ts
-import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z30 } from "npm:zod@^3.23.0";
-var add_lender_to_deal_default = defineTool30({
-  name: "add_lender_to_deal",
-  title: "Add lender to deal",
-  description: "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
-  inputSchema: {
-    deal_id: z30.string().uuid(),
-    lender_id: z30.string().uuid().optional(),
-    lender_ids: z30.array(z30.string().uuid()).min(1).max(25).optional(),
-    stage: z30.string().trim().min(1).max(100).default("on-deck"),
-    status: z30.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).default("active")
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, lender_id, lender_ids, stage, status }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (Boolean(lender_id) === Boolean(lender_ids)) {
-      return errorResult("Provide exactly one of lender_id or lender_ids (up to 25).");
-    }
-    const sb = supabaseForUser(ctx);
-    const { data: deal, error: dealError } = await sb.from("deals").select("id, company_id").eq("id", deal_id).maybeSingle();
-    if (dealError || !deal?.company_id) {
-      return errorResult(dealError?.message ?? "Deal not found, inaccessible, or missing company scope.");
-    }
-    const ids = lender_ids ?? (lender_id ? [lender_id] : []);
-    const results = [];
-    for (const id of ids) {
-      try {
-        const findExisting = () => sb.from("deal_lenders").select("*").eq("deal_id", deal_id).eq("master_lender_id", id).maybeSingle();
-        const { data: existing, error: lookupError } = await findExisting();
-        if (lookupError) throw new Error(lookupError.message);
-        if (existing) {
-          results.push({ lender_id: id, outcome: "already_on_deal", message: "Already on deal", deal_lender: existing });
-          continue;
-        }
-        const { data: lender, error: lenderError } = await sb.from("master_lenders").select("id, name").eq("id", id).eq("company_id", deal.company_id).maybeSingle();
-        if (lenderError || !lender) throw new Error(lenderError?.message ?? "Lender not found or inaccessible in this deal's company.");
-        const now = (/* @__PURE__ */ new Date()).toISOString();
-        const { data, error } = await sb.from("deal_lenders").insert({
-          deal_id,
-          name: lender.name,
-          master_lender_id: id,
-          stage,
-          tracking_status: status,
-          last_status_change_at: now,
-          ...stage === "on-deck" ? { on_deck_at: now } : {}
-        }).select("*").single();
-        if (error?.code === "23505") {
-          const raced = await findExisting();
-          if (raced.error) throw new Error(raced.error.message);
-          if (raced.data) {
-            results.push({ lender_id: id, outcome: "already_on_deal", message: "Already on deal", deal_lender: raced.data });
-            continue;
-          }
-        }
-        if (error || !data) throw new Error(error?.message ?? "Insert returned no funding source.");
-        const warnings = [];
-        const metadata2 = { lender_name: lender.name, lender_id: data.id, master_lender_id: id };
-        for (const [table, payload] of [
-          ["activity_logs", { deal_id, user_id: ctx.getUserId(), user_display_name: ctx.getUserEmail() ?? "Unknown User", activity_type: "lender_added", description: `Added lender ${lender.name}`, metadata: metadata2 }],
-          ["deal_activity", { deal_id, user_id: ctx.getUserId(), source: "mcp", action_type: "lender_added", before: {}, after: metadata2 }]
-        ]) {
-          try {
-            const audit = await sb.from(table).insert(payload);
-            if (audit.error) warnings.push(`${table} logging failed: ${audit.error.message}`);
-          } catch (auditError) {
-            warnings.push(`${table} logging failed: ${auditError instanceof Error ? auditError.message : "Unknown error"}`);
-          }
-        }
-        results.push({ lender_id: id, outcome: "added", message: "Added to deal", deal_lender: data, ...warnings.length ? { warnings } : {} });
-      } catch (error) {
-        results.push({ lender_id: id, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
-      }
-    }
-    const single = lender_id ? results[0] : void 0;
-    return textResult({ results }, { results, ...single?.deal_lender ? { deal_lender_id: single.deal_lender.id } : {} });
-  }
-});
-
-// src/lib/mcp/tools/update-deal-lender.ts
-import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z31 } from "npm:zod@^3.23.0";
-var fieldSchema = {
-  notes: z31.string().max(1e4).nullable().optional(),
-  mode: z31.enum(["replace", "append", "prepend"]).default("replace"),
-  stage: z31.string().trim().min(1).max(100).optional(),
-  tracking_status: z31.string().trim().min(1).max(100).optional(),
-  tags: z31.array(z31.string().trim().min(1).max(100)).max(50).optional(),
-  quote_amount: z31.number().finite().nullable().optional(),
-  quote_rate: z31.number().finite().nullable().optional(),
-  quote_term: z31.string().max(200).nullable().optional(),
-  pass_reason: z31.string().max(2e3).nullable().optional()
+// src/lib/dashboardTiles/stageQueries.ts
+var ACTIVE_PIPELINE_ID = "b78ad452-b489-4c89-8a91-789347c05f79";
+var IN_DEVELOPMENT_PIPELINE_ID = "40b17dfb-9122-49e0-bf7c-5aa993d5d615";
+var FINSERV_PIPELINE_ID2 = "6907be5e-b17c-4a95-a7c2-fd977c94e179";
+var DEBT_STAGE_PIPELINES = [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID];
+var NDA_STAGE_VALUES = [
+  "ndaneeds-list-sent",
+  "NDA/Needs List Sent",
+  "NDA / Needs List Sent",
+  "NDA/NEEDS LIST SENT",
+  "NDA / NEEDS LIST SENT"
+];
+var PROPOSAL_ISSUED_STAGE_LABELS = ["proposal-issued", "Proposal Issued"];
+var DOLLARS_SIGNED_STAGE_LABELS = [
+  "final-credit-items",
+  "Final Credit Items",
+  "terms-issued",
+  "Terms Issued",
+  "in-due-diligence",
+  "In Due Diligence",
+  "funded-invoiced",
+  "Funded/Invoiced",
+  "Funded / Invoiced",
+  "Closed & Funded"
+];
+var FINSERV_DEALS_ON_BOARD_LABELS = ["fs-qualification", "Qualification"];
+var FINSERV_PROPOSALS_LABELS = ["fs-proposal-sent", "Proposal Sent"];
+var EXCLUDED_OWNERS = /* @__PURE__ */ new Set(["john moffitt"]);
+var EXCLUDED_CHANGED_BY = /* @__PURE__ */ new Set(["2e65a4b1-bd94-46ef-87c6-9afe697b3180"]);
+var monthKeyUtc = (iso2) => {
+  const dt = new Date(iso2);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
 };
-var itemSchema = z31.object({
-  lender_id: z31.string().uuid().optional(),
-  deal_lender_id: z31.string().uuid().optional(),
-  ...fieldSchema
-});
-var EDITABLE = ["stage", "tracking_status", "tags", "quote_amount", "quote_rate", "quote_term", "pass_reason"];
-function combineNotes(existing, next, mode) {
-  if (mode === "replace" || next === null) return next;
-  const old = (existing ?? "").trim();
-  if (!old) return next;
-  return mode === "append" ? `${old}
-
-${next}` : `${next}
-
-${old}`;
+function yearWindow(years) {
+  const sorted = [...new Set(years)].sort();
+  return { start: `${sorted[0]}-01-01`, end: `${sorted[sorted.length - 1]}-12-31` };
 }
-function buildUpdates(row, item) {
-  const updates = {};
-  if (item.notes !== void 0) {
-    const notes = combineNotes(row.notes, item.notes, item.mode ?? "replace");
-    if (notes !== null && notes.length > 1e4) throw new Error("Resulting notes exceed 10,000 characters.");
-    updates.notes = notes;
+async function fetchDealsOnBoardRows(sb, start, end) {
+  const { data, error } = await sb.from("deal_stage_history").select("deal_id, changed_at, changed_by, pipeline_id, deals!inner(id, company, value, manager, stage, deal_owner)").eq("event_type", "stage_enter").in("to_stage", NDA_STAGE_VALUES).gte("changed_at", start).lte("changed_at", end + "T23:59:59.999Z").order("changed_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+function computeDealsOnBoard(rows) {
+  const raw = rows.filter((h) => {
+    const d = h.deals;
+    if (!d) return false;
+    if (h.pipeline_id && h.pipeline_id !== ACTIVE_PIPELINE_ID) return false;
+    if (EXCLUDED_CHANGED_BY.has(h.changed_by)) return false;
+    if (EXCLUDED_OWNERS.has(String(d.deal_owner ?? "").toLowerCase().trim())) return false;
+    return !isExcludedDealName2(d.company);
+  }).map((h) => ({
+    id: h.deals.id,
+    company: h.deals.company ?? "\u2014",
+    value: Number(h.deals.value) || 0,
+    manager: h.deals.manager ?? null,
+    stage: h.deals.stage ?? null,
+    created_at: h.changed_at,
+    month_index: new Date(h.changed_at).getUTCMonth()
+  }));
+  const byName = /* @__PURE__ */ new Map();
+  for (const d of raw) {
+    const key = (d.company ?? "").toLowerCase().trim() || d.id;
+    const existing = byName.get(key);
+    if (!existing || new Date(d.created_at).getTime() < new Date(existing.created_at).getTime()) byName.set(key, d);
   }
-  for (const key of EDITABLE) if (item[key] !== void 0) updates[key] = item[key];
-  return updates;
+  const deals = Array.from(byName.values());
+  return { deals, ...bucket(deals, (d) => d.created_at) };
 }
-var update_deal_lender_default = defineTool31({
-  name: "update_deal_lender",
-  title: "Update funding source on deal",
-  description: "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
-  inputSchema: {
-    deal_id: z31.string().uuid(),
-    lender_id: z31.string().uuid().optional(),
-    deal_lender_id: z31.string().uuid().optional(),
-    ...fieldSchema,
-    updates: z31.array(itemSchema).min(1).max(25).optional()
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (args, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const { deal_id, updates: bulk, ...single } = args;
-    if (bulk && (single.lender_id || single.deal_lender_id)) {
-      return errorResult("Provide either `updates` or a single lender_id/deal_lender_id, not both.");
-    }
-    const items = bulk ?? [single];
-    const sb = supabaseForUser(ctx);
-    const { data: deal, error: dealError } = await sb.from("deals").select("id, company_id").eq("id", deal_id).maybeSingle();
-    if (dealError || !deal?.company_id) {
-      return errorResult(dealError?.message ?? "Deal not found, inaccessible, or missing company scope.");
-    }
-    const results = [];
-    for (const item of items) {
-      const target = item.deal_lender_id ?? item.lender_id ?? null;
-      try {
-        if (Boolean(item.lender_id) === Boolean(item.deal_lender_id)) {
-          throw new Error("Provide exactly one of lender_id or deal_lender_id.");
-        }
-        let q = sb.from("deal_lenders").select("*").eq("deal_id", deal_id);
-        q = item.deal_lender_id ? q.eq("id", item.deal_lender_id) : q.eq("master_lender_id", item.lender_id);
-        const { data: row, error: lookupError } = await q.maybeSingle();
-        if (lookupError) throw new Error(lookupError.message);
-        if (!row) throw new Error("This funding source is not on the deal (or is inaccessible). No row was created.");
-        const changes = buildUpdates(row, item);
-        if (Object.keys(changes).length === 0) throw new Error("No editable fields were provided.");
-        const warnings = [];
-        if ("notes" in changes && row.notes && String(row.notes).trim() && changes.notes !== row.notes) {
-          const h = await sb.from("lender_notes_history").insert({ deal_lender_id: row.id, text: row.notes });
-          if (h.error) warnings.push(`notes history failed: ${h.error.message}`);
-        }
-        const { data: updated, error: updateError } = await sb.from("deal_lenders").update({ ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", row.id).eq("deal_id", deal_id).select("*").maybeSingle();
-        if (updateError) throw new Error(updateError.message);
-        if (!updated) throw new Error("Update was blocked (no permission to edit this funding source).");
-        const before = {};
-        for (const k of Object.keys(changes)) before[k] = row[k] ?? null;
-        const meta = { lender_name: row.name, lender_id: row.id, master_lender_id: row.master_lender_id };
-        const logs = [
-          ["deal_activity", { deal_id, user_id: ctx.getUserId(), source: "mcp", action_type: "lender_updated", before: { ...meta, ...before }, after: { ...meta, ...changes } }]
-        ];
-        if ("stage" in changes && row.stage !== changes.stage) {
-          logs.push(["activity_logs", { deal_id, user_id: ctx.getUserId(), user_display_name: ctx.getUserEmail() ?? "Unknown User", activity_type: "lender_stage_change", description: `${row.name} stage changed from ${row.stage} to ${changes.stage}`, metadata: { lender_id: row.id, lender_name: row.name, from: row.stage, to: changes.stage } }]);
-        }
-        for (const [table, payload] of logs) {
-          try {
-            const r = await sb.from(table).insert(payload);
-            if (r.error) warnings.push(`${table} logging failed: ${r.error.message}`);
-          } catch (e) {
-            warnings.push(`${table} logging failed: ${e instanceof Error ? e.message : "Unknown error"}`);
-          }
-        }
-        results.push({ target, outcome: "updated", deal_lender: updated, ...warnings.length ? { warnings } : {} });
-      } catch (error) {
-        results.push({ target, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
+async function fetchFirstEntryRows(sb, opts) {
+  let q = sb.from("deal_stage_history").select("deal_id, changed_at, to_stage, deals!inner (company, value, manager, stage, pipeline_id)").eq("event_type", "stage_enter");
+  q = opts.pipelineIds.length === 1 ? q.eq("pipeline_id", opts.pipelineIds[0]) : q.in("pipeline_id", opts.pipelineIds);
+  const { data, error } = await q.in("to_stage", opts.labels).gte("changed_at", opts.start).lte("changed_at", opts.end + "T23:59:59.999Z").order("changed_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+function computeFirstEntries(rows, collapseByCompanyName) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (seen.has(row.deal_id)) continue;
+    const deal = row.deals;
+    if (!deal) continue;
+    if (isExcludedDealName2(deal.company)) continue;
+    const enteredAt = row.changed_at;
+    seen.set(row.deal_id, {
+      id: row.deal_id,
+      deal_id: row.deal_id,
+      company: deal.company ?? "\u2014",
+      value: Number(deal.value) || 0,
+      manager: deal.manager ?? null,
+      current_stage: deal.stage ?? null,
+      entered_at: enteredAt,
+      month_index: new Date(enteredAt).getUTCMonth()
+    });
+  }
+  let deals = Array.from(seen.values());
+  if (collapseByCompanyName) {
+    const byName = /* @__PURE__ */ new Map();
+    for (const entry of deals) {
+      const key = (entry.company ?? "").toLowerCase().trim();
+      if (!key) {
+        byName.set(entry.deal_id, entry);
+        continue;
       }
+      const existing = byName.get(key);
+      if (!existing || new Date(entry.entered_at).getTime() < new Date(existing.entered_at).getTime()) byName.set(key, entry);
     }
-    if (!bulk) {
-      const r = results[0];
-      if (r.outcome === "error") return errorResult(r.reason ?? "Update failed");
-      return textResult(r, { result: r });
-    }
-    return textResult({ results }, { results });
+    deals = Array.from(byName.values());
   }
-});
-
-// src/lib/mcp/tools/search-deal-notes.ts
-import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z32 } from "npm:zod@^3.23.0";
-var search_deal_notes_default = defineTool32({
-  name: "search_deal_notes",
-  title: "Search deal notes",
-  description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
-  inputSchema: {
-    deal_id: z32.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z32.array(z32.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z32.string().trim().min(1).max(200).optional(),
-    limit: z32.number().int().min(1).max(100).default(25)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_ids, query, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
-      return errorResult("Provide deal_id or deal_ids.");
-    }
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
-      if (denied) return denied;
-    }
-    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("updated_at", { ascending: false }).limit(limit);
-    if (query) {
-      const like = orIlike(query);
-      q = q.or(`title.ilike.${like},content.ilike.${like}`);
-    }
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+  return { deals, ...bucket(deals, (d) => d.entered_at) };
+}
+function bucket(deals, at) {
+  const byMonth = Array.from({ length: 12 }, () => []);
+  const byMonthKey = {};
+  for (const d of deals) {
+    if (d.month_index >= 0 && d.month_index < 12) byMonth[d.month_index].push(d);
+    const k = monthKeyUtc(at(d));
+    (byMonthKey[k] = byMonthKey[k] || []).push(d);
   }
-});
-
-// src/lib/mcp/tools/add-deal-note-entry.ts
-import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z33 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/dealNoteEntry.ts
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return { byMonth, byMonthKey, countsByMonth: byMonth.map((a) => a.length) };
 }
-function inline(s) {
-  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+async function fetchStageEntryWindowRows(sb, stageId, startIso, endIso) {
+  const { data, error } = await sb.from("deal_stage_history").select("deal_id, changed_at, deals!inner(company, value, manager)").eq("pipeline_id", ACTIVE_PIPELINE_ID).eq("event_type", "stage_enter").or(`to_stage_id.eq.${stageId},to_stage.eq.${stageId}`).gte("changed_at", startIso).lt("changed_at", endIso).order("changed_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
-function entryToHtml(entry, format) {
-  const trimmed = entry.trim();
-  if (format === "html") return trimmed;
+function computeStageEntryDeals(rows, dedupe) {
+  const seen = /* @__PURE__ */ new Set();
   const out = [];
-  let list = [];
-  const flush = () => {
-    if (list.length) out.push(`<ul>${list.map((li) => `<li><p>${li}</p></li>`).join("")}</ul>`);
-    list = [];
-  };
-  for (const raw of trimmed.split(/\r?\n/)) {
-    const line = raw.trim();
-    const bullet = line.match(/^[-*•]\s+(.*)$/);
-    const heading = line.match(/^#{1,6}\s+(.*)$/);
-    if (bullet) {
-      list.push(inline(bullet[1]));
+  for (const r of rows) {
+    const company = r.deals?.company ?? "";
+    if (isExcludedDealName2(company)) continue;
+    if (!r.deal_id) continue;
+    if (dedupe) {
+      if (seen.has(r.deal_id)) continue;
+      seen.add(r.deal_id);
+    }
+    out.push({ deal_id: r.deal_id, company, value: Number(r.deals?.value) || 0, manager: r.deals?.manager ?? null, changed_at: r.changed_at });
+  }
+  return out;
+}
+function averageSizedValue(deals) {
+  const sized = deals.map((d) => Number(d.value) || 0).filter((v) => v > 0);
+  return sized.length ? sized.reduce((s, v) => s + v, 0) / sized.length : null;
+}
+
+// src/lib/dashboardTiles/salesCallFilters.ts
+var DEBT_FINANCING_RE = /5\s*th\s*line[\s\S]{0,80}\bfinancing\s+review\b/i;
+var FINSERV_FINANCIAL_RE = /^\s*5\s*th\s+line\s*(?:<>|[-–—|:/])\s*.+?\s+financial\s+review\s*$/i;
+var FINSERV_INTRO_RE = /^\s*.+?\s*(?:<>|[-–—|/])\s*5\s*th\s+line\s*[:\-–—]?\s*intro\s*$/i;
+function isSalesCallTitleForVariant(title, variant) {
+  const t = title || "";
+  if (variant === "finserv") return (FINSERV_FINANCIAL_RE.test(t) || FINSERV_INTRO_RE.test(t)) && !DEBT_FINANCING_RE.test(t);
+  return DEBT_FINANCING_RE.test(t);
+}
+
+// src/lib/entityTitleMatch.ts
+function normalizeEntityName(value) {
+  return value.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+function isNearToken(left, right) {
+  if (left === right) return true;
+  if (left.length < 5 || right.length < 5 || Math.abs(left.length - right.length) > 1) return false;
+  let edits = 0;
+  let leftIndex = 0;
+  let rightIndex = 0;
+  while (leftIndex < left.length && rightIndex < right.length) {
+    if (left[leftIndex] === right[rightIndex]) {
+      leftIndex += 1;
+      rightIndex += 1;
       continue;
     }
-    flush();
-    if (!line) continue;
-    out.push(heading ? `<h3>${inline(heading[1])}</h3>` : `<p>${inline(line)}</p>`);
+    edits += 1;
+    if (edits > 1) return false;
+    if (left.length > right.length) leftIndex += 1;
+    else if (right.length > left.length) rightIndex += 1;
+    else {
+      leftIndex += 1;
+      rightIndex += 1;
+    }
   }
-  flush();
-  return out.join("");
+  return edits + Number(leftIndex < left.length || rightIndex < right.length) <= 1;
+}
+function titleMatchesEntity(title, entityName) {
+  if (!title || !entityName) return false;
+  const titleTokens = title.split(" ").filter(Boolean);
+  const entityTokens = entityName.split(" ").filter(Boolean);
+  if (entityTokens.length === 0) return false;
+  if (entityTokens.length === 1) return titleTokens.includes(entityTokens[0]);
+  if (title.includes(entityName)) return true;
+  return entityTokens.every(
+    (entityToken) => titleTokens.some((titleToken) => isNearToken(entityToken, titleToken))
+  );
+}
+var GENERIC_NAME_TOKENS = /* @__PURE__ */ new Set([
+  "the",
+  "and",
+  "group",
+  "capital",
+  "fund",
+  "funds",
+  "funding",
+  "partners",
+  "partner",
+  "holdings",
+  "holding",
+  "company",
+  "co",
+  "corp",
+  "corporation",
+  "inc",
+  "llc",
+  "lp",
+  "llp",
+  "ltd",
+  "limited",
+  "media",
+  "ventures",
+  "venture",
+  "management",
+  "advisors",
+  "advisory",
+  "solutions",
+  "services",
+  "systems",
+  "technologies",
+  "technology",
+  "labs",
+  "global",
+  "international",
+  "industries",
+  "enterprises",
+  "brands",
+  "financial",
+  "finance",
+  "bank",
+  "health",
+  "digital",
+  "studio",
+  "studios",
+  "project",
+  "projects",
+  "sync",
+  "review"
+]);
+function entityNameVariants(rawName) {
+  const raw = String(rawName || "").trim();
+  if (!raw) return [];
+  const variants = /* @__PURE__ */ new Set();
+  const full = normalizeEntityName(raw);
+  if (full.replace(/\s/g, "").length >= 4) variants.add(full);
+  const lead = normalizeEntityName(raw.split(/[-–—/|:,]/)[0] || "");
+  if (lead && lead !== full && lead.replace(/\s/g, "").length >= 6) variants.add(lead);
+  const leadToken = (lead || full).split(" ").filter(Boolean)[0] || "";
+  if (leadToken.length >= 3 && !GENERIC_NAME_TOKENS.has(leadToken)) variants.add(leadToken);
+  return Array.from(variants);
 }
 
-// src/lib/mcp/tools/add-deal-note-entry.ts
-var add_deal_note_entry_default = defineTool33({
-  name: "add_deal_note_entry",
-  title: "Add deal note entry",
-  description: "Prepend or append an entry to a deal's Deal Space note (the notes pop-up), matched by title (default 'Q&A Notes'), creating the note if missing. Never replaces existing content; saves a version and logs deal activity. Use idempotency_key (e.g. a Claap recording ID) to avoid duplicate entries.",
-  inputSchema: {
-    deal_id: z33.string().uuid(),
-    title: z33.string().trim().min(1).max(200).default("Q&A Notes").describe("Note title, matched case-insensitively and trimmed."),
-    entry: z33.string().trim().min(1, "Entry cannot be empty.").max(5e4),
-    format: z33.enum(["text", "html"]).default("text").describe("text (default): plain text; '- ' lines become bullets, '# ' lines headings, **bold** supported. html: TipTap-compatible HTML stored as-is."),
-    mode: z33.enum(["prepend", "append"]).default("prepend"),
-    create_if_missing: z33.boolean().default(true),
-    idempotency_key: z33.string().trim().min(1).max(200).optional(),
-    source: z33.string().trim().min(1).max(100).default("Claude agent").describe("Attribution recorded in the activity log.")
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async (args, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.rpc("add_deal_note_entry", {
-      _deal_id: args.deal_id,
-      _title: args.title,
-      _entry_html: entryToHtml(args.entry, args.format),
-      _mode: args.mode,
-      _create_if_missing: args.create_if_missing,
-      _idempotency_key: args.idempotency_key ?? null,
-      _source: args.source
-    });
-    if (error) return errorResult(error.message);
-    const res = data ?? {};
-    if (res.status === "ambiguous") {
-      return { ...textResult({ error: "Multiple notes match this title; nothing was written.", ...res }, res), isError: true };
-    }
-    if (res.status === "not_found") return errorResult(`No note titled "${args.title}" on this deal and create_if_missing is false.`);
-    return textResult(res, res);
-  }
-});
+// src/lib/internalDomains.ts
+var INTERNAL_DOMAINS = /* @__PURE__ */ new Set([
+  "5thline.co",
+  "naitive.co",
+  "5l.co"
+]);
+function domainOf(email) {
+  if (!email) return "";
+  const at = email.indexOf("@");
+  if (at < 0) return "";
+  return email.slice(at + 1).trim().toLowerCase().replace(/^www\./, "");
+}
 
-// src/lib/mcp/tools/get-deal-note.ts
-import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z34 } from "npm:zod@^3.23.0";
-var get_deal_note_default = defineTool34({
-  name: "get_deal_note",
-  title: "Get deal note",
-  description: "Read one Deal Space note's full HTML content, by note_id or by deal_id plus title (case-insensitive). Returns candidates if several notes share the title.",
-  inputSchema: {
-    note_id: z34.string().uuid().optional(),
-    deal_id: z34.string().uuid().optional(),
-    title: z34.string().trim().min(1).max(200).optional()
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ note_id, deal_id, title }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    if (!note_id && !(deal_id && title)) return errorResult("Provide note_id, or deal_id and title.");
-    const sb = supabaseForUser(ctx);
-    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at");
-    q = note_id ? q.eq("id", note_id) : q.eq("deal_id", deal_id);
-    const { data, error } = await q.limit(200);
-    if (error) return errorResult(error.message);
-    const rows = note_id ? data ?? [] : (data ?? []).filter((n3) => n3.title.trim().toLowerCase() === title.trim().toLowerCase());
-    if (rows.length === 0) return errorResult("Note not found or not accessible.");
-    if (rows.length > 1) {
-      const candidates = rows.map((n3) => ({ note_id: n3.id, title: n3.title, updated_at: n3.updated_at }));
-      return { ...textResult({ error: "Multiple notes match this title.", candidates }, { candidates }), isError: true };
-    }
-    const n2 = rows[0];
-    return textResult(n2, { note: { ...n2, tags: n2.tags ?? [] } });
+// src/lib/dashboardTiles/referralMeetings.ts
+var FUNDING_SOURCE_NAME_SUFFIXES = /* @__PURE__ */ new Set([
+  "capital",
+  "credit",
+  "finance",
+  "financial",
+  "fund",
+  "funding",
+  "global",
+  "group",
+  "holdings",
+  "management",
+  "partners"
+]);
+function fundingSourceTitleAliases(value) {
+  const normalized = normalizeEntityName(value);
+  if (!normalized) return [];
+  const words = normalized.split(" ");
+  while (words.length > 1 && FUNDING_SOURCE_NAME_SUFFIXES.has(words[words.length - 1])) {
+    words.pop();
   }
-});
-
-// src/lib/mcp/tools/list-deal-activity.ts
-import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z35 } from "npm:zod@^3.23.0";
-var list_deal_activity_default = defineTool35({
-  name: "list_deal_activity",
-  title: "List deal activity",
-  description: "List recent activity/timeline events \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
-  inputSchema: {
-    deal_id: z35.string().uuid().optional().describe("Optional. Omit to return activity across all deals."),
-    activity_type: z35.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
-    since: z35.string().trim().max(40).optional().describe("ISO timestamp lower bound on created_at (inclusive)."),
-    until: z35.string().trim().max(40).optional().describe("ISO timestamp upper bound on created_at (exclusive)."),
-    limit: z35.number().int().min(1).max(200).default(50)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, activity_type, since, until, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_activity");
-      if (denied) return denied;
+  const shortened = words.join(" ");
+  return Array.from(/* @__PURE__ */ new Set([normalized, shortened])).filter((name) => name.length >= 3);
+}
+async function loadReferralSourceMeetings(sb, companyId, startIso, endIso) {
+  const { data, error } = await sb.functions.invoke("calendar-meetings-all", {
+    body: {
+      company_id: companyId,
+      time_min: startIso,
+      time_max: endIso
     }
-    let logsQ = sb.from("activity_logs").select(
-      "id, deal_id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
-    ).order("created_at", { ascending: false }).limit(limit);
-    let changesQ = sb.from("deal_activity").select("id, deal_id, source, action_type, before, after, user_id, created_at").order("created_at", { ascending: false }).limit(limit);
-    if (deal_id) {
-      logsQ = logsQ.eq("deal_id", deal_id);
-      changesQ = changesQ.eq("deal_id", deal_id);
-    }
-    if (activity_type) logsQ = logsQ.eq("activity_type", activity_type);
-    if (since) {
-      logsQ = logsQ.gte("created_at", since);
-      changesQ = changesQ.gte("created_at", since);
-    }
-    if (until) {
-      logsQ = logsQ.lt("created_at", until);
-      changesQ = changesQ.lt("created_at", until);
-    }
-    const [logsRes, changesRes] = await Promise.all([logsQ, changesQ]);
-    if (logsRes.error) return errorResult(logsRes.error.message);
-    if (changesRes.error) return errorResult(changesRes.error.message);
-    return textResult({
-      scope: deal_id ? "single_deal" : "all_deals",
-      activity_logs: logsRes.data ?? [],
-      field_changes: changesRes.data ?? []
+  });
+  if (error) throw error;
+  const all = data?.events || [];
+  if (all.length === 0) return [];
+  const SALES_TITLE = /<>\s*(5th\s*line|5thline|naitive)/i;
+  const DEAL_SYNC_TITLE = /deal\s*sync/i;
+  let candidates = all.filter((event) => !SALES_TITLE.test(event.title || "") && !DEAL_SYNC_TITLE.test(event.title || "")).map((event) => ({
+    ...event,
+    id: String(event.id),
+    started_at: event.start || null,
+    matched_contact_id: event.matched_contact_id || null,
+    matched_crm_company_id: event.matched_crm_company_id || null,
+    organizer_email: event.organizer_email || null,
+    internal_emails: Array.isArray(event.internal_emails) ? event.internal_emails : []
+  }));
+  if (candidates.length === 0) return [];
+  const dealNameRows = [];
+  for (let page2 = 0; page2 < 20; page2 += 1) {
+    const from = page2 * 1e3;
+    const { data: chunk } = await sb.from("deals").select("company").eq("company_id", companyId).not("company", "is", null).range(from, from + 999);
+    if (!chunk || chunk.length === 0) break;
+    dealNameRows.push(...chunk);
+    if (chunk.length < 1e3) break;
+  }
+  const dealNames = Array.from(new Set((dealNameRows || []).filter((d) => !isExcludedDealName2(String(d.company || ""))).flatMap((d) => entityNameVariants(String(d.company || ""))).filter((n2) => n2.length >= 3 && !isExcludedDealName2(n2))));
+  if (dealNames.length > 0) {
+    candidates = candidates.filter((m) => {
+      const title = normalizeEntityName(m.title || "");
+      return !title || !dealNames.some((name) => titleMatchesEntity(title, name));
     });
   }
-});
-
-// src/lib/mcp/tools/search-deal-documents.ts
-import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z36 } from "npm:zod@^3.23.0";
-var search_deal_documents_default = defineTool36({
-  name: "search_deal_documents",
-  title: "Search deal documents",
-  description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
-  inputSchema: {
-    deal_id: z36.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z36.array(z36.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z36.string().trim().min(1).max(200).optional(),
-    category: z36.string().trim().min(1).max(100).optional(),
-    limit: z36.number().int().min(1).max(100).default(25)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_ids, query, category, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
-      return errorResult("Provide deal_id or deal_ids.");
-    }
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
-      if (denied) return denied;
-    }
-    let q = sb.from("deal_attachments").select(
-      "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
-    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("created_at", { ascending: false }).limit(limit);
-    if (category) q = q.eq("category", category);
-    if (query) {
-      const like = orIlike(query);
-      q = q.or(`name.ilike.${like},source_subject.ilike.${like},extracted_text.ilike.${like}`);
-    }
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
+  if (candidates.length === 0) return [];
+  const clientDomains = /* @__PURE__ */ new Set();
+  const addEmailDomain = (value) => {
+    const domain = domainOf(typeof value === "string" ? value : null);
+    if (domain && !INTERNAL_DOMAINS.has(domain)) clientDomains.add(domain);
+  };
+  const addWebsiteDomain = (value) => {
+    if (typeof value !== "string" || !value.trim()) return;
+    const normalized = value.trim().toLowerCase().replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].split("?")[0];
+    if (normalized && normalized.includes(".") && !INTERNAL_DOMAINS.has(normalized)) clientDomains.add(normalized);
+  };
+  const clientDeals = [];
+  for (let page2 = 0; page2 < 20; page2 += 1) {
+    const from = page2 * 1e3;
+    const { data: chunk } = await sb.from("deals").select("id, contact_email, company_url, crm_company_id").eq("company_id", companyId).range(from, from + 999);
+    if (!chunk || chunk.length === 0) break;
+    clientDeals.push(...chunk);
+    if (chunk.length < 1e3) break;
   }
-});
-
-// src/lib/mcp/tools/get-deal-document.ts
-import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z37 } from "npm:zod@^3.23.0";
-var get_deal_document_default = defineTool37({
-  name: "get_deal_document",
-  title: "Get deal document",
-  description: "Fetch a single deal document/attachment record by id, including extracted_text when available. Use search_deal_documents first to find the id.",
-  inputSchema: {
-    document_id: z37.string().uuid(),
-    include_extracted_text: z37.boolean().default(true)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ document_id, include_extracted_text }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const cols = include_extracted_text ? "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_text, extracted_at, created_at, user_id" : "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_at, created_at, user_id";
-    const { data, error } = await sb.from("deal_attachments").select(cols).eq("id", document_id).maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Document not found or you do not have access.");
-    return textResult(data);
-  }
-});
-
-// src/lib/mcp/tools/search-deal-emails.ts
-import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z38 } from "npm:zod@^3.23.0";
-var search_deal_emails_default = defineTool38({
-  name: "search_deal_emails",
-  title: "Search deal emails",
-  description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
-  inputSchema: {
-    deal_id: z38.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z38.array(z38.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z38.string().trim().min(1).max(200).optional(),
-    direction: z38.enum(["inbound", "outbound"]).optional(),
-    limit: z38.number().int().min(1).max(100).default(25)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_ids, query, direction, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
-      return errorResult("Provide deal_id or deal_ids.");
+  {
+    const dealRows = clientDeals || [];
+    for (const deal of dealRows) {
+      addEmailDomain(deal.contact_email);
+      addWebsiteDomain(deal.company_url);
     }
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
-      if (denied) return denied;
-    }
-    let q = sb.from("activity_logs").select(
-      "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
-    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
-    if (direction) q = q.eq("direction", direction);
-    if (query) {
-      const like = orIlike(query);
-      q = q.or(`subject.ilike.${like},body.ilike.${like},from_address.ilike.${like}`);
-    }
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    return textResult(data ?? [], { count: data?.length ?? 0 });
-  }
-});
-
-// src/lib/mcp/tools/search-deal-recordings.ts
-import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z39 } from "npm:zod@^3.23.0";
-var search_deal_recordings_default = defineTool39({
-  name: "search_deal_recordings",
-  title: "Search deal meeting recordings",
-  description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
-  inputSchema: {
-    deal_id: z39.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
-    deal_ids: z39.array(z39.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
-    query: z39.string().trim().min(1).max(200).optional(),
-    include_transcript: z39.boolean().default(false),
-    limit: z39.number().int().min(1).max(50).default(20)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_ids, query, include_transcript, limit }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
-      return errorResult("Provide deal_id or deal_ids.");
-    }
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
-      if (denied) return denied;
-    }
-    let recQ = sb.from("deal_claap_recordings").select(
-      "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
-    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
-    if (query) recQ = recQ.ilike("recording_title", `%${query}%`);
-    const { data: recordings, error } = await recQ;
-    if (error) return errorResult(error.message);
-    let transcripts = [];
-    if (include_transcript) {
-      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
-      if (query) {
-        const like = orIlike(query);
-        tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
-      }
-      const tRes = await tQ;
-      if (tRes.error) return errorResult(tRes.error.message);
-      transcripts = tRes.data ?? [];
-    }
-    return textResult({ recordings: recordings ?? [], transcripts });
-  }
-});
-
-// src/lib/mcp/tools/list-deal-funding-sources.ts
-import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z40 } from "npm:zod@^3.23.0";
-var list_deal_funding_sources_default = defineTool40({
-  name: "list_deal_funding_sources",
-  title: "List deal funding sources / lenders",
-  description: "List funding sources (lenders) attached to deals \u2014 the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal. Results are paginated: the response returns total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false to cover the entire book.",
-  inputSchema: {
-    deal_id: z40.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
-    deal_query: z40.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
-    pipeline_id: z40.string().uuid().optional(),
-    tracking_status: z40.string().trim().min(1).max(60).optional(),
-    stage: z40.string().trim().min(1).max(100).optional(),
-    lender_name: z40.string().trim().min(1).max(200).optional(),
-    limit: z40.number().int().min(1).max(500).default(100),
-    offset: z40.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit, offset }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (deal_id) {
-      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
-      if (denied) return denied;
-    }
-    let dealIds = null;
-    if (deal_query || pipeline_id) {
-      const PAGE2 = 1e3;
-      const collected = [];
-      for (let page = 0; page < 50; page++) {
-        let dq = sb.from("deals").select("id").order("id", { ascending: true }).range(page * PAGE2, page * PAGE2 + PAGE2 - 1);
-        if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
-        if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
-        const { data: dealRows, error: dealErr } = await dq;
-        if (dealErr) return errorResult(dealErr.message);
-        const ids = (dealRows ?? []).map((d) => d.id);
-        collected.push(...ids);
-        if (ids.length < PAGE2) break;
-      }
-      dealIds = collected;
-      if (dealIds.length === 0) return textResult([], { count: 0, total_count: 0, has_more: false, next_offset: null });
-    }
-    let q = sb.from("deal_lenders").select(
-      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, company_id, pipeline_id, stage, status)",
-      { count: "exact" }
-    ).order("last_status_change_at", { ascending: false, nullsFirst: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
-    if (deal_id) q = q.eq("deal_id", deal_id);
-    if (dealIds) q = q.in("deal_id", dealIds);
-    if (tracking_status) q = q.eq("tracking_status", tracking_status);
-    if (stage) q = q.eq("stage", stage);
-    if (lender_name) q = q.ilike("name", `%${lender_name}%`);
-    const { data, error, count: totalCount } = await q;
-    if (error) {
-      console.error("[list_deal_funding_sources] query error", {
-        deal_id,
-        user_id: ctx.getUserId?.(),
-        message: error.message
-      });
-      return errorResult(error.message);
-    }
-    const { data: cfgs } = await sb.from("lender_stage_configs").select("company_id, stages, substages");
-    const labelMaps = /* @__PURE__ */ new Map();
-    const anyMap = /* @__PURE__ */ new Map();
-    const collect = (v, m) => {
-      if (Array.isArray(v)) v.forEach((x) => collect(x, m));
-      else if (v && typeof v === "object") {
-        const o = v;
-        if (typeof o.id === "string" && typeof o.label === "string") m.set(o.id, o.label);
-        Object.values(o).forEach((x) => {
-          if (x && typeof x === "object") collect(x, m);
-        });
-      }
-    };
-    for (const c of cfgs ?? []) {
-      const m = labelMaps.get(c.company_id ?? "") ?? /* @__PURE__ */ new Map();
-      collect(c.stages, m);
-      collect(c.substages, m);
-      labelMaps.set(c.company_id ?? "", m);
-      m.forEach((l, k) => {
-        if (!anyMap.has(k)) anyMap.set(k, l);
-      });
-    }
-    const labelFor = (companyId, id) => id ? labelMaps.get(companyId ?? "")?.get(id) ?? anyMap.get(id) ?? id : null;
-    const rows = (data ?? []).map((r) => ({
-      ...r,
-      deal_lender_id: r.id,
-      lender_id: r.master_lender_id ?? null,
-      lender_name: r.master_lenders?.name ?? r.name ?? null,
-      stage_label: labelFor(r.deals?.company_id, r.stage),
-      substage_label: labelFor(r.deals?.company_id, r.substage),
-      pass_reason: r.pass_reason ?? null,
-      notes: r.notes ?? null,
-      funding_source_type: r.master_lenders?.lender_type ?? null,
-      loan_types: r.master_lenders?.loan_types ?? null,
-      lender_tier: r.master_lenders?.tier ?? null,
-      commitment_amount: r.quote_amount ?? null,
-      status: r.tracking_status ?? r.stage ?? null,
-      deal_name: r.deals?.company ?? null,
-      pipeline_id: r.deals?.pipeline_id ?? null
-    }));
-    const total = totalCount ?? rows.length;
-    const hasMore = offset + rows.length < total;
-    console.log("[list_deal_funding_sources] ok", {
-      deal_id: deal_id ?? "all",
-      user_id: ctx.getUserId?.(),
-      count: rows.length,
-      total,
-      offset
-    });
-    return textResult(
-      { funding_sources: rows, total_count: total, returned: rows.length, offset, next_offset: hasMore ? offset + rows.length : null, has_more: hasMore },
-      {
-        count: rows.length,
-        total_count: total,
-        offset,
-        next_offset: hasMore ? offset + rows.length : null,
-        has_more: hasMore,
-        deal_id: deal_id ?? null,
-        scope: deal_id ? "single_deal" : "all_deals"
-      }
+    const dealIds = dealRows.map((deal) => deal.id).filter(Boolean);
+    const crmCompanyIds = new Set(
+      dealRows.map((deal) => deal.crm_company_id).filter(Boolean)
     );
-  }
-});
-
-// src/lib/mcp/tools/get-daily-rundown.ts
-import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z41 } from "npm:zod@^3.23.0";
-
-// src/lib/mcp/rundownAccess.ts
-var RUNDOWN_ALLOWED_EMAIL = "jturner@5thline.co";
-function requireRundownAccess(ctx) {
-  if (!ctx.isAuthenticated()) {
-    return errorResult("Not authenticated");
-  }
-  const email = (ctx.getUserEmail?.() ?? "").toLowerCase();
-  if (email !== RUNDOWN_ALLOWED_EMAIL) {
-    return errorResult(
-      `Daily rundown access is restricted. Signed-in user must be ${RUNDOWN_ALLOWED_EMAIL}.`
-    );
-  }
-  return null;
-}
-async function logRundownAudit(ctx, action, payload = {}, itemId = null, initiatedBy = "openclaw") {
-  try {
-    const sb = supabaseForUser(ctx);
-    await sb.from("daily_rundown_audit_log").insert({
-      user_id: ctx.getUserId(),
-      user_email: ctx.getUserEmail?.() ?? null,
-      action,
-      initiated_by: initiatedBy,
-      item_id: itemId,
-      payload
-    });
-  } catch (err) {
-    console.error("[rundown-audit] failed to write audit row", err);
-  }
-}
-
-// src/lib/mcp/tools/get-daily-rundown.ts
-var get_daily_rundown_default = defineTool41({
-  name: "get_daily_rundown",
-  title: "Get daily rundown",
-  description: "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
-  inputSchema: {
-    status: z41.enum(["pending", "complete", "all"]).default("all"),
-    limit: z41.number().int().min(1).max(200).default(100)
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ status, limit }, ctx) => {
-    const gate = requireRundownAccess(ctx);
-    if (gate) return gate;
-    const sb = supabaseForUser(ctx);
-    let q = sb.from("daily_rundown_items").select("id, title, content, status, sort_order, source, completed_at, created_at, updated_at").order("sort_order", { ascending: true }).order("created_at", { ascending: true }).limit(limit);
-    if (status !== "all") q = q.eq("status", status);
-    const { data, error } = await q;
-    if (error) return errorResult(error.message);
-    await logRundownAudit(ctx, "get_daily_rundown", { status, count: data?.length ?? 0 });
-    return textResult(data ?? [], { count: data?.length ?? 0 });
-  }
-});
-
-// src/lib/mcp/tools/add-daily-rundown-item.ts
-import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z42 } from "npm:zod@^3.23.0";
-var add_daily_rundown_item_default = defineTool42({
-  name: "add_daily_rundown_item",
-  title: "Add daily rundown item",
-  description: "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
-  inputSchema: {
-    title: z42.string().trim().min(1).max(500),
-    content: z42.string().max(1e4).optional(),
-    sort_order: z42.number().int().optional(),
-    source: z42.string().max(50).optional().describe("Origin marker, e.g. 'openclaw' or 'user'.")
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async ({ title, content, sort_order, source }, ctx) => {
-    const gate = requireRundownAccess(ctx);
-    if (gate) return gate;
-    const sb = supabaseForUser(ctx);
-    const userId = ctx.getUserId();
-    let nextOrder = sort_order;
-    if (nextOrder === void 0) {
-      const { data: tail } = await sb.from("daily_rundown_items").select("sort_order").order("sort_order", { ascending: false }).limit(1);
-      nextOrder = (tail?.[0]?.sort_order ?? 0) + 10;
-    }
-    const { data, error } = await sb.from("daily_rundown_items").insert({
-      user_id: userId,
-      user_email: RUNDOWN_ALLOWED_EMAIL,
-      title,
-      content: content ?? null,
-      sort_order: nextOrder,
-      source: source ?? "openclaw",
-      created_by: userId,
-      updated_by: userId
-    }).select().maybeSingle();
-    if (error) return errorResult(error.message);
-    await logRundownAudit(ctx, "add_daily_rundown_item", { title, sort_order: nextOrder }, data?.id ?? null);
-    return textResult(data, { item_id: data?.id });
-  }
-});
-
-// src/lib/mcp/tools/update-daily-rundown-item.ts
-import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z43 } from "npm:zod@^3.23.0";
-var update_daily_rundown_item_default = defineTool43({
-  name: "update_daily_rundown_item",
-  title: "Update daily rundown item",
-  description: "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
-  inputSchema: {
-    id: z43.string().uuid(),
-    title: z43.string().trim().min(1).max(500).optional(),
-    content: z43.string().max(1e4).nullable().optional(),
-    sort_order: z43.number().int().optional(),
-    source: z43.string().max(50).optional()
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async ({ id, ...patch }, ctx) => {
-    const gate = requireRundownAccess(ctx);
-    if (gate) return gate;
-    const sb = supabaseForUser(ctx);
-    const update = { updated_by: ctx.getUserId() };
-    for (const [k, v] of Object.entries(patch)) if (v !== void 0) update[k] = v;
-    const { data, error } = await sb.from("daily_rundown_items").update(update).eq("id", id).select().maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Rundown item not found or not accessible.");
-    await logRundownAudit(ctx, "update_daily_rundown_item", { id, patch }, id);
-    return textResult(data, { item_id: id });
-  }
-});
-
-// src/lib/mcp/tools/complete-daily-rundown-item.ts
-import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z44 } from "npm:zod@^3.23.0";
-var complete_daily_rundown_item_default = defineTool44({
-  name: "complete_daily_rundown_item",
-  title: "Complete or reopen daily rundown item",
-  description: "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
-  inputSchema: {
-    id: z44.string().uuid(),
-    complete: z44.boolean().default(true)
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ id, complete }, ctx) => {
-    const gate = requireRundownAccess(ctx);
-    if (gate) return gate;
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.from("daily_rundown_items").update({ status: complete ? "complete" : "pending", updated_by: ctx.getUserId() }).eq("id", id).select().maybeSingle();
-    if (error) return errorResult(error.message);
-    if (!data) return errorResult("Rundown item not found or not accessible.");
-    await logRundownAudit(
-      ctx,
-      complete ? "complete_daily_rundown_item" : "reopen_daily_rundown_item",
-      { id },
-      id
-    );
-    return textResult(data, { item_id: id, status: data.status });
-  }
-});
-
-// src/lib/mcp/tools/reorder-daily-rundown-items.ts
-import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z45 } from "npm:zod@^3.23.0";
-var reorder_daily_rundown_items_default = defineTool45({
-  name: "reorder_daily_rundown_items",
-  title: "Reorder daily rundown items",
-  description: "Apply a new display order to rundown items. Accepts an array of {id, sort_order} \u2014 only rows owned by the signed-in user (jturner@5thline.co) are updated.",
-  inputSchema: {
-    items: z45.array(z45.object({ id: z45.string().uuid(), sort_order: z45.number().int() })).min(1).max(200)
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ items }, ctx) => {
-    const gate = requireRundownAccess(ctx);
-    if (gate) return gate;
-    const sb = supabaseForUser(ctx);
-    const userId = ctx.getUserId();
-    const results = [];
-    for (const it of items) {
-      const { error } = await sb.from("daily_rundown_items").update({ sort_order: it.sort_order, updated_by: userId }).eq("id", it.id);
-      results.push({ id: it.id, ok: !error, ...error ? { error: error.message } : {} });
-    }
-    const failed = results.filter((r) => !r.ok);
-    if (failed.length === items.length) return errorResult(`All updates failed: ${failed[0].error ?? "unknown"}`);
-    await logRundownAudit(ctx, "reorder_daily_rundown_items", { count: items.length, failed: failed.length });
-    return textResult({ updated: items.length - failed.length, failed }, { count: items.length });
-  }
-});
-
-// src/lib/mcp/tools/list-insights-dashboards.ts
-import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z46 } from "npm:zod@^3.23.0";
-var list_insights_dashboards_default = defineTool46({
-  name: "list_insights_dashboards",
-  title: "List Insights dashboards and widgets",
-  description: "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
-  inputSchema: {
-    dashboard_id: z46.string().trim().max(80).optional().describe("Only return layouts for this dashboard id.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ dashboard_id }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let layoutQuery = sb.from("dashboard_grid_layouts").select("id, dashboard_id, layout, updated_at").order("updated_at", { ascending: false }).limit(100);
-    if (dashboard_id) layoutQuery = layoutQuery.eq("dashboard_id", dashboard_id);
-    const [{ data: layouts, error: layoutError }, { data: custom, error: customError }] = await Promise.all([
-      layoutQuery,
-      sb.from("custom_metrics").select("id, name, description, formula, result_type, format_options, updated_at").limit(200)
-    ]);
-    if (layoutError) return errorResult(layoutError.message);
-    if (customError) return errorResult(customError.message);
-    const payload = {
-      dashboards: dashboard_id ? DASHBOARD_OPTIONS.filter((d) => d.id === dashboard_id) : DASHBOARD_OPTIONS,
-      saved_layouts: layouts ?? [],
-      custom_metrics: custom ?? []
+    const linkedContactIds = /* @__PURE__ */ new Set();
+    const addContactDetails = (contact) => {
+      addEmailDomain(contact.email);
+      for (const email of contact.additional_emails || []) addEmailDomain(email);
+      addWebsiteDomain(contact.website_url);
+      if (contact.crm_company_id) crmCompanyIds.add(contact.crm_company_id);
     };
-    return textResult(payload, payload);
-  }
-});
-
-// src/lib/mcp/tools/get-pipeline-metrics.ts
-import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z47 } from "npm:zod@^3.23.0";
-var get_pipeline_metrics_default = defineTool47({
-  name: "get_pipeline_metrics",
-  title: "Get pipeline metrics (Insights)",
-  description: "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
-  inputSchema: {
-    date_field: z47.enum(["created_at", "updated_at", "closing_date", "dashboard_closing_date"]).default("created_at").describe("Which date column the timeframe window applies to."),
-    from: z47.string().trim().max(40).optional().describe("ISO date/timestamp lower bound (inclusive)."),
-    to: z47.string().trim().max(40).optional().describe("ISO date/timestamp upper bound (exclusive)."),
-    pipeline_id: z47.string().uuid().optional(),
-    manager: z47.string().trim().max(120).optional(),
-    status: z47.string().trim().max(60).optional(),
-    stage: z47.string().trim().max(100).optional(),
-    include_deals: z47.boolean().default(false).describe("Also return the underlying deal rows used in the aggregation.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ date_field, from, to, pipeline_id, manager, status, stage, include_deals }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const select = "id, company, value, total_fee, retainer_fee, milestone_fee, status, stage, deal_type, manager, deal_owner, on_hold, pipeline_id, created_at, updated_at, closing_date, dashboard_closing_date";
-    const rows = [];
-    const pageSize = 1e3;
-    for (let offset = 0; ; offset += pageSize) {
-      let q = sb.from("deals").select(select).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
-      if (from) q = q.gte(date_field, from);
-      if (to) q = q.lt(date_field, to);
-      if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
-      if (manager) q = q.eq("manager", manager);
-      if (status) q = q.eq("status", status);
-      if (stage) q = q.eq("stage", stage);
-      const { data, error } = await q;
-      if (error) return errorResult(error.message);
-      const page = data ?? [];
-      rows.push(...page);
-      if (page.length < pageSize) break;
+    for (let offset = 0; offset < dealIds.length; offset += 500) {
+      const { data: links } = await sb.from("contact_deals").select("contact_id").in("deal_id", dealIds.slice(offset, offset + 500));
+      for (const link of links || []) if (link.contact_id) linkedContactIds.add(link.contact_id);
     }
-    const deals = rows.filter((r) => !isExcludedDealName(r.company));
-    const value = (r) => Number(r.value) || 0;
-    const summary = {
-      deal_count: deals.length,
-      total_value: sum(deals.map(value)),
-      avg_deal_size: deals.length ? sum(deals.map(value)) / deals.length : 0,
-      total_fees: sum(deals.map((d) => d.total_fee)),
-      retainer_fees: sum(deals.map((d) => d.retainer_fee)),
-      milestone_fees: sum(deals.map((d) => d.milestone_fee)),
-      on_hold_count: deals.filter((d) => d.on_hold).length
-    };
-    const { data: pipelineRows } = await sb.from("deal_pipelines").select("id, name, is_default, stages");
-    const pipeMap = new Map((pipelineRows ?? []).map((p) => [p.id, p]));
-    const labelFor = (pid, stageId) => {
-      const stages = pid && pipeMap.get(pid)?.stages || [];
-      const match = Array.isArray(stages) ? stages.find((s) => s?.id === stageId) : void 0;
-      return match?.label ?? stageId;
-    };
-    const byPipeline = groupAggregate(deals, (d) => d.pipeline_id ?? "none", value).map((entry) => {
-      const pid = entry.key === "none" ? null : entry.key;
-      const subset = deals.filter((d) => (d.pipeline_id ?? "none") === entry.key);
-      return {
-        pipeline_id: pid,
-        pipeline_name: pid ? pipeMap.get(pid)?.name ?? null : "Unassigned (no pipeline)",
-        is_default: pid ? pipeMap.get(pid)?.is_default ?? false : false,
-        count: entry.count,
-        total_value: entry.total_value,
-        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s) => ({
-          stage_id: s.key,
-          stage_label: labelFor(pid, s.key),
-          count: s.count,
-          total_value: s.total_value
-        }))
-      };
-    });
-    const payload = {
-      timeframe: { date_field, from: from ?? null, to: to ?? null },
-      filters: { pipeline_id: pipeline_id ?? null, manager: manager ?? null, status: status ?? null, stage: stage ?? null },
-      summary,
-      by_stage: groupAggregate(deals, (d) => d.stage ?? "unknown", value),
-      by_pipeline_stage: byPipeline,
-      by_status: groupAggregate(deals, (d) => d.status ?? "unknown", value),
-      by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
-      by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
-      by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
-      by_pipeline: byPipeline.map((p) => ({
-        key: p.pipeline_id ?? "none",
-        pipeline_name: p.pipeline_name,
-        count: p.count,
-        total_value: p.total_value
-      })),
-      by_month: groupAggregate(deals, (d) => monthKey(d[date_field]) ?? "unknown", value).sort(
-        (a, b) => a.key.localeCompare(b.key)
-      ),
-      excluded_test_deals: rows.length - deals.length,
-      ...include_deals ? { deals } : {}
-    };
-    return textResult(payload, payload);
-  }
-});
-
-// src/lib/mcp/tools/get-funnel-velocity.ts
-import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z48 } from "npm:zod@^3.23.0";
-var get_funnel_velocity_default = defineTool48({
-  name: "get_funnel_velocity",
-  title: "Get funnel velocity / stage durations",
-  description: "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
-  inputSchema: {
-    stage_path: z48.array(z48.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
-    consecutive_only: z48.boolean().default(false),
-    deal_id: z48.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
-    pipeline_id: z48.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ stage_path, consecutive_only, deal_id, pipeline_id }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    if (deal_id) {
-      const { data: data2, error: error2 } = await sb.rpc("get_deal_stage_durations", { p_deal_id: deal_id });
-      if (error2) return errorResult(error2.message);
-      return textResult(data2 ?? [], { deal_id, stages: data2 ?? [] });
+    const linkedIds = Array.from(linkedContactIds);
+    for (let offset = 0; offset < linkedIds.length; offset += 500) {
+      const slice = linkedIds.slice(offset, offset + 500);
+      const { data: contacts } = await sb.from("contacts").select("email, additional_emails, website_url, crm_company_id").in("id", slice);
+      for (const contact of contacts || []) addContactDetails(contact);
     }
-    if (!stage_path || stage_path.length < 2) {
-      return errorResult("Provide either stage_path (2+ stage ids) or deal_id.");
-    }
-    if (pipeline_id) {
-      const rows = [];
-      const pageSize = 1e3;
-      for (let offset = 0; ; offset += pageSize) {
-        const { data: page, error: histErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", pipeline_id).order("changed_at", { ascending: true }).range(offset, offset + pageSize - 1);
-        if (histErr) return errorResult(histErr.message);
-        const chunk = page ?? [];
-        rows.push(...chunk);
-        if (chunk.length < pageSize) break;
+    const uniqueCrmCompanyIds = Array.from(crmCompanyIds);
+    for (let offset = 0; offset < uniqueCrmCompanyIds.length; offset += 500) {
+      const slice = uniqueCrmCompanyIds.slice(offset, offset + 500);
+      const { data: crmCompanies } = await sb.from("crm_companies").select("website_url, domain, domain_normalized, additional_domains, main_contact_email").in("id", slice);
+      for (const crmCompany of crmCompanies || []) {
+        addWebsiteDomain(crmCompany.website_url);
+        addWebsiteDomain(crmCompany.domain);
+        addWebsiteDomain(crmCompany.domain_normalized);
+        for (const extra of crmCompany.additional_domains || []) addWebsiteDomain(extra);
+        addEmailDomain(crmCompany.main_contact_email);
       }
-      const firstEntry = /* @__PURE__ */ new Map();
-      for (const r of rows) {
-        if (!r.to_stage || !r.changed_at) continue;
-        const perDeal = firstEntry.get(r.deal_id) ?? /* @__PURE__ */ new Map();
-        const prev = perDeal.get(r.to_stage);
-        if (!prev || r.changed_at < prev) perDeal.set(r.to_stage, r.changed_at);
-        firstEntry.set(r.deal_id, perDeal);
+      const { data: companyContacts } = await sb.from("contacts").select("email, additional_emails, website_url").in("crm_company_id", slice);
+      for (const contact of companyContacts || []) {
+        addEmailDomain(contact.email);
+        for (const email of contact.additional_emails || []) addEmailDomain(email);
+        addWebsiteDomain(contact.website_url);
       }
-      const dealIds = Array.from(firstEntry.keys());
-      const steps = [];
-      for (let i = 0; i < stage_path.length - 1; i++) {
-        const fromStage = stage_path[i];
-        const toStage = stage_path[i + 1];
-        const durations = [];
-        let fromCount = 0;
-        let toCount = 0;
-        for (const id of dealIds) {
-          const perDeal = firstEntry.get(id);
-          const a = perDeal.get(fromStage);
-          if (!a) continue;
-          fromCount++;
-          const b = perDeal.get(toStage);
-          if (!b || b < a) continue;
-          toCount++;
-          durations.push((new Date(b).getTime() - new Date(a).getTime()) / 864e5);
-        }
-        durations.sort((x, y) => x - y);
-        const median = durations.length ? durations.length % 2 ? durations[(durations.length - 1) / 2] : (durations[durations.length / 2 - 1] + durations[durations.length / 2]) / 2 : null;
-        steps.push({
-          from_stage: fromStage,
-          to_stage: toStage,
-          deals_reaching_from: fromCount,
-          deals_reaching_to: toCount,
-          conversion_rate: fromCount ? toCount / fromCount : null,
-          median_days: median,
-          avg_days: durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : null
-        });
-      }
-      const payload = { pipeline_id, stage_path, basis: "first entry per stage from deal_stage_history", steps };
-      return textResult(payload, payload);
     }
-    const { data, error } = await sb.rpc("get_funnel_velocity", {
-      p_stage_path: stage_path,
-      p_consecutive_only: consecutive_only
-    });
-    if (error) return errorResult(error.message);
-    return textResult(data ?? [], { stage_path, consecutive_only, steps: data ?? [] });
   }
-});
-
-// src/lib/mcp/tools/get-revenue-metrics.ts
-import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z49 } from "npm:zod@^3.23.0";
-
-// src/lib/qboMonthly.ts
-function isoMonthKey(date2) {
-  if (!date2 || !/^\d{4}-\d{2}/.test(date2)) return null;
-  return date2.slice(0, 7);
+  const lenderDomains = /* @__PURE__ */ new Set();
+  const lenderNames = /* @__PURE__ */ new Set();
+  const lenderContactIds = /* @__PURE__ */ new Set();
+  const { data: lenders } = await sb.from("master_lenders").select("id, name, email, website");
+  for (const lender of lenders || []) {
+    for (const raw of [lender.email, lender.website]) {
+      const domain = domainOf(typeof raw === "string" && raw.includes("@") ? raw : `x@${String(raw || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0]}`);
+      if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
+    }
+    for (const alias of fundingSourceTitleAliases(String(lender.name || ""))) lenderNames.add(alias);
+  }
+  const { data: lenderPeople } = await sb.from("lender_contacts").select("email, contact_id");
+  for (const person of lenderPeople || []) {
+    const domain = domainOf(person.email);
+    if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
+    if (person.contact_id) lenderContactIds.add(person.contact_id);
+  }
+  const { data: lenderContacts } = await sb.from("contacts").select("id, email").eq("company_id", companyId).ilike("contact_type", "%lender%");
+  for (const contact of lenderContacts || []) {
+    lenderContactIds.add(contact.id);
+    const domain = domainOf(contact.email);
+    if (domain && !INTERNAL_DOMAINS.has(domain)) lenderDomains.add(domain);
+  }
+  return candidates.filter((meeting) => {
+    const rawTitle = String(meeting.title || "").trim().toLowerCase();
+    if (rawTitle === "block" || rawTitle === "blocked") return false;
+    const title = normalizeEntityName(meeting.title || "");
+    if (title && [...lenderNames].some((name) => titleMatchesEntity(title, name))) return false;
+    if (meeting.matched_contact_id && lenderContactIds.has(meeting.matched_contact_id)) return false;
+    const domains = meeting.attendee_domains || [];
+    const attendeeCount = Array.isArray(meeting.attendees) ? meeting.attendees.length : 0;
+    if (attendeeCount === 0 && domains.length === 0) return false;
+    if (domains.length === 0) return true;
+    if (domains.every((domain) => INTERNAL_DOMAINS.has(domain))) return false;
+    if (domains.some((domain) => clientDomains.has(domain))) return false;
+    if (domains.some((domain) => lenderDomains.has(domain))) return false;
+    return true;
+  });
 }
-function lastDayOfMonth(key) {
-  const [y, m] = key.split("-").map(Number);
-  return `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+
+// src/lib/dashboardTiles/referralDeals.ts
+var REFERRAL_NDA_STAGE_ID = "ndaneeds-list-sent";
+var NDA_EXCLUDED_OWNERS = ["john moffitt"];
+var NDA_EXCLUDED_CHANGED_BY = ["2e65a4b1-bd94-46ef-87c6-9afe697b3180"];
+async function loadReferralDealsOnBoard(sb, companyId, rangeStart, rangeEnd) {
+  const select = "id, company, value, stage, referred_by, sourced_via, created_at, deal_owner";
+  let hq = sb.from("deal_stage_history").select(`deal_id, changed_at, changed_by, pipeline_id, deals!inner(${select}, company_id, pipeline_id)`).eq("event_type", "stage_enter").or(`to_stage_id.eq.${REFERRAL_NDA_STAGE_ID},to_stage.eq.${REFERRAL_NDA_STAGE_ID}`).eq("deals.company_id", companyId).order("changed_at", { ascending: true });
+  if (rangeStart) hq = hq.gte("changed_at", rangeStart.toISOString());
+  if (rangeEnd) hq = hq.lte("changed_at", rangeEnd.toISOString());
+  const { data, error } = await hq;
+  if (error) throw error;
+  const seenIds = /* @__PURE__ */ new Set();
+  const seenNames = /* @__PURE__ */ new Set();
+  const rows = [];
+  for (const r of data || []) {
+    const d = r.deals;
+    if (!d?.id) continue;
+    if (r.pipeline_id && r.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+    if (!r.pipeline_id && d.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+    if (r.changed_by && NDA_EXCLUDED_CHANGED_BY.includes(r.changed_by)) continue;
+    if (NDA_EXCLUDED_OWNERS.includes(String(d.deal_owner || "").toLowerCase().trim())) continue;
+    if (isExcludedDealName2(d.company)) continue;
+    const isReferral = !!String(d.referred_by || "").trim() || /^referral/i.test(String(d.sourced_via || "").trim());
+    if (!isReferral) continue;
+    const nameKey = String(d.company || "").toLowerCase().trim();
+    if (seenIds.has(d.id) || nameKey && seenNames.has(nameKey)) continue;
+    seenIds.add(d.id);
+    if (nameKey) seenNames.add(nameKey);
+    rows.push({
+      id: d.id,
+      company: d.company,
+      value: d.value,
+      stage: d.stage,
+      referred_by: d.referred_by,
+      sourced_via: d.sourced_via,
+      created_at: r.changed_at,
+      closing_date: null
+    });
+  }
+  rows.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  return rows;
 }
-function pickMonthlySnapshots(rows) {
-  const best = {};
+var REACHED_FINAL_CREDIT_SLUGS = /* @__PURE__ */ new Set([
+  "final-credit-items",
+  "client-strategy-review",
+  "write-up-pending",
+  "submitted-to-lenders",
+  "lenders-in-review",
+  "terms-issued",
+  "in-due-diligence",
+  "agreement-pending",
+  "funded-invoiced",
+  "closed-won"
+]);
+function hasReachedFinalCreditStage(stage) {
+  if (!stage) return false;
+  return REACHED_FINAL_CREDIT_SLUGS.has(stage.toLowerCase().trim());
+}
+async function fetchActivePipelineIds(sb, companyId) {
+  const { data, error } = await sb.from("deal_pipelines").select("id, name, is_default").eq("company_id", companyId);
+  if (error) throw error;
+  return (data || []).filter((p) => p.is_default || p.name.toLowerCase().includes("active")).map((p) => p.id);
+}
+async function fetchTtmActiveDeals(sb, companyId, pipelineIds, since, until) {
+  const { data, error } = await sb.from("deals").select("id, stage, sourced_via, referred_by, created_at").eq("company_id", companyId).in("pipeline_id", pipelineIds).gte("created_at", since).lte("created_at", until);
+  if (error) throw error;
+  return data || [];
+}
+function computeTtmConversion(deals, kind, partnerNames = []) {
+  const partnerSet = new Set(partnerNames.map((n2) => n2.toLowerCase().trim()));
+  const matches = (d) => {
+    if (kind === "referral") return !!d.sourced_via && /^referral/i.test(d.sourced_via.trim());
+    const ref = (d.referred_by || "").toLowerCase().trim();
+    return !!ref && partnerSet.has(ref);
+  };
+  const denom = deals.filter(matches);
+  const numer = denom.filter((d) => hasReachedFinalCreditStage(d.stage));
+  return {
+    numerator: numer.length,
+    denominator: denom.length,
+    rate: denom.length === 0 ? null : numer.length / denom.length,
+    label: denom.length === 0 ? "\u2014" : `${(numer.length / denom.length * 100).toFixed(1)}%`
+  };
+}
+function ttmAnchorFromTimeframeEnd(end, now = /* @__PURE__ */ new Date()) {
+  if (!end) return now;
+  const d = /* @__PURE__ */ new Date(`${end}T23:59:59.999`);
+  if (Number.isNaN(d.getTime())) return now;
+  return d.getTime() > now.getTime() ? now : d;
+}
+function ttmWindow(anchor) {
+  const since = new Date(anchor);
+  since.setMonth(since.getMonth() - 12);
+  return { since, until: anchor };
+}
+
+// src/lib/dashboardTiles/finservTiles.ts
+var FINSERV_ACTIVE_CLIENT_STAGE = "fs-closed-won";
+var FINSERV_QBO_REALM_ID = "9341451968897660";
+async function loadFinServNewMrrAdded(sb, companyId, start, end) {
+  const { data: rows, error } = await sb.from("deal_stage_history").select("deal_id, changed_at, to_stage, deals!inner(company, mrr, company_id, pipeline_id)").eq("event_type", "stage_enter").eq("pipeline_id", FINSERV_PIPELINE_ID2).in("to_stage", [FINSERV_ACTIVE_CLIENT_STAGE, "Active Client"]).gte("changed_at", start).lte("changed_at", end + "T23:59:59.999Z").order("changed_at", { ascending: true });
+  if (error) throw error;
+  const seen = /* @__PURE__ */ new Map();
+  for (const row of rows ?? []) {
+    const deal = row.deals;
+    if (!deal || deal.company_id !== companyId) continue;
+    if (isExcludedDealName2(deal.company)) continue;
+    if (seen.has(row.deal_id)) continue;
+    seen.set(row.deal_id, { deal_id: row.deal_id, company: deal.company ?? "\u2014", mrr: Number(deal.mrr) || 0, entered_at: row.changed_at });
+  }
+  const deals = Array.from(seen.values());
+  return { total: deals.reduce((s, d) => s + d.mrr, 0), deals };
+}
+function priorWindow(start, end) {
+  const s = /* @__PURE__ */ new Date(start + "T00:00:00Z");
+  const e = /* @__PURE__ */ new Date(end + "T00:00:00Z");
+  const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 864e5) + 1);
+  const prevEnd = new Date(s.getTime() - 864e5);
+  const prevStart = new Date(prevEnd.getTime() - (days - 1) * 864e5);
+  const ymd = (d) => d.toISOString().slice(0, 10);
+  return { start: ymd(prevStart), end: ymd(prevEnd) };
+}
+async function fetchRevenueByCustomer(sb, realmId, start, end) {
+  const { data, error } = await sb.from("quickbooks_invoices").select("customer_name, txn_date, total_amt").eq("realm_id", realmId).gte("txn_date", start).lte("txn_date", end);
+  if (error) throw error;
+  const map = /* @__PURE__ */ new Map();
+  for (const row of data ?? []) {
+    const name = (row.customer_name ?? "").trim();
+    if (!name) continue;
+    const amt = Number(row.total_amt ?? 0);
+    if (!Number.isFinite(amt)) continue;
+    map.set(name, (map.get(name) ?? 0) + amt);
+  }
+  return map;
+}
+async function loadFinServNrr(sb, start, end, realmId = FINSERV_QBO_REALM_ID) {
+  const prior = priorWindow(start, end);
+  const [currentMap, priorMap] = await Promise.all([
+    fetchRevenueByCustomer(sb, realmId, start, end),
+    fetchRevenueByCustomer(sb, realmId, prior.start, prior.end)
+  ]);
+  const customers = [];
+  let priorTotal = 0;
+  let currentTotal = 0;
+  for (const [name, priorRevenue] of priorMap) {
+    if (priorRevenue <= 0) continue;
+    const currentRevenue = currentMap.get(name) ?? 0;
+    priorTotal += priorRevenue;
+    currentTotal += currentRevenue;
+    customers.push({ customer: name, priorRevenue, currentRevenue, retention: priorRevenue > 0 ? currentRevenue / priorRevenue * 100 : null });
+  }
+  customers.sort((a, b) => b.priorRevenue - a.priorRevenue);
+  return { customers, priorTotal, currentTotal, nrr: priorTotal > 0 ? currentTotal / priorTotal * 100 : null, prior };
+}
+var CURRENT_PIPELINE_STAGES = /* @__PURE__ */ new Set(["fs-qualification", "fs-discovery", "fs-qualified", "fs-scoping", "fs-proposal-sent", "fs-negotiation"]);
+async function loadFinServPipelineSnapshot(sb, endYmd, now = /* @__PURE__ */ new Date()) {
+  const { data, error } = await sb.from("deals").select("id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at").eq("pipeline_id", FINSERV_PIPELINE_ID2);
+  if (error) throw error;
+  const rows = data ?? [];
+  const { data: hist, error: histErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", FINSERV_PIPELINE_ID2).order("changed_at", { ascending: true });
+  if (histErr) throw histErr;
+  const historyByDeal = /* @__PURE__ */ new Map();
+  for (const h of hist ?? []) {
+    const arr2 = historyByDeal.get(h.deal_id) ?? [];
+    arr2.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+    historyByDeal.set(h.deal_id, arr2);
+  }
+  const effective = endYmd ? /* @__PURE__ */ new Date(endYmd + "T23:59:59") : now;
+  const asOf = effective > now ? now : effective;
+  const clientKeys = /* @__PURE__ */ new Set();
+  const clients = /* @__PURE__ */ new Map();
+  let totalMrr = 0;
+  let currentPipeline = 0;
   for (const r of rows) {
-    if (!r.realm_id) continue;
-    if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
-    const startKey = isoMonthKey(r.period_start);
-    const endKey = isoMonthKey(r.period_end ?? r.period_start);
-    if (!startKey || startKey !== endKey) continue;
-    if (!r.period_start.endsWith("-01") || r.period_end !== lastDayOfMonth(startKey)) continue;
-    const key = `${r.realm_id}::${startKey}`;
-    const prev = best[key];
-    if (!prev || (r.fetched_at ?? "") > (prev.fetched_at ?? "")) best[key] = r;
+    const h = historyByDeal.get(r.id);
+    if (isFinServActiveClientAt(r, h, asOf)) {
+      const key = finservClientKey(r);
+      clientKeys.add(key);
+      if (!clients.has(key)) clients.set(key, { client_key: key, company: r.company ?? null, mrr: 0 });
+    }
+    if (CURRENT_PIPELINE_STAGES.has(r.stage ?? "")) currentPipeline += 1;
+    if (countsTowardFinServMrrAt(r, h, asOf)) {
+      totalMrr += Number(r.mrr ?? 0);
+      const c = clients.get(finservClientKey(r));
+      if (c) c.mrr += Number(r.mrr ?? 0);
+    }
   }
-  return best;
-}
-var DEBT_REVENUE_REALM_ID = "193514877331929";
-var PNL_REVENUE_REALM_IDS = [
-  DEBT_REVENUE_REALM_ID,
-  // Capital Advisors
-  "9341451968897660",
-  // Financial Services
-  "9130350272677286",
-  // Technologies
-  "123146077561874"
-  // Parent
-];
-function withPnlRevenue(invoices, snapshots) {
-  const pnlRealms = new Set(PNL_REVENUE_REALM_IDS);
-  const out = invoices.filter((r) => !r.realm_id || !pnlRealms.has(r.realm_id));
-  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id && pnlRealms.has(s.realm_id)));
-  for (const key of Object.keys(best)) {
-    const [realm, month] = key.split("::");
-    out.push({ realm_id: realm, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
-  }
-  return out;
+  return { totalClients: clientKeys.size, totalMrr, currentPipeline, asOf, clients: [...clients.values()] };
 }
 
-// src/lib/mcp/tools/get-revenue-metrics.ts
-var get_revenue_metrics_default = defineTool49({
-  name: "get_revenue_metrics",
-  title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
-  description: "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
-  inputSchema: {
-    from: z49.string().trim().max(40).optional().describe("ISO date lower bound (inclusive) on invoice txn_date / snapshot period."),
-    to: z49.string().trim().max(40).optional().describe("ISO date upper bound (exclusive)."),
-    realm_id: z49.string().trim().max(64).optional().describe("QuickBooks entity/realm id to scope to."),
-    include_invoices: z49.boolean().default(false).describe("Also return the underlying invoice rows.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ from, to, realm_id, include_invoices }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const invoices = [];
-    const pageSize = 1e3;
-    for (let offset = 0; ; offset += pageSize) {
-      let q = sb.from("quickbooks_invoices").select("id, realm_id, customer_name, txn_date, total_amt, balance, status").order("txn_date", { ascending: false }).range(offset, offset + pageSize - 1);
-      if (from) q = q.gte("txn_date", from);
-      if (to) q = q.lt("txn_date", to);
-      if (realm_id) q = q.eq("realm_id", realm_id);
-      const { data, error } = await q;
-      if (error) return errorResult(error.message);
-      const page = data ?? [];
-      invoices.push(...page);
-      if (page.length < pageSize) break;
-    }
-    let pnlQuery = sb.from("qbo_pnl_snapshots").select(
-      "realm_id, period_start, period_end, accounting_method, fetched_at, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income"
-    ).order("period_start", { ascending: true }).limit(500);
-    if (from) pnlQuery = pnlQuery.gte("period_start", from);
-    if (to) pnlQuery = pnlQuery.lt("period_end", to);
-    if (realm_id) pnlQuery = pnlQuery.eq("realm_id", realm_id);
-    const { data: pnl, error: pnlError } = await pnlQuery;
-    if (pnlError) return errorResult(pnlError.message);
-    const amount = (i) => Number(i.total_amt) || 0;
-    const revenueRows = withPnlRevenue(invoices, pnl ?? []);
-    const revAmount = (r) => Number(r.total_amt) || 0;
-    const payload = {
-      timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
-      summary: {
-        invoice_count: invoices.length,
-        invoiced_total: sum(invoices.map(amount)),
-        outstanding_balance: sum(invoices.map((i) => i.balance))
-      },
-      by_month: groupAggregate(invoices, (i) => (i.txn_date ?? "").slice(0, 7) || "unknown", amount).sort(
-        (a, b) => a.key.localeCompare(b.key)
-      ),
-      by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
-      by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
-      revenue: {
-        basis: "All entities use QBO Accrual P&L Total Income (Debt Advisory excludes Ramp). Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
-        total: sum(revenueRows.map(revAmount)),
-        by_month: groupAggregate(revenueRows, (r) => (r.txn_date ?? "").slice(0, 7) || "unknown", revAmount).sort((a, b) => a.key.localeCompare(b.key)),
-        by_entity: groupAggregate(revenueRows, (r) => r.realm_id ?? "unknown", revAmount)
-      },
-      pnl_snapshots: pnl ?? [],
-      ...include_invoices ? { invoices } : {}
-    };
-    return textResult(payload, payload);
-  }
-});
-
-// src/lib/mcp/tools/get-lender-metrics.ts
-import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z50 } from "npm:zod@^3.23.0";
-var get_lender_metrics_default = defineTool50({
-  name: "get_lender_metrics",
-  title: "Get lender / funding-source metrics (Lender Intelligence dashboard)",
-  description: "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
-  inputSchema: {
-    date_field: z50.enum(["created_at", "last_status_change_at", "submitted_at"]).default("created_at"),
-    from: z50.string().trim().max(40).optional(),
-    to: z50.string().trim().max(40).optional(),
-    deal_id: z50.string().uuid().optional().describe("Scope to a single deal."),
-    lender_name: z50.string().trim().max(160).optional()
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ date_field, from, to, deal_id, lender_name }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    const rows = [];
-    const pageSize = 1e3;
-    for (let offset = 0; ; offset += pageSize) {
-      let q = sb.from("deal_lenders").select(
-        "id, deal_id, name, stage, tracking_status, quote_amount, pass_reason, submitted_at, approved_at, declined_at, passed_at, created_at, last_status_change_at"
-      ).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
-      if (from) q = q.gte(date_field, from);
-      if (to) q = q.lt(date_field, to);
-      if (deal_id) q = q.eq("deal_id", deal_id);
-      if (lender_name) q = q.ilike("name", `%${lender_name}%`);
-      const { data, error } = await q;
-      if (error) return errorResult(error.message);
-      const page = data ?? [];
-      rows.push(...page);
-      if (page.length < pageSize) break;
-    }
-    const dealIds = [...new Set(rows.map((r) => r.deal_id))];
-    const excluded = /* @__PURE__ */ new Set();
-    for (let i = 0; i < dealIds.length; i += 200) {
-      const { data, error } = await sb.from("deals").select("id, company").in("id", dealIds.slice(i, i + 200));
-      if (error) return errorResult(error.message);
-      for (const d of data ?? []) {
-        if (isExcludedDealName(d.company)) excluded.add(d.id);
-      }
-    }
-    const lenders = rows.filter((r) => !excluded.has(r.deal_id));
-    const quote = (r) => Number(r.quote_amount) || 0;
-    const submitted = lenders.filter((l) => l.submitted_at).length;
-    const approved = lenders.filter((l) => l.approved_at).length;
-    const payload = {
-      timeframe: { date_field, from: from ?? null, to: to ?? null },
-      filters: { deal_id: deal_id ?? null, lender_name: lender_name ?? null },
-      summary: {
-        entry_count: lenders.length,
-        distinct_lenders: new Set(lenders.map((l) => l.name ?? "unknown")).size,
-        distinct_deals: new Set(lenders.map((l) => l.deal_id)).size,
-        total_quoted: sum(lenders.map(quote)),
-        submitted,
-        approved,
-        passed: lenders.filter((l) => l.passed_at).length,
-        declined: lenders.filter((l) => l.declined_at).length,
-        submit_to_approve_rate: submitted ? approved / submitted : 0
-      },
-      by_stage: groupAggregate(lenders, (l) => l.stage ?? "unknown", quote),
-      by_tracking_status: groupAggregate(lenders, (l) => l.tracking_status ?? "unknown", quote),
-      by_lender: groupAggregate(lenders, (l) => l.name ?? "unknown", quote).slice(0, 100),
-      top_pass_reasons: groupAggregate(
-        lenders.filter((l) => l.pass_reason),
-        (l) => (l.pass_reason ?? "").slice(0, 120),
-        () => 0
-      ).sort((a, b) => b.count - a.count).slice(0, 25)
-    };
-    return textResult(payload, payload);
-  }
-});
-
-// src/lib/mcp/tools/get-metric-targets.ts
-import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z51 } from "npm:zod@^3.23.0";
-var get_metric_targets_default = defineTool51({
-  name: "get_metric_targets",
-  title: "Get Insights plan targets and manual metric inputs",
-  description: "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
-  inputSchema: {
-    metric_key: z51.string().trim().max(120).optional(),
-    month_from: z51.string().trim().max(7).optional().describe("Inclusive lower bound, format YYYY-MM."),
-    month_to: z51.string().trim().max(7).optional().describe("Inclusive upper bound, format YYYY-MM.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ metric_key, month_from, month_to }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let targets = sb.from("insights_metric_targets").select("id, metric_key, metric_label, period_month, target_value, notes, updated_at").order("period_month", { ascending: true }).limit(1e3);
-    let manual = sb.from("metric_manual_inputs").select("id, metric_key, month_key, value, updated_at").order("month_key", { ascending: true }).limit(1e3);
-    if (metric_key) {
-      targets = targets.eq("metric_key", metric_key);
-      manual = manual.eq("metric_key", metric_key);
-    }
-    if (month_from) {
-      targets = targets.gte("period_month", month_from);
-      manual = manual.gte("month_key", month_from);
-    }
-    if (month_to) {
-      targets = targets.lte("period_month", month_to);
-      manual = manual.lte("month_key", month_to);
-    }
-    const [{ data: targetRows, error: targetError }, { data: manualRows, error: manualError }] = await Promise.all([
-      targets,
-      manual
-    ]);
-    if (targetError) return errorResult(targetError.message);
-    if (manualError) return errorResult(manualError.message);
-    const payload = { targets: targetRows ?? [], manual_inputs: manualRows ?? [] };
-    return textResult(payload, payload);
-  }
-});
-
-// src/lib/mcp/tools/query-insights-dataset.ts
-import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z52 } from "npm:zod@^3.23.0";
-var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
-var query_insights_dataset_default = defineTool52({
-  name: "query_insights_dataset",
-  title: "Query any Insights source dataset",
-  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
-  inputSchema: {
-    dataset: z52.enum(INSIGHTS_DATASETS),
-    columns: z52.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
-    filters: z52.array(
-      z52.object({
-        column: z52.string().trim().min(1).max(80),
-        op: z52.enum(OPERATORS).default("eq"),
-        value: z52.union([z52.string(), z52.number(), z52.boolean(), z52.null(), z52.array(z52.union([z52.string(), z52.number()]))])
-      })
-    ).max(10).optional(),
-    order_by: z52.string().trim().max(80).optional(),
-    ascending: z52.boolean().default(false),
-    limit: z52.number().int().min(1).max(1e3).default(200),
-    offset: z52.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    const sb = supabaseForUser(ctx);
-    let q = sb.from(dataset).select(columns?.trim() || "*", { count: "exact" }).range(offset, offset + limit - 1);
-    for (const f of filters ?? []) {
-      switch (f.op) {
-        case "in":
-          q = q.in(f.column, Array.isArray(f.value) ? f.value : [f.value]);
-          break;
-        case "is":
-          q = q.is(f.column, f.value);
-          break;
-        default: {
-          const apply = q;
-          q = apply[f.op].call(q, f.column, f.value);
-        }
-      }
-    }
-    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
-    const { data, error, count } = await q;
-    if (error) {
-      console.error("[query_insights_dataset] error", { dataset, user_id: ctx.getUserId?.(), message: error.message });
-      return errorResult(error.message);
-    }
-    const rows = data ?? [];
-    const total_count = count ?? rows.length;
-    const next = offset + rows.length;
-    const has_more = next < total_count;
-    const payload = {
-      dataset,
-      total_count,
-      returned: rows.length,
-      offset,
-      next_offset: has_more ? next : null,
-      has_more,
-      rows
-    };
-    return textResult(payload, {
-      dataset,
-      count: rows.length,
-      total_count,
-      offset,
-      next_offset: has_more ? next : null,
-      has_more
-    });
-  }
-});
-
-// src/lib/mcp/tools/describe-schema.ts
-import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z53 } from "npm:zod@^3.23.0";
-var EXTRA_TABLES = [
-  "deal_writeups",
-  "deal_memos",
-  "deal_checklist_items",
-  "deal_checklist_status",
-  "deal_attachments",
-  "deal_status_notes",
-  "deal_financial_data",
-  "deal_flag_notes",
-  "deal_ownership",
-  "deal_space_notes",
-  "deal_activity",
-  "contact_deals",
-  "deal_pipeline_configs",
-  "funding_source_acquisition_plans",
-  "lender_master_note_history"
+// src/lib/dashboardTiles/salesModelPlan.ts
+var SEED_YEAR = 2026;
+var SEED_MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+var ROW_ORDER = [
+  { key: "salesCalls", label: "Sales Calls", type: "count" },
+  { key: "dealsOnBoard", label: "Deals on Board", type: "count" },
+  { key: "dollarsOnBoard", label: "Dollars on Board", type: "money" },
+  { key: "proposalsIssued", label: "Proposals Issued", type: "count" },
+  { key: "dollarsProposed", label: "Dollars Proposed", type: "money" },
+  { key: "clientsSigned", label: "Clients Signed", type: "count" },
+  { key: "dollarsSigned", label: "Dollars Signed", type: "money" },
+  { key: "clientsReceivingTerms", label: "Clients Receiving Terms", type: "count" },
+  { key: "termsSigned", label: "Terms Signed", type: "count" },
+  { key: "volumeOfTermsSigned", label: "Volume of Terms Signed", type: "money" },
+  { key: "dealsClosed", label: "FinServ: Deals on the Board", type: "count" },
+  { key: "dollarsFunded", label: "FinServ $ on the Board", type: "money", bold: true },
+  { key: "finservProposalsIssued", label: "FinServ: Proposals Issued", type: "count" },
+  { key: "finservDollarsProposed", label: "FinServ Proposals Issued $", type: "money" }
 ];
-var DESCRIBABLE = Array.from(/* @__PURE__ */ new Set([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
-var describe_schema_default = defineTool53({
-  name: "describe_schema",
-  title: "Describe table schema",
-  description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
-  inputSchema: {
-    tables: z53.array(z53.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
-    include_field_layout: z53.boolean().default(false).describe(
-      "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
-    )
-  },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: async ({ tables, include_field_layout }, ctx) => {
-    const authErr = requireAuth(ctx);
-    if (authErr) return authErr;
-    let fieldLayout = void 0;
-    if (include_field_layout) {
-      const sbLayout = supabaseForUser(ctx);
-      const { data: settings } = await sbLayout.from("company_settings").select("company_id, deal_info_layout");
-      const { data: pipes } = await sbLayout.from("deal_pipelines").select("id, name, company_id");
-      const usage = [];
-      for (const p of pipes ?? []) {
-        const { data: sample } = await sbLayout.from("deals").select("*").eq("pipeline_id", p.id).limit(500);
-        const rowsSample = sample ?? [];
-        const populated = /* @__PURE__ */ new Set();
-        for (const r of rowsSample) {
-          for (const [k, v] of Object.entries(r)) {
-            if (v !== null && v !== void 0 && v !== "") populated.add(k);
-          }
-        }
-        usage.push({
-          pipeline_id: p.id,
-          pipeline_name: p.name ?? null,
-          populated_fields: Array.from(populated).sort(),
-          sampled_deals: rowsSample.length
-        });
-      }
-      fieldLayout = {
-        company_deal_info_layout: settings ?? [],
-        pipeline_field_usage: usage,
-        note: "Deal Information field order/visibility is configured per company; pipeline_field_usage shows which deal columns are actually used by deals in each pipeline (sample of up to 500 deals)."
-      };
-    }
-    if (!tables || tables.length === 0) {
-      return textResult(
-        { describable_tables: DESCRIBABLE, ...fieldLayout ? { field_layout: fieldLayout } : {} },
-        { count: DESCRIBABLE.length }
-      );
-    }
-    const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
-    if (invalid.length) {
-      return errorResult(
-        `Not describable: ${invalid.join(", ")}. Allowed tables: ${DESCRIBABLE.join(", ")}.`
-      );
-    }
-    const sb = supabaseForUser(ctx);
-    const { data, error } = await sb.rpc("mcp_describe_tables", { p_tables: tables });
-    if (error) {
-      console.error("[describe_schema] error", { tables, user_id: ctx.getUserId?.(), message: error.message });
-      return errorResult(error.message);
-    }
-    const rows = data ?? [];
-    const grouped = {};
-    for (const r of rows) {
-      const { table_name, ...rest } = r;
-      (grouped[table_name] ??= []).push(rest);
-    }
-    const payload = {
-      tables: Object.entries(grouped).map(([table, columns]) => ({
-        table,
-        column_count: columns.length,
-        columns,
-        write_contract: table === "master_lenders" ? {
-          editable_columns: ["name", ...Object.keys(LENDER_FIELD_SCHEMA)],
-          immutable_columns: ["id", "user_id", "company_id", "created_at", "updated_at"],
-          criteria_confidence_values: CRITERIA_CONFIDENCE_MEANINGS,
-          text_modes: ["replace", "append", "prepend"],
-          max_batch: 25
-        } : table in LENDER_RELATED_FIELDS ? {
-          editable_columns: Object.keys(LENDER_RELATED_FIELDS[table]),
-          permissions: "Existing RLS applies; actor and tenancy are derived server-side. Availability is not a permission grant."
-        } : void 0
-      })),
-      ...fieldLayout ? { field_layout: fieldLayout } : {}
-    };
-    return textResult(payload, { tables: tables.join(","), column_count: rows.length });
+var PLAN = {
+  salesCalls: [44, 46, 48, 48, 50, 50, 52, 52, 54],
+  dealsOnBoard: [2, 2, 2, 2, 2, 2, 2, 2, 2],
+  dollarsOnBoard: [30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3],
+  proposalsIssued: [7, 7, 7, 7, 7, 7, 7, 7, 7],
+  dollarsProposed: [20, 20, 20, 20, 20, 20, 20, 20, 20],
+  clientsSigned: [1, 2, 2, 2, 2, 2, 2, 2, 2],
+  dollarsSigned: [4.8, 8, 8, 8, 8, 8, 8, 12, 12],
+  clientsReceivingTerms: [2, 2, 2, 1, 2, 2, 2, 2, 2],
+  termsSigned: [2, 2, 2, 2, 1, 2, 2, 2, 2],
+  volumeOfTermsSigned: [6.4, 6.4, 6.4, 6.4, 3.5, 7.2, 8, 8, 8],
+  dealsClosed: [2, 2, 2, 2, 2, 2, 2, 1, 2],
+  dollarsFunded: [6.4, 6.4, 6.4, 6.4, 6.7, 7.2, 8, 4.8, 8],
+  finservProposalsIssued: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  finservDollarsProposed: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+};
+var PLAN_OVERLAY_MAP = {
+  dealsOnBoard: { widgetKey: "deals-on-board", divisor: 1 },
+  dollarsOnBoard: { widgetKey: "deals-on-board-value", divisor: 1e6 },
+  proposalsIssued: { widgetKey: "proposals-issued", divisor: 1 },
+  dollarsProposed: { widgetKey: "dollars-proposed", divisor: 1e6 },
+  clientsSigned: { widgetKey: "deals-signed", divisor: 1 },
+  dollarsSigned: { widgetKey: "dollars-signed", divisor: 1e6 },
+  clientsReceivingTerms: { widgetKey: "clients-receiving-terms", divisor: 1 },
+  termsSigned: { widgetKey: "terms-signed", divisor: 1 },
+  volumeOfTermsSigned: { widgetKey: "volume-of-terms-signed", divisor: 1e6 },
+  dealsClosed: { widgetKey: "deals-closed", divisor: 1 },
+  dollarsFunded: { widgetKey: "dollars-funded", divisor: 1e6 },
+  finservProposalsIssued: { widgetKey: "finserv-proposals-issued", divisor: 1 },
+  finservDollarsProposed: { widgetKey: "finserv-dollars-proposed", divisor: 1e6 }
+};
+function mergeMasterPlanRows(rows, keySet) {
+  const out = {};
+  for (const row of rows) {
+    if (!row.period_month) continue;
+    const parts = row.metric_key.split(":");
+    if (parts.length !== 3 || parts[0] !== "plan") continue;
+    const [, namespace, widgetKey] = parts;
+    if (!keySet.has(widgetKey)) continue;
+    const monthMap = out[widgetKey] ?? (out[widgetKey] = {});
+    const bucket2 = monthMap[row.period_month] ?? (monthMap[row.period_month] = {});
+    if (namespace === "sales-dashboard-v2") bucket2.v2 = Number(row.target_value) || 0;
+    else if (namespace === "consolidated-debt-pipeline") bucket2.cdp = Number(row.target_value) || 0;
   }
-});
-
-// src/lib/mcp/tools/list-referral-partners.ts
-import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
+  const flat = {};
+  for (const [wk, months] of Object.entries(out)) {
+    const m = {};
+    for (const [ym, b] of Object.entries(months)) {
+      const v = b.v2 ?? b.cdp;
+      if (v !== void 0) m[ym] = v;
+    }
+    flat[wk] = m;
+  }
+  return flat;
+}
+function seedPlanValue(k, year, monIdx) {
+  if (year !== SEED_YEAR) return 0;
+  const seedIdx = SEED_MONTH_INDEXES.indexOf(monIdx);
+  return seedIdx >= 0 ? PLAN[k][seedIdx] ?? 0 : 0;
+}
+var MASTER_PLAN_KEYS = Array.from(new Set(Object.values(PLAN_OVERLAY_MAP).map((m) => m.widgetKey)));
 
 // src/components/channels/atRiskSources.ts
 var REMOVAL_MONTHS = 6;
@@ -4118,9 +1557,6 @@ function earliestNdaEntries(rows, activePipelineIds, dealPipeline) {
 function resolveNdaEnteredAt(deal, entries, _activePipelineIds) {
   return entries.get(deal.id) ?? null;
 }
-
-// src/lib/mcp/tools/list-referral-partners.ts
-import { z as z54 } from "npm:zod@^3.23.0";
 
 // src/lib/partnerNameMatch.ts
 var STOPWORDS = /* @__PURE__ */ new Set([
@@ -4282,7 +1718,7 @@ function classifyReferralPipeline(input) {
   return out;
 }
 
-// src/lib/mcp/tools/list-referral-partners.ts
+// src/lib/mcp/referralClassification.ts
 var PAGE = 1e3;
 var CHUNK = 100;
 async function fetchAll(build) {
@@ -4305,14 +1741,3901 @@ async function fetchByIds(sb, table, select, column, ids) {
   }
   return out;
 }
-var list_referral_partners_default = defineTool54({
+async function loadReferralClassification(sb, companyId, userId) {
+  const { data: pipelines, error: pErr } = await sb.from("deal_pipelines").select("id, name, is_default").eq("company_id", companyId);
+  if (pErr) throw new Error(pErr.message);
+  const pipelineIds = (pipelines ?? []).filter((p) => {
+    const l = String(p.name ?? "").toLowerCase();
+    return l.includes("in development") || l.includes("in-development") || p.is_default || l.includes("active");
+  }).map((p) => p.id);
+  const [pipelineDeals, allDeals, manualSources, rulesRes] = await Promise.all([
+    pipelineIds.length ? fetchAll((f, t) => sb.from("deals").select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").in("pipeline_id", pipelineIds).order("id").range(f, t)) : Promise.resolve([]),
+    fetchAll((f, t) => sb.from("deals").select("id, stage, referred_by, sourced_via, closing_date, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").order("id").range(f, t)),
+    fetchAll((f, t) => sb.from("referral_sources").select("id, name, email, company, contact_id, created_at, updated_at").or(`company_id.eq.${companyId},and(company_id.is.null,user_id.eq.${userId})`).order("id").range(f, t)),
+    sb.from("sales_bd_rules").select("tier1_qualified_deals, tier1_trailing_months, tier1_signed_clients, tier2_qualified_deals_min, tier2_qualified_deals_max, tier2_trailing_months, tier2_deals_on_board, tier3_deals_per_quarter, qualified_deal_stages").limit(1).maybeSingle()
+  ]);
+  if (rulesRes.error) throw new Error(rulesRes.error.message);
+  const activeIds = new Set((pipelines ?? []).filter((p) => p.is_default).map((p) => p.id));
+  const dealPipeline = new Map(allDeals.map((d) => [d.id, d.pipeline_id]));
+  const history = await fetchByIds(
+    sb,
+    "deal_stage_history",
+    "deal_id, changed_at, pipeline_id, event_type, to_stage_id, to_stage",
+    "deal_id",
+    allDeals.map((d) => d.id)
+  );
+  const entries = earliestNdaEntries(
+    history.filter((h) => h.event_type === "stage_enter"),
+    activeIds,
+    dealPipeline
+  );
+  for (const d of allDeals) d.nda_entered_at = resolveNdaEnteredAt(d, entries, activeIds);
+  const ndaById = new Map(allDeals.map((d) => [d.id, d.nda_entered_at]));
+  for (const d of pipelineDeals) d.nda_entered_at = ndaById.get(d.id) ?? null;
+  const contactIds = [...new Set([
+    ...pipelineDeals.map((d) => d.referred_by_contact_id),
+    ...manualSources.map((m) => m.contact_id)
+  ].filter((v) => !!v))];
+  const contacts = await fetchByIds(
+    sb,
+    "contacts",
+    "id, full_name, first_name, last_name, email, job_title, crm_company_id, owner_user_id, updated_at",
+    "id",
+    contactIds
+  );
+  const companyIds = [...new Set([
+    ...pipelineDeals.map((d) => d.referred_by_crm_company_id),
+    ...contacts.map((c) => c.crm_company_id)
+  ].filter((v) => !!v))];
+  const companies = await fetchByIds(sb, "crm_companies", "id, name", "id", companyIds);
+  const companyNames = new Map(companies.filter((c) => c.name).map((c) => [c.id, c.name]));
+  const classified = classifyReferralPipeline({
+    pipelineDeals,
+    allDeals,
+    manualSources,
+    contacts,
+    companyNames,
+    rules: rulesRes.data ?? null
+  });
+  return { classified, contacts, companyNames };
+}
+
+// src/lib/mcp/tools/get-dashboard-tile-values.ts
+var SALES_BD_TZ = "America/Chicago";
+function page(rows, include, offset, limit) {
+  return include ? { rows: rows.slice(offset, offset + limit), rows_total: rows.length } : {};
+}
+async function companyIdFor(sb, ctx) {
+  const { data, error } = await sb.from("company_members").select("company_id").eq("user_id", ctx.getUserId()).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.company_id) throw new Error("forbidden: the signed-in user is not a member of a company.");
+  return data.company_id;
+}
+async function salesCalls(sb, p, variant) {
+  const { data, error } = await sb.functions.invoke("sales-calls-count", {
+    body: { time_min: `${p.start}T00:00:00.000Z`, time_max: `${p.end}T23:59:59.999Z`, variant }
+  });
+  if (error) throw new Error(`Sales calls unavailable: ${error.message}`);
+  const events = Array.isArray(data?.events) ? data.events : [];
+  const months = new Set(p.months);
+  return events.filter((e) => {
+    if (!e.start || !isSalesCallTitleForVariant(e.title, variant)) return false;
+    const d = new Date(e.start);
+    return months.has(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+  });
+}
+var sumBy = (byKey, months) => months.flatMap((m) => byKey[m] ?? []);
+var mm = (n2) => Math.round(n2 / 1e6 * 1e6) / 1e6;
+async function salesDashboardV2(sb, companyId, p, inc, off, lim) {
+  const { start, end } = yearWindow(salesV2DataYears(p));
+  const [debtCalls, fsCalls, dobRows, propRows, signedRows, fsDobRows, fsPropRows] = await Promise.all([
+    salesCalls(sb, p, "debt"),
+    salesCalls(sb, p, "finserv"),
+    fetchDealsOnBoardRows(sb, start, end),
+    fetchFirstEntryRows(sb, { pipelineIds: DEBT_STAGE_PIPELINES, labels: PROPOSAL_ISSUED_STAGE_LABELS, start, end }),
+    fetchFirstEntryRows(sb, { pipelineIds: [ACTIVE_PIPELINE_ID], labels: DOLLARS_SIGNED_STAGE_LABELS, start, end }),
+    fetchFirstEntryRows(sb, { pipelineIds: [FINSERV_PIPELINE_ID2], labels: FINSERV_DEALS_ON_BOARD_LABELS, start, end }),
+    fetchFirstEntryRows(sb, { pipelineIds: [FINSERV_PIPELINE_ID2], labels: FINSERV_PROPOSALS_LABELS, start, end })
+  ]);
+  const dob = computeDealsOnBoard(dobRows);
+  const prop = computeFirstEntries(propRows, true);
+  const signed = computeFirstEntries(signedRows, true);
+  const fsDob = computeFirstEntries(fsDobRows, false);
+  const fsProp = computeFirstEntries(fsPropRows, false);
+  const sStart = `${p.start}T00:00:00.000Z`;
+  const [ey, em] = p.end.split("-").map(Number);
+  const sEnd = new Date(Date.UTC(ey, em, 1)).toISOString();
+  const ndaWindow = computeStageEntryDeals(await fetchStageEntryWindowRows(sb, "ndaneeds-list-sent", sStart, sEnd), true);
+  const avg = averageSizedValue(ndaWindow);
+  const dobDeals = sumBy(dob.byMonthKey, p.months);
+  const propDeals = sumBy(prop.byMonthKey, p.months);
+  const fsDobDeals = sumBy(fsDob.byMonthKey, p.months);
+  const fsPropDeals = sumBy(fsProp.byMonthKey, p.months);
+  const TZ = "Period boundaries are UTC calendar months.";
+  const tiles = [
+    {
+      tile_key: "sales_calls",
+      tile_label: "Sales Calls",
+      value: debtCalls.length,
+      unit: "count",
+      subtitle: "Debt variant",
+      definition: `Deduped synced calendar events whose title contains "5th Line \u2026 Financing Review" across connected teammate calendars, bucketed by event start month. ${TZ}`,
+      ...page(debtCalls.map((e) => ({ start: e.start, title: e.title, company: e.company, host: e.user_name ?? null })), inc, off, lim)
+    },
+    {
+      tile_key: "deals_on_board",
+      tile_label: "Deals on Board",
+      value: dobDeals.length,
+      unit: "count",
+      subtitle: "entered NDA / Needs List Sent",
+      definition: `Distinct deals with a deal_stage_history stage_enter into NDA / Needs List Sent (any stored spelling) on the Active Pipeline, excluding John Moffitt-owned/authored entries and test deals, deduped by company name keeping the earliest entry within the fetched calendar years. ${TZ}`,
+      ...page(dobDeals.map((d) => ({ deal_id: d.id, company: d.company, value: d.value, entered_at: d.created_at, current_stage: d.stage })), inc, off, lim)
+    },
+    {
+      tile_key: "proposals_issued",
+      tile_label: "Proposals Issued",
+      value: propDeals.length,
+      unit: "count",
+      subtitle: "entered Proposal Issued",
+      definition: `First stage_enter per deal into Proposal Issued ("proposal-issued"/"Proposal Issued") on the Active and In Development pipelines, test deals excluded, collapsed by company name. ${TZ}`,
+      ...page(propDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
+    },
+    {
+      tile_key: "avg_new_deal_on_board",
+      tile_label: "Avg. New Deal on Board",
+      value: avg,
+      unit: "usd",
+      subtitle: avg == null ? "No sized deals in period" : `${ndaWindow.filter((d) => d.value > 0).length} sized deals`,
+      definition: `Average deals.value (value > 0 only) of distinct deals with a stage_enter into ndaneeds-list-sent on the Active Pipeline between the first day of the start month and the first day of the month after the end (UTC), test deals excluded.`,
+      ...avg == null ? { no_data_reason: "no_sized_deals" } : {},
+      ...page(ndaWindow.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.changed_at })), inc, off, lim)
+    },
+    {
+      tile_key: "finserv_sales_calls",
+      tile_label: "FinServ Sales Calls",
+      value: fsCalls.length,
+      unit: "count",
+      subtitle: "FinServ variant",
+      definition: `Deduped calendar events titled "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro" (never a Debt financing review). ${TZ} The dashboard only loads this tile after the KPI toggle is switched to FinServ; with the default Debt toggle it shows the Debt figure.`,
+      ...page(fsCalls.map((e) => ({ start: e.start, title: e.title, company: e.company, host: e.user_name ?? null })), inc, off, lim)
+    },
+    {
+      tile_key: "finserv_deals_on_board",
+      tile_label: "FinServ Deals on Board",
+      value: fsDobDeals.length,
+      unit: "count",
+      subtitle: "entered Qualification",
+      definition: `First stage_enter per deal into Qualification ("fs-qualification"/"Qualification") on the FinServ pipeline, test deals excluded. ${TZ}`,
+      ...page(fsDobDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
+    },
+    {
+      tile_key: "finserv_proposals_issued",
+      tile_label: "FinServ Proposals Issued",
+      value: fsPropDeals.length,
+      unit: "count",
+      subtitle: "entered Proposal Sent",
+      definition: `First stage_enter per deal into Proposal Sent ("fs-proposal-sent"/"Proposal Sent") on the FinServ pipeline, test deals excluded. ${TZ}`,
+      ...page(fsPropDeals.map((d) => ({ deal_id: d.deal_id, company: d.company, value: d.value, entered_at: d.entered_at })), inc, off, lim)
+    }
+  ];
+  const q = sb.from("insights_metric_targets").select("metric_key, period_month, target_value").or("metric_key.like.plan:sales-dashboard-v2:%,metric_key.like.plan:consolidated-debt-pipeline:%").eq("company_id", companyId);
+  const { data: planRows, error: planErr } = await q;
+  if (planErr) throw new Error(planErr.message);
+  const master = mergeMasterPlanRows(planRows ?? [], new Set(MASTER_PLAN_KEYS));
+  const live = {
+    salesCalls: countByMonth(debtCalls.map((e) => e.start)),
+    dealsOnBoard: lenMap(dob.byMonthKey),
+    proposalsIssued: lenMap(prop.byMonthKey),
+    dollarsSigned: Object.fromEntries(Object.entries(signed.byMonthKey).map(([k, arr2]) => [k, mm(arr2.reduce((s, d) => s + d.value, 0))]))
+  };
+  const modelRows = ROW_ORDER.map((row) => {
+    const months = p.months.map((ym) => {
+      const [y, m] = ym.split("-").map(Number);
+      const overlay = PLAN_OVERLAY_MAP[row.key];
+      const mp = overlay ? master[overlay.widgetKey]?.[ym] : void 0;
+      const forecast2 = mp !== void 0 && Number.isFinite(mp) ? mp / overlay.divisor : seedPlanValue(row.key, y, m - 1);
+      const liveMap = live[row.key];
+      const actual2 = liveMap ? liveMap[ym] ?? 0 : null;
+      return { month: ym, forecast: forecast2, actual: actual2, variance: actual2 == null ? null : actual2 - forecast2 };
+    });
+    const tracked = !!live[row.key];
+    const forecast = months.reduce((s, r) => s + r.forecast, 0);
+    const actual = tracked ? months.reduce((s, r) => s + (r.actual ?? 0), 0) : null;
+    return {
+      row_key: row.key,
+      row_label: row.label,
+      unit: row.type === "money" ? "usd_mm" : "count",
+      forecast,
+      actual,
+      variance: actual == null ? null : actual - forecast,
+      ...tracked ? {} : { no_data_reason: "not_tracked_in_live_actuals" },
+      months
+    };
+  });
+  tiles.push({
+    tile_key: "sales_model",
+    tile_label: "Sales Model",
+    value: null,
+    unit: "table",
+    subtitle: "Forecast \xB7 Actuals \xB7 Variance",
+    definition: 'Forecast = saved Master Plan target for the month (plan:sales-dashboard-v2 preferred over plan:consolidated-debt-pipeline; currency \xF7 1,000,000 \u2192 $MM), else the authored 2026 Jan\u2013Sep seed, else 0; unsaved on-screen forecast edits are not included. Actuals are live only for Sales Calls, Deals on Board, Proposals Issued and Dollars Signed; every other row shows "\u2014" in the UI and returns actual = null with no_data_reason. Dollars Signed = first entry per deal into Final Credit Items or any later stage (Terms Issued, In Due Diligence, Funded/Invoiced) on the Active Pipeline, collapsed by company name, in $MM; it does not use deals.terms_signed_at. Clients Signed has no live actual.',
+    details: { rows: modelRows }
+  });
+  return tiles;
+}
+function countByMonth(isos) {
+  const out = {};
+  for (const iso2 of isos) {
+    const d = new Date(iso2);
+    const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+var lenMap = (m) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.length]));
+async function salesBdPage(sb, ctx, companyId, p, inc, off, lim) {
+  const start = zonedTime(p.start, "00:00:00", SALES_BD_TZ);
+  const end = zonedTime(p.end, "23:59:59", SALES_BD_TZ);
+  const TZ = `Period boundaries are ${p.start} 00:00:00 \u2192 ${p.end} 23:59:59 ${SALES_BD_TZ} (the dashboard uses the viewer's browser time zone).`;
+  const [meetings, exclusionsRes, newSourcesRes, classification, onBoard, pipelineIds] = await Promise.all([
+    loadReferralSourceMeetings(sb, companyId, start.toISOString(), end.toISOString()),
+    sb.from("referral_meeting_exclusions").select("meeting_id").eq("company_id", companyId),
+    sb.from("referral_sources").select("id, name, contact_name, company, channel, created_at").eq("company_id", companyId).gte("created_at", start.toISOString()).lte("created_at", end.toISOString()).order("created_at", { ascending: false }),
+    loadReferralClassification(sb, companyId, ctx.getUserId()),
+    loadReferralDealsOnBoard(sb, companyId, start, end),
+    fetchActivePipelineIds(sb, companyId)
+  ]);
+  if (exclusionsRes.error) throw new Error(exclusionsRes.error.message);
+  if (newSourcesRes.error) throw new Error(newSourcesRes.error.message);
+  const excluded = new Set((exclusionsRes.data ?? []).map((r) => r.meeting_id));
+  const visible = meetings.filter((m) => !excluded.has(m.id)).sort((a, b) => (b.started_at || "").localeCompare(a.started_at || ""));
+  const contactIds = [...new Set(visible.map((m) => m.matched_contact_id).filter((v) => !!v))];
+  const contactNames = /* @__PURE__ */ new Map();
+  if (inc && contactIds.length) {
+    for (let i = 0; i < contactIds.length; i += 100) {
+      const { data } = await sb.from("contacts").select("id, full_name, email").in("id", contactIds.slice(i, i + 100));
+      for (const c of data ?? []) contactNames.set(c.id, c.full_name || c.email || c.id);
+    }
+  }
+  const tiered = new Set(classification.classified.filter((s) => s.stage !== "Nurturing").map((s) => normalizeEntityName(s.name || "")));
+  const newSources = (newSourcesRes.data ?? []).filter((s) => {
+    const n2 = normalizeEntityName(s.name || s.contact_name || "");
+    return !!n2 && !tiered.has(n2);
+  });
+  const totalValue = onBoard.reduce((s, d) => s + (Number(d.value) || 0), 0);
+  const anchor = ttmAnchorFromTimeframeEnd(p.end);
+  const w = ttmWindow(anchor);
+  const ttmDeals = pipelineIds.length ? await fetchTtmActiveDeals(sb, companyId, pipelineIds, w.since.toISOString(), w.until.toISOString()) : [];
+  const conv = computeTtmConversion(ttmDeals, "referral");
+  return [
+    {
+      tile_key: "meetings_with_referral_sources",
+      tile_label: "Meetings w/ Existing Referral Sources",
+      value: visible.length,
+      unit: "count",
+      subtitle: "meetings held in selected timeframe",
+      definition: `Synced calendar meetings (calendar-meetings-all, approved team calendars) in the period, excluding sales calls ("<> 5th Line"), deal syncs, blocks, attendee-less holds, internal-only meetings, meetings whose title names a client deal or funding source, meetings with client or funding-source attendee domains, and manual removals in referral_meeting_exclusions. ${TZ}`,
+      details: { removed_by_exclusion: meetings.length - visible.length },
+      ...page(visible.map((m) => ({
+        id: m.id,
+        title: m.title,
+        start: m.started_at,
+        organizer: m.organizer_email ?? null,
+        internal_attendees: m.internal_emails ?? [],
+        matched_contact_id: m.matched_contact_id,
+        matched_contact: m.matched_contact_id ? contactNames.get(m.matched_contact_id) ?? null : null,
+        matched_crm_company_id: m.matched_crm_company_id
+      })), inc, off, lim)
+    },
+    {
+      tile_key: "new_referral_sources_added",
+      tile_label: "New Referral Sources Added",
+      value: newSources.length,
+      unit: "count",
+      subtitle: "added in selected timeframe",
+      definition: `referral_sources rows for the company with created_at in the period, keeping only sources still in the Nurturing stage (names already at Tier 3/2/1 are excluded). "Added" = referral_sources.created_at. ${TZ}`,
+      ...page(newSources.map((s) => ({ id: s.id, name: s.name || s.contact_name, company: s.company, added_at: s.created_at })), inc, off, lim)
+    },
+    {
+      tile_key: "deals_and_dollars_on_board",
+      tile_label: "Deals & Dollars on the Board",
+      value: onBoard.length,
+      unit: "count",
+      subtitle: `entered NDA / Needs List Sent \xB7 $${Math.round(totalValue).toLocaleString("en-US")}`,
+      definition: `Referral-sourced deals (Referred by set, or Sourced Via starts with "Referral") with a stage_enter into ndaneeds-list-sent on the Active Pipeline in the period, excluding John Moffitt-owned/authored entries and test deals, deduped by deal and company name. ${TZ}`,
+      details: { dollars: totalValue },
+      ...page(onBoard.map((d) => ({ deal_id: d.id, company: d.company, value: d.value, stage: d.stage, referred_by: d.referred_by, entered_at: d.created_at })), inc, off, lim)
+    },
+    {
+      tile_key: "conversion_rate",
+      tile_label: "Conversion Rate",
+      value: conv.rate == null ? null : Math.round(conv.rate * 1e3) / 10,
+      unit: "percent",
+      subtitle: "trailing 12 months",
+      definition: 'Active-pipeline deals (default pipeline or name containing "active") created in the 12 months ending at the period end (capped at now) with Sourced Via starting "Referral"; numerator = those whose current stage is Final Credit Items or later. Independent of the period start.',
+      ...conv.rate == null ? { no_data_reason: "no_referral_deals_in_ttm" } : {},
+      details: { numerator: conv.numerator, denominator: conv.denominator, window: { since: w.since.toISOString(), until: w.until.toISOString() } }
+    },
+    {
+      tile_key: "referred_deals",
+      tile_label: "Referred Deals",
+      value: null,
+      unit: "count",
+      subtitle: "by referral source",
+      definition: "Deal count and volume attributed to referral sources by the app's referral-source hook (effective-activity-date attribution).",
+      no_data_reason: "not_yet_exposed: this tile's calculation lives only in the browser hook and has not been shared with the connector; use list_referral_partners or the dashboard."
+    }
+  ];
+}
+async function finservMetrics(sb, companyId, p, inc, off, lim) {
+  const [snap, newMrr, nrr, pnlRes] = await Promise.all([
+    loadFinServPipelineSnapshot(sb, p.end),
+    loadFinServNewMrrAdded(sb, companyId, p.start, p.end),
+    loadFinServNrr(sb, p.start, p.end),
+    sb.from("qbo_pnl_snapshots").select("income_total, fetched_at").eq("company_id", companyId).eq("realm_id", FINSERV_QBO_REALM_ID).eq("accounting_method", "Accrual").eq("period_start", p.start).eq("period_end", p.end).maybeSingle()
+  ]);
+  if (pnlRes.error) throw new Error(pnlRes.error.message);
+  const revenue = pnlRes.data ? Number(pnlRes.data.income_total ?? 0) : null;
+  const avg = revenue == null ? null : snap.totalClients > 0 ? revenue / snap.totalClients : 0;
+  const asOf = `as of ${snap.asOf.toISOString()} (end of ${p.end}, capped at now; evaluated in server time)`;
+  return [
+    {
+      tile_key: "total_clients",
+      tile_label: "Total Clients",
+      value: snap.totalClients,
+      unit: "count",
+      subtitle: "Active Clients at end of selected period",
+      definition: `Distinct FinServ clients (CRM company, else normalized name) in Active Client at the period end; before May 2026 a deal also counts if its contract started by then and it had not exited Active Client or passed its contract end date. Test deals are not filtered here, matching the tile. ${asOf}`,
+      ...page(snap.clients, inc, off, lim)
+    },
+    {
+      tile_key: "total_mrr",
+      tile_label: "Total MRR",
+      value: snap.totalMrr,
+      unit: "usd",
+      subtitle: "Sum of MRR across active FinServ pipeline deals",
+      definition: `Sum of deals.mrr on FinServ deals counting toward MRR at the period end (open, non-churned/lost/in-development deals plus clients counted active under the pre-May-2026 rule). ${asOf}`
+    },
+    {
+      tile_key: "avg_revenue_per_client",
+      tile_label: "Avg. Revenue / Client",
+      value: avg,
+      unit: "usd",
+      subtitle: "period revenue \xF7 active clients",
+      definition: "Total Revenue (below) \xF7 Total Clients.",
+      ...avg == null ? { no_data_reason: "revenue_snapshot_not_cached" } : {}
+    },
+    {
+      tile_key: "finserv_clients_signed",
+      tile_label: "FinServ Clients Signed",
+      value: newMrr.deals.length,
+      unit: "count",
+      subtitle: 'Entered "Active Client"',
+      definition: 'Distinct FinServ deals whose first stage_enter into Active Client (fs-closed-won / "Active Client") falls in the period (UTC dates), test deals excluded.',
+      ...page(newMrr.deals, inc, off, lim)
+    },
+    {
+      tile_key: "mrr_signed",
+      tile_label: "MRR Signed",
+      value: newMrr.total,
+      unit: "usd",
+      subtitle: 'MRR of deals entering "Active Client"',
+      definition: "Sum of deals.mrr for the FinServ Clients Signed deals."
+    },
+    {
+      tile_key: "net_revenue_retention",
+      tile_label: "Net Revenue Retention",
+      value: nrr.nrr == null ? null : Math.round(nrr.nrr * 10) / 10,
+      unit: "percent",
+      subtitle: `QBO FinServ \xB7 prior-period billed customers (${nrr.prior.start} \u2192 ${nrr.prior.end})`,
+      definition: "QuickBooks invoices (5th Line Financial Services realm): revenue this period from customers billed in the immediately preceding window of equal length \xF7 their revenue in that prior window. New customers are excluded.",
+      ...nrr.nrr == null ? { no_data_reason: "no_prior_period_revenue" } : {},
+      details: { comparison_window: nrr.prior, customer_count: nrr.customers.length, prior_total: nrr.priorTotal, current_total: nrr.currentTotal },
+      ...page(nrr.customers, inc, off, lim)
+    },
+    {
+      tile_key: "total_revenue",
+      tile_label: "Total Revenue",
+      value: revenue,
+      unit: "usd",
+      subtitle: "QBO P&L Total Income \xB7 5th Line Financial Services, LLC",
+      definition: "Accrual P&L Total Income from the cached QuickBooks snapshot whose period exactly matches the selected start/end dates. The connector only reads cached snapshots; it never triggers a QuickBooks sync.",
+      ...revenue == null ? { no_data_reason: "revenue_snapshot_not_cached: open the dashboard for this period once to cache it" } : { details: { fetched_at: pnlRes.data?.fetched_at ?? null } }
+    }
+  ];
+}
+var get_dashboard_tile_values_default = defineTool3({
+  name: "get_dashboard_tile_values",
+  title: "Get Insights dashboard tile values",
+  description: "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
+  inputSchema: {
+    dashboard_id: z3.enum(["sales-bd-page", "sales-dashboard-v2", "finserv-financial-metrics"]),
+    view: z3.enum(["month", "quarter", "custom"]).default("month"),
+    period: z3.string().trim().max(10).optional().describe('"YYYY-MM" (month view) or "YYYY-QN" (quarter view).'),
+    periods: z3.array(z3.string().trim().max(10)).max(60).optional().describe("Several periods in one call; overrides period."),
+    from: z3.string().trim().max(10).optional().describe("Custom view start YYYY-MM-DD."),
+    to: z3.string().trim().max(10).optional().describe("Custom view end YYYY-MM-DD."),
+    include_rows: z3.boolean().default(false),
+    rows_limit: z3.number().int().min(1).max(500).default(100),
+    rows_offset: z3.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ dashboard_id, view, period, periods, from, to, include_rows, rows_limit, rows_offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    let resolved;
+    try {
+      if (view === "custom") {
+        if (!from || !to) return errorResult("custom view requires from and to (YYYY-MM-DD).");
+        resolved = [resolveCustom(from, to)];
+      } else {
+        const list = periods?.length ? periods : period ? [period] : [];
+        if (!list.length) return errorResult("Provide period or periods.");
+        resolved = list.map(resolvePeriod);
+        const wrong = resolved.find((r) => view === "month" !== (r.months.length === 1 && !/Q/.test(r.period)));
+        if (wrong) return errorResult(`Period ${wrong.period} does not match view "${view}".`);
+      }
+      const sb = supabaseForUser(ctx);
+      const companyId = await companyIdFor(sb, ctx);
+      const out = [];
+      for (const p of resolved) {
+        const tiles = dashboard_id === "sales-dashboard-v2" ? await salesDashboardV2(sb, companyId, p, include_rows, rows_offset, rows_limit) : dashboard_id === "sales-bd-page" ? await salesBdPage(sb, ctx, companyId, p, include_rows, rows_offset, rows_limit) : await finservMetrics(sb, companyId, p, include_rows, rows_offset, rows_limit);
+        out.push({ period: p.period, start: p.start, end: p.end, tiles });
+      }
+      const payload = {
+        dashboard_id,
+        view,
+        time_zone: dashboard_id === "sales-bd-page" ? SALES_BD_TZ : "UTC",
+        periods: out
+      };
+      return textResult(payload, payload);
+    } catch (e) {
+      return errorResult(e instanceof Error ? e.message : String(e));
+    }
+  }
+});
+
+// src/lib/mcp/tools/list-calendar-meetings.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z4 } from "npm:zod@^3.23.0";
+var list_calendar_meetings_default = defineTool4({
+  name: "list_calendar_meetings",
+  title: "List synced calendar meetings",
+  description: "Read-only. Lists the synced team calendar meetings that the Sales & BD and Sales Dashboard tiles read (the same calendar-meetings-all source, scoped to the signed-in user's company and its approved team calendars). Returns id, title, start, end, organizer, attendee emails, matched contact/company ids and whether the meeting was manually removed from the referral-meeting count (referral_meeting_exclusions). Filters: from/to (required), optional contact_id (matched contact or attendee email), optional title substring. Paginated with limit/offset.",
+  inputSchema: {
+    from: z4.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Start date YYYY-MM-DD (UTC, inclusive)."),
+    to: z4.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).describe("End date YYYY-MM-DD (UTC, inclusive)."),
+    contact_id: z4.string().uuid().optional(),
+    title_contains: z4.string().trim().min(1).max(200).optional(),
+    limit: z4.number().int().min(1).max(500).default(100),
+    offset: z4.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, contact_id, title_contains, limit, offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (from > to) return errorResult("from must be on or before to");
+    const sb = supabaseForUser(ctx);
+    const { data: member, error: mErr } = await sb.from("company_members").select("company_id").eq("user_id", ctx.getUserId()).maybeSingle();
+    if (mErr) return errorResult(mErr.message);
+    if (!member?.company_id) return errorResult("forbidden: the signed-in user is not a member of a company.");
+    const companyId = member.company_id;
+    const { data, error } = await sb.functions.invoke("calendar-meetings-all", {
+      body: { company_id: companyId, time_min: `${from}T00:00:00.000Z`, time_max: `${to}T23:59:59.999Z` }
+    });
+    if (error) return errorResult(`Calendar unavailable: ${error.message}`);
+    const { data: excl, error: eErr } = await sb.from("referral_meeting_exclusions").select("meeting_id").eq("company_id", companyId);
+    if (eErr) return errorResult(eErr.message);
+    const excluded = new Set((excl ?? []).map((r) => String(r.meeting_id)));
+    let contactEmails = /* @__PURE__ */ new Set();
+    if (contact_id) {
+      const { data: c, error: cErr } = await sb.from("contacts").select("email, additional_emails").eq("id", contact_id).maybeSingle();
+      if (cErr) return errorResult(cErr.message);
+      contactEmails = new Set([c?.email, ...c?.additional_emails ?? []].filter((e) => !!e).map((e) => e.toLowerCase()));
+    }
+    const needle = title_contains?.toLowerCase();
+    const rows = (data?.events ?? []).map((e) => {
+      const attendees = (e.attendees ?? []).map((a) => typeof a === "string" ? a : a?.email ?? "").filter(Boolean).map((s) => s.toLowerCase());
+      return {
+        id: String(e.id),
+        title: e.title ?? null,
+        start: e.start ?? null,
+        end: e.end ?? null,
+        organizer: e.organizer_email ?? null,
+        attendee_emails: attendees,
+        matched_contact_ids: e.matched_contact_id ? [e.matched_contact_id] : [],
+        matched_crm_company_id: e.matched_crm_company_id ?? null,
+        is_excluded: excluded.has(String(e.id))
+      };
+    }).filter((r) => {
+      if (needle && !(r.title ?? "").toLowerCase().includes(needle)) return false;
+      if (contact_id && !r.matched_contact_ids.includes(contact_id) && !r.attendee_emails.some((a) => contactEmails.has(a))) return false;
+      return true;
+    }).sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
+    const page2 = rows.slice(offset, offset + limit);
+    const next = offset + page2.length;
+    const payload = {
+      range: { from, to, time_zone: "UTC" },
+      total_count: rows.length,
+      returned: page2.length,
+      offset,
+      next_offset: next < rows.length ? next : null,
+      has_more: next < rows.length,
+      meetings: page2
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/list-pipelines.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z5 } from "npm:zod@^3.23.0";
+var list_pipelines_default = defineTool5({
+  name: "list_pipelines",
+  title: "List pipelines",
+  description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
+  inputSchema: {
+    include_deal_counts: z5.boolean().default(true)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ include_deal_counts }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("deal_pipelines").select("id, name, is_default, company_id, stages, created_at").order("created_at", { ascending: true });
+    if (error) return errorResult(error.message);
+    const pipelines = (data ?? []).map((p) => {
+      const stages = Array.isArray(p.stages) ? p.stages : [];
+      return {
+        id: p.id,
+        name: p.name ?? null,
+        is_default: p.is_default ?? false,
+        company_id: p.company_id ?? null,
+        stages: stages.map((s) => ({ id: s?.id ?? null, label: s?.label ?? s?.id ?? null })),
+        deal_count: null,
+        active_deal_count: null,
+        on_hold_deal_count: null,
+        closed_deal_count: null,
+        by_stage: null
+      };
+    });
+    let unassigned = null;
+    let excludedTestDeals = 0;
+    if (include_deal_counts) {
+      const rows = [];
+      const pageSize = 1e3;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: page2, error: dealErr } = await sb.from("deals").select("id, company, stage, status, on_hold, pipeline_id").order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+        if (dealErr) return errorResult(dealErr.message);
+        const chunk = page2 ?? [];
+        rows.push(...chunk);
+        if (chunk.length < pageSize) break;
+      }
+      const kept = rows.filter((r) => !isExcludedDealName(r.company));
+      excludedTestDeals = rows.length - kept.length;
+      const isClosed = (r) => {
+        const s = `${r.status ?? ""} ${r.stage ?? ""}`.toLowerCase();
+        return s.includes("closed") || s.includes("lost") || s.includes("dead");
+      };
+      const bucket2 = (subset) => ({
+        deal_count: subset.length,
+        on_hold_deal_count: subset.filter((r) => r.on_hold).length,
+        closed_deal_count: subset.filter((r) => isClosed(r)).length,
+        active_deal_count: subset.filter((r) => !r.on_hold && !isClosed(r)).length
+      });
+      for (const p of pipelines) {
+        const subset = kept.filter((r) => r.pipeline_id === p.id);
+        const b = bucket2(subset);
+        p.deal_count = b.deal_count;
+        p.active_deal_count = b.active_deal_count;
+        p.on_hold_deal_count = b.on_hold_deal_count;
+        p.closed_deal_count = b.closed_deal_count;
+        const labels = new Map(p.stages.map((s) => [s.id ?? "", s.label ?? s.id ?? ""]));
+        const counts = /* @__PURE__ */ new Map();
+        for (const r of subset) {
+          const key = r.stage ?? "unknown";
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        p.by_stage = Array.from(counts.entries()).map(([stage_id, count]) => ({
+          stage_id,
+          stage_label: labels.get(stage_id) ?? stage_id,
+          count
+        }));
+      }
+      unassigned = bucket2(kept.filter((r) => !r.pipeline_id));
+    }
+    const payload = {
+      count: pipelines.length,
+      pipelines,
+      unassigned_deals: unassigned,
+      excluded_test_deals: include_deal_counts ? excludedTestDeals : null,
+      notes: include_deal_counts ? "Counts exclude global test deals; 'closed' is inferred from status/stage text containing closed/lost/dead." : null
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-deal.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z6 } from "npm:zod@^3.23.0";
+function contactName(contact) {
+  const composed = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
+  if (composed) return composed;
+  const fullName = contact.full_name?.trim();
+  if (fullName && fullName.toLowerCase() !== contact.email?.toLowerCase()) return fullName;
+  return contact.email ?? "Unnamed contact";
+}
+var DEAL_CHILD_TABLES = [
+  ["milestones", "deal_milestones"],
+  ["stage_history", "deal_stage_history"],
+  ["stage_history_notes", "deal_stage_history_notes"],
+  ["status_notes", "deal_status_notes"],
+  ["status_report_drafts", "deal_status_report_drafts"],
+  ["flag_notes", "deal_flag_notes"],
+  ["ownership", "deal_ownership"],
+  ["advance_reasons", "deal_advance_reasons"],
+  ["aliases", "deal_aliases"],
+  ["access_requests", "deal_access_requests"],
+  ["audit_log", "deal_audit_log"],
+  ["checklist_status", "deal_checklist_status"],
+  ["attachments", "deal_attachments"],
+  ["writeups", "deal_writeups"],
+  ["memos", "deal_memos"],
+  ["memo_approvals", "deal_memo_approvals"],
+  ["memo_comments", "deal_memo_comments"],
+  ["memo_views", "deal_memo_views"],
+  ["memo_audit_logs", "deal_memo_audit_logs"],
+  ["notes", "deal_space_notes"],
+  ["space_documents", "deal_space_documents"],
+  ["space_conversations", "deal_space_conversations"],
+  ["space_financials", "deal_space_financials"],
+  ["financial_data", "deal_financial_data"],
+  ["financial_files", "deal_financial_files"],
+  ["financial_insights", "deal_financial_insights"],
+  ["computed_metrics", "deal_computed_metrics"],
+  ["drive_folders", "deal_drive_folders"],
+  ["data_room_folders", "deal_data_room_custom_folders"],
+  ["document_exclusions", "deal_document_exclusions"],
+  ["emails", "deal_emails"],
+  ["email_prompts", "deal_email_prompts"],
+  ["client_requests", "client_requests"],
+  ["meeting_history", "deal_meeting_history"],
+  ["meeting_links", "meeting_deal_links"],
+  ["meeting_holds", "meeting_holds"],
+  ["call_transcripts", "deal_call_transcripts"],
+  ["claap_recordings", "deal_claap_recordings"],
+  ["calendar_items", "deal_calendar_items"],
+  ["activity", "deal_activity"],
+  ["ai_settings", "deal_ai_settings"],
+  ["ai_status_snapshots", "deal_ai_status_snapshots"],
+  ["research_cache", "deal_research_cache"],
+  ["fit_profiles", "deal_fit_profiles"],
+  ["kpi_links", "deal_kpi_links"],
+  ["saas_model", "deal_saas_model"],
+  ["saas_mappings", "deal_saas_mappings"],
+  ["saas_sensitivity", "deal_saas_sensitivity"],
+  ["finserv_projects", "finserv_deal_projects"],
+  ["lender_recommendation_exclusions", "deal_lender_recommendation_exclusions"],
+  ["pending_suggestions", "pending_deal_suggestions"],
+  ["pending_notifications", "pending_deal_notifications"]
+];
+var CHILD_ROW_LIMIT = 200;
+var get_deal_default = defineTool6({
+  name: "get_deal",
+  title: "Get deal",
+  description: "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+  inputSchema: {
+    deal_id: z6.string().uuid(),
+    include_tasks: z6.boolean().default(true),
+    include_lenders: z6.boolean().default(true),
+    include_related: z6.boolean().default(false),
+    include_task_detail: z6.boolean().default(false)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, include_tasks, include_lenders, include_related, include_task_detail }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const denied = await assertDealAccess(sb, ctx, deal_id, "get_deal");
+    if (denied) return denied;
+    const { data: deal, error } = await sb.from("deals").select("*").eq("id", deal_id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!deal) return errorResult("Deal not found or you do not have access.");
+    const [tasksRes, lendersRes, contactLinksRes, companyRes, aliasesRes] = await Promise.all([
+      include_tasks ? sb.from("tasks").select("id, title, status, due_date, priority, assigned_to, created_at").eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null, error: null }),
+      include_lenders ? sb.from("deal_lenders").select("id, name, master_lender_id, tracking_status, stage, substage, updated_at").eq("deal_id", deal_id).order("updated_at", { ascending: false }).limit(200) : Promise.resolve({ data: null, error: null }),
+      sb.from("contact_deals").select("contact_id, role, created_at").eq("deal_id", deal_id).order("created_at", { ascending: true }),
+      deal.crm_company_id ? sb.from("crm_companies").select("id, name, domain").eq("id", deal.crm_company_id).eq("org_company_id", deal.company_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      sb.from("deal_aliases").select("alias").eq("deal_id", deal_id).order("created_at", { ascending: true })
+    ]);
+    if (contactLinksRes.error) return errorResult(contactLinksRes.error.message);
+    if (companyRes.error) return errorResult(companyRes.error.message);
+    if (aliasesRes.error) return errorResult(aliasesRes.error.message);
+    const contactLinks = contactLinksRes.data ?? [];
+    const contactIds = contactLinks.map((link) => link.contact_id).filter(Boolean);
+    let clientContacts = [];
+    if (contactIds.length > 0) {
+      const { data: contacts, error: contactsError } = await sb.from("contacts").select("id, first_name, last_name, full_name, email, job_title").in("id", contactIds);
+      if (contactsError) return errorResult(contactsError.message);
+      const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
+      clientContacts = contactLinks.map((link) => {
+        const contact = contactsById.get(link.contact_id);
+        if (!contact) return null;
+        return {
+          id: contact.id,
+          name: contactName(contact),
+          email: contact.email ?? null,
+          job_title: contact.job_title ?? null,
+          role: link.role ?? null,
+          is_primary: (link.role ?? "").toLowerCase() === "primary"
+        };
+      }).filter((contact) => contact !== null).sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+    }
+    const [dealWithLabels] = await withStageLabels(sb, [deal]);
+    const related = {};
+    if (include_related) {
+      const results = await Promise.all(
+        DEAL_CHILD_TABLES.map(async ([key, table]) => {
+          const { data, error: childError } = await sb.from(table).select("*").eq("deal_id", deal_id).limit(CHILD_ROW_LIMIT);
+          if (childError) return [key, { error: childError.message }];
+          return [key, data ?? []];
+        })
+      );
+      for (const [key, value] of results) {
+        if (Array.isArray(value) && value.length === 0) continue;
+        related[key] = value;
+      }
+      const noteIds = (related.notes ?? []).map((r) => r.id).filter(Boolean);
+      const conversationIds = (related.space_conversations ?? []).map((r) => r.id).filter(Boolean);
+      const documentIds = (related.space_documents ?? []).map((r) => r.id).filter(Boolean);
+      const nested = [
+        ["note_versions", "deal_space_note_versions", "note_id", noteIds],
+        ["note_comments", "deal_space_note_comments", "note_id", noteIds],
+        ["space_messages", "deal_space_messages", "conversation_id", conversationIds],
+        ["document_summaries", "deal_space_document_summaries", "document_id", documentIds]
+      ];
+      await Promise.all(
+        nested.map(async ([key, table, column, ids]) => {
+          if (ids.length === 0) return;
+          const { data, error: nestedError } = await sb.from(table).select("*").in(column, ids.slice(0, CHILD_ROW_LIMIT)).limit(500);
+          if (nestedError) {
+            related[key] = { error: nestedError.message };
+            return;
+          }
+          if ((data ?? []).length > 0) related[key] = data;
+        })
+      );
+    }
+    let taskDetail;
+    if (include_task_detail) {
+      const taskIds = (tasksRes.data ?? []).map((t) => t.id).filter(Boolean);
+      taskDetail = {};
+      if (taskIds.length > 0) {
+        const taskChildren = [
+          ["comments", "task_comments"],
+          ["attachments", "task_attachments"],
+          ["collaborators", "task_collaborators"],
+          ["followers", "task_followers"],
+          ["watchers", "task_watchers"],
+          ["mentions", "task_mentions"],
+          ["dependencies", "task_dependencies"],
+          ["label_assignments", "task_label_assignments"],
+          ["tag_assignments", "task_tag_assignments"],
+          ["time_entries", "task_time_entries"],
+          ["activity", "task_activity"]
+        ];
+        await Promise.all(
+          taskChildren.map(async ([key, table]) => {
+            const { data, error: taskError } = await sb.from(table).select("*").in("task_id", taskIds).limit(500);
+            if (!taskDetail) return;
+            if (taskError) {
+              taskDetail[key] = { error: taskError.message };
+              return;
+            }
+            if ((data ?? []).length > 0) taskDetail[key] = data;
+          })
+        );
+      }
+    }
+    return textResult({
+      deal: dealWithLabels,
+      client_contacts: clientContacts,
+      crm_company: companyRes.data ?? null,
+      aliases: (aliasesRes.data ?? []).map(({ alias }) => alias),
+      tasks: tasksRes.data ?? [],
+      lenders: lendersRes.data ?? [],
+      ...include_related ? { related } : {},
+      ...taskDetail ? { task_detail: taskDetail } : {}
+    }, { deal_id });
+  }
+});
+
+// src/lib/mcp/tools/update-deal.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z7 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/statusNotes.ts
+var EMPTY = /* @__PURE__ */ new Set(["", "<p></p>", "<p><br></p>"]);
+var isEmpty = (s) => EMPTY.has(String(s ?? "").trim());
+function toHtml(note) {
+  if (/<\/?(p|ul|ol|li|br|strong|em)\b/i.test(note)) return note;
+  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return note.split(/\r?\n/).map((l) => l.trim() ? `<p>${esc(l)}</p>` : "<p></p>").join("");
+}
+function combine(existing, note, mode) {
+  const next = toHtml(note);
+  if (mode === "replace" || isEmpty(existing)) return next;
+  const sep = "<p></p>";
+  return mode === "prepend" ? `${next}${sep}${existing}` : `${existing}${sep}${next}`;
+}
+async function writeDealStatusNote(sb, ctx, deal_id, note, mode, source) {
+  if (!note.trim()) return { error: "Note cannot be empty." };
+  const { data: deal, error: readErr } = await sb.from("deals").select("id, notes").eq("id", deal_id).maybeSingle();
+  if (readErr) return { error: readErr.message };
+  if (!deal) return { error: `Deal ${deal_id} not found or you do not have access to it.` };
+  const existing = String(deal.notes ?? "");
+  const updated = combine(existing, note, mode);
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const { data: row, error: updErr } = await sb.from("deals").update({ notes: updated, notes_updated_at: now }).eq("id", deal_id).select("id, notes, notes_updated_at").maybeSingle();
+  if (updErr) return { error: updErr.message };
+  if (!row) return { error: `You do not have permission to edit deal ${deal_id}.` };
+  const userId = ctx.getUserId?.() ?? null;
+  if (!isEmpty(existing) && existing !== updated) {
+    const { error } = await sb.from("deal_status_notes").insert({ deal_id, note: existing.trim(), user_id: userId });
+    if (error) console.error("[status-note] history insert failed", error.message);
+  }
+  const { error: actErr } = await sb.from("deal_activity").insert({
+    deal_id,
+    user_id: userId,
+    source,
+    action_type: "status_note_updated",
+    before: { notes: existing },
+    after: { notes: updated, mode }
+  });
+  if (actErr) console.error("[status-note] activity insert failed", actErr.message);
+  const r = row;
+  return { deal_id, notes: r.notes ?? updated, notes_updated_at: r.notes_updated_at ?? now };
+}
+
+// src/lib/mcp/tools/update-deal.ts
+var update_deal_default = defineTool7({
+  name: "update_deal",
+  title: "Update deal",
+  description: "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional crm_company_id links an accessible CRM company in the same workspace, with atomic MCP deal activity and no-op identical retries. Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed; omitted new fields retain existing behavior. Returns the updated deal with crm_company_id, pipeline_id, pipeline_name, stage and stage_label. Requires user approval.",
+  inputSchema: {
+    deal_id: z7.string().uuid(),
+    crm_company_id: z7.string().uuid().optional().describe("Accessible CRM company UUID in this deal's workspace; only sets deals.crm_company_id."),
+    pipeline_id: z7.string().uuid().optional().describe("Target pipeline UUID. Requires stage in the same call, resolved only against this pipeline's stages."),
+    stage: z7.string().trim().min(1).max(100).optional().describe("Stage id or the stage display label from the deal's pipeline; labels are resolved to the correct id."),
+    value: z7.number().nonnegative().optional(),
+    closing_date: z7.string().nullable().optional().describe("ISO date, or null to clear."),
+    deal_owner: z7.string().trim().max(200).optional(),
+    manager: z7.string().trim().max(200).optional(),
+    narrative: z7.string().max(2e4).optional(),
+    is_flagged: z7.boolean().optional(),
+    flag_notes: z7.string().max(2e3).nullable().optional(),
+    notes: z7.string().trim().min(1).max(2e3).optional().describe("Replaces the Status Note text; previous note is archived and the change is logged. Use add_deal_status_note to prepend.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { deal_id, pipeline_id, crm_company_id, notes, ...rest } = input;
+    if (pipeline_id !== void 0 && input.stage === void 0) return errorResult("stage is required when pipeline_id is passed.");
+    const patch = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
+    if (Object.keys(patch).length === 0 && notes === void 0 && crm_company_id === void 0) return errorResult("No fields to update.");
+    const sb = supabaseForUser(ctx);
+    if (crm_company_id !== void 0) {
+      if (pipeline_id === void 0 && typeof patch.stage === "string") {
+        const { data: current, error: error3 } = await sb.from("deals").select("pipeline_id").eq("id", deal_id).maybeSingle();
+        if (error3) return errorResult(error3.message);
+        if (!current) return errorResult("Deal not found or you do not have permission to update it.");
+        patch.stage = await resolveStageInput(sb, current.pipeline_id, patch.stage);
+      }
+      const { data: data2, error: error2 } = await sb.rpc("mcp_update_deal_company", {
+        p_deal_id: deal_id,
+        p_crm_company_id: crm_company_id,
+        p_pipeline_id: pipeline_id ?? null,
+        p_patch: patch
+      });
+      if (error2) return errorResult(error2.message);
+      if (!data2) return errorResult("Deal not found or you do not have permission to update it.");
+      let result = data2;
+      if (notes !== void 0 && data2.notes !== notes) {
+        const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
+        if ("error" in res) return errorResult(`Deal updated, but Status Note update failed: ${res.error}`);
+        result = { ...data2, notes: res.notes, notes_updated_at: res.notes_updated_at };
+      }
+      const [updated2] = await withStageLabels(sb, [result]);
+      return textResult(updated2, { deal_id });
+    }
+    if (pipeline_id !== void 0) {
+      const { data: data2, error: error2 } = await sb.rpc("mcp_update_deal_pipeline", {
+        p_deal_id: deal_id,
+        p_pipeline_id: pipeline_id,
+        p_patch: patch
+      });
+      if (error2) return errorResult(error2.message);
+      if (!data2) return errorResult("Deal not found or you do not have permission to update it.");
+      if (notes !== void 0) {
+        const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
+        if ("error" in res) return errorResult(`Pipeline/stage updated, but Status Note update failed: ${res.error}`);
+        return textResult({ ...data2, notes: res.notes, notes_updated_at: res.notes_updated_at }, { deal_id });
+      }
+      return textResult(data2, { deal_id });
+    }
+    if (notes !== void 0) {
+      const res = await writeDealStatusNote(sb, ctx, deal_id, notes, "replace", "mcp update_deal");
+      if ("error" in res) return errorResult(res.error);
+    }
+    if (typeof patch.stage === "string") {
+      const { data: current } = await sb.from("deals").select("pipeline_id").eq("id", deal_id).maybeSingle();
+      patch.stage = await resolveStageInput(sb, current?.pipeline_id, patch.stage);
+    }
+    const q = Object.keys(patch).length ? sb.from("deals").update(patch).eq("id", deal_id).select().maybeSingle() : sb.from("deals").select().eq("id", deal_id).maybeSingle();
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Deal not found or you do not have permission to update it.");
+    const [updated] = await withStageLabels(sb, [data]);
+    return textResult(updated, { deal_id });
+  }
+});
+
+// src/lib/mcp/tools/link-deal-contact.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z9 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/dealRelationships.ts
+import { z as z8 } from "npm:zod@^3.23.0";
+var contactLinkSchema = {
+  deal_id: z8.string().uuid(),
+  contact_id: z8.string().uuid().optional().describe("Existing contact UUID; provide this or email, not both."),
+  email: z8.string().trim().email().max(320).optional().describe("Existing contact email in the deal workspace; never creates contacts.")
+};
+var aliasSchema = {
+  deal_id: z8.string().uuid(),
+  alias: z8.string().trim().min(1).max(500).describe("Deal alias; matching ignores case and collapses whitespace.")
+};
+async function mutateDealRelationship(action, input, ctx) {
+  const denied = requireAuth(ctx);
+  if (denied) return denied;
+  if (action.endsWith("contact") && Boolean(input.contact_id) === Boolean(input.email)) {
+    return errorResult("Provide contact_id or email, not both.");
+  }
+  const { deal_id, ...fields } = input;
+  const p_input = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== void 0));
+  const { data, error } = await supabaseForUser(ctx).rpc("mcp_mutate_deal_relationship", { p_deal_id: deal_id, p_action: action, p_input });
+  if (error) return errorResult(error.message);
+  return textResult(data, { deal_id });
+}
+
+// src/lib/mcp/tools/link-deal-contact.ts
+var link_deal_contact_default = defineTool8({
+  name: "link_deal_contact",
+  title: "Link deal contact",
+  description: "Link an existing workspace contact to a deal by contact_id or email. Optionally set or update role; omitted role is preserved. Returns the link plus contact name, email and company. Caller-scoped, atomic MCP deal activity; identical retries are no-ops. Never creates a contact. Requires user approval.",
+  inputSchema: { ...contactLinkSchema, role: z9.string().max(200).optional().describe("Deal-specific contact role, e.g. Client \u2013 CFO; only changed when supplied.") },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: (input, ctx) => mutateDealRelationship("link_deal_contact", input, ctx)
+});
+
+// src/lib/mcp/tools/unlink-deal-contact.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var unlink_deal_contact_default = defineTool9({
+  name: "unlink_deal_contact",
+  title: "Unlink deal contact",
+  description: "Remove only an existing contact's contact_deals link by deal_id and contact_id or email; never delete the contact. Caller-scoped, atomic MCP deal activity only when changed; already-unlinked retries succeed as no-ops. Requires user approval.",
+  inputSchema: contactLinkSchema,
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: (input, ctx) => mutateDealRelationship("unlink_deal_contact", input, ctx)
+});
+
+// src/lib/mcp/tools/add-deal-alias.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var add_deal_alias_default = defineTool10({
+  name: "add_deal_alias",
+  title: "Add deal alias",
+  description: "Add a deal alias with lowercased, trimmed, collapsed-whitespace alias_normalized. Unique per deal; equivalent retries return the existing alias without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
+  inputSchema: aliasSchema,
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: (input, ctx) => mutateDealRelationship("add_deal_alias", input, ctx)
+});
+
+// src/lib/mcp/tools/remove-deal-alias.ts
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var remove_deal_alias_default = defineTool11({
+  name: "remove_deal_alias",
+  title: "Remove deal alias",
+  description: "Remove only the matching alias on this deal, ignoring case and collapsing whitespace. Already-absent retries succeed without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
+  inputSchema: aliasSchema,
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: (input, ctx) => mutateDealRelationship("remove_deal_alias", input, ctx)
+});
+
+// src/lib/mcp/tools/add-deal-status-note.ts
+import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z10 } from "npm:zod@^3.23.0";
+var add_deal_status_note_default = defineTool12({
+  name: "add_deal_status_note",
+  title: "Add deal status note",
+  description: "Add or replace the status note on a deal (the Status Note box on the deal page).",
+  inputSchema: {
+    deal_id: z10.string().uuid(),
+    note: z10.string().trim().min(1, "Note cannot be empty.").max(2e3),
+    mode: z10.enum(["prepend", "append", "replace"]).default("prepend").describe("prepend (default) keeps history below a blank line; replace overwrites."),
+    source: z10.string().trim().min(1).max(100).default("Claude deal-update").describe("Attribution recorded in the activity log.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ deal_id, note, mode, source }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const res = await writeDealStatusNote(supabaseForUser(ctx), ctx, deal_id, note, mode, source);
+    if ("error" in res) return errorResult(res.error);
+    return textResult(res, { deal_id: res.deal_id, notes_updated_at: res.notes_updated_at });
+  }
+});
+
+// src/lib/mcp/tools/list-tasks.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z11 } from "npm:zod@^3.23.0";
+var list_tasks_default = defineTool13({
+  name: "list_tasks",
+  title: "List tasks",
+  description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
+  inputSchema: {
+    deal_id: z11.string().uuid().optional(),
+    status: z11.enum(["not_started", "pending", "in_progress", "completed", "complete"]).optional(),
+    assigned_to: z11.string().uuid().optional().describe("User id the task is assigned to."),
+    query: z11.string().trim().max(200).optional(),
+    limit: z11.number().int().min(1).max(200).default(50)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, status, assigned_to, query, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("tasks").select(
+      "id, title, description, status, priority, due_date, completed_at, assigned_to, assigned_by, task_type, deal_id, contact_id, crm_company_id, company_id, created_at"
+    ).order("due_date", { ascending: true, nullsFirst: false }).limit(limit);
+    if (deal_id) q = q.eq("deal_id", deal_id);
+    if (status) q = q.eq("status", status);
+    if (assigned_to) q = q.eq("assigned_to", assigned_to);
+    if (query) q = q.ilike("title", `%${query}%`);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    const rows = data ?? [];
+    return textResult(rows, { count: rows.length, tasks: rows });
+  }
+});
+
+// src/lib/mcp/tools/create-task.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z12 } from "npm:zod@^3.23.0";
+var create_task_default = defineTool14({
+  name: "create_task",
+  title: "Create task",
+  description: "Create a task, optionally tied to a deal, contact, or company. Returns the created row.",
+  inputSchema: {
+    title: z12.string().trim().min(1).max(500),
+    description: z12.string().max(1e4).optional(),
+    due_date: z12.string().nullable().optional().describe("ISO date."),
+    priority: z12.enum(["low", "medium", "high", "urgent"]).optional(),
+    assigned_to: z12.string().uuid().optional().describe("User id to assign the task to."),
+    deal_id: z12.string().uuid().optional(),
+    contact_id: z12.string().uuid().optional(),
+    company_id: z12.string().uuid().optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const row = {
+      title: input.title,
+      status: "not_started",
+      created_by: ctx.getUserId()
+    };
+    for (const k of ["description", "due_date", "priority", "assigned_to", "deal_id", "contact_id", "company_id"]) {
+      if (input[k] !== void 0) row[k] = input[k];
+    }
+    const { data, error } = await sb.from("tasks").insert(row).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    return textResult(data, { task_id: data?.id });
+  }
+});
+
+// src/lib/mcp/tools/complete-task.ts
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z13 } from "npm:zod@^3.23.0";
+var complete_task_default = defineTool15({
+  name: "complete_task",
+  title: "Complete task",
+  description: "Mark a task as completed.",
+  inputSchema: { task_id: z13.string().uuid() },
+  annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ task_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("tasks").update({ status: "completed", completed_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", task_id).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Task not found or not accessible.");
+    return textResult(data);
+  }
+});
+
+// src/lib/mcp/orFilter.ts
+function orIlike(value) {
+  const raw = String(value ?? "").slice(0, 200);
+  const likeEscaped = raw.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const quoted = `%${likeEscaped}%`.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return `"${quoted}"`;
+}
+
+// src/lib/mcp/tools/search-contacts.ts
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z14 } from "npm:zod@^3.23.0";
+var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
+var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
+var search_contacts_default = defineTool16({
+  name: "search_contacts",
+  title: "Search contacts",
+  description: 'Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more \u2014 keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: "*"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact\'s full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.',
+  inputSchema: {
+    query: z14.string().trim().min(1).max(200).optional().describe("Free-text match on name, email, domain, title, phone, LinkedIn. Omit to browse all contacts."),
+    fields: z14.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list. Defaults to a summary set.'),
+    contact_type: z14.string().trim().max(100).optional(),
+    tag: z14.string().trim().max(100).optional().describe("Match a single tag in the contact's tags array."),
+    crm_company_id: z14.string().uuid().optional(),
+    city: z14.string().trim().max(100).optional(),
+    state: z14.string().trim().max(100).optional(),
+    country: z14.string().trim().max(100).optional(),
+    has_email: z14.boolean().optional(),
+    order_by: z14.string().trim().max(80).default("created_at"),
+    ascending: z14.boolean().default(false),
+    limit: z14.number().int().min(1).max(500).default(50),
+    offset: z14.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { query, fields, contact_type, tag, crm_company_id, city, state, country, has_email, order_by, ascending, limit, offset } = input;
+    const sb = supabaseForUser(ctx);
+    let select = DEFAULT_FIELDS;
+    if (fields) {
+      const f = fields.trim();
+      if (f === "*") select = "*";
+      else {
+        if (!FIELD_RE.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
+        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
+        cols.add("id");
+        select = [...cols].join(", ");
+      }
+    }
+    let q = sb.from("contacts").select(select, { count: "exact" }).range(offset, offset + limit - 1);
+    if (query) {
+      const like = orIlike(query);
+      q = q.or(
+        `first_name.ilike.${like},last_name.ilike.${like},full_name.ilike.${like},email.ilike.${like},website_url.ilike.${like},job_title.ilike.${like},phone_mobile.ilike.${like},phone_work.ilike.${like},linkedin_url.ilike.${like}`
+      );
+    }
+    if (contact_type) q = q.eq("contact_type", contact_type);
+    if (tag) q = q.contains("tags", [tag]);
+    if (crm_company_id) q = q.eq("crm_company_id", crm_company_id);
+    if (city) q = q.ilike("city", city);
+    if (state) q = q.ilike("state", state);
+    if (country) q = q.ilike("country", country);
+    if (has_email === true) q = q.not("email", "is", null);
+    if (has_email === false) q = q.is("email", null);
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error, count } = await q;
+    if (error) return errorResult(error.message);
+    const rows = data ?? [];
+    const contacts = rows.map((c) => ({
+      ...c,
+      name: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || null,
+      phone: c.phone_mobile || c.phone_work || c.phone_other || null
+    }));
+    const total_count = count ?? contacts.length;
+    const next = offset + contacts.length;
+    const has_more = next < total_count;
+    return textResult(
+      { contacts, total_count, returned: contacts.length, offset, next_offset: has_more ? next : null, has_more },
+      { count: contacts.length, total_count, offset, next_offset: has_more ? next : null, has_more }
+    );
+  }
+});
+
+// src/lib/mcp/tools/get-contact.ts
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z15 } from "npm:zod@^3.23.0";
+var CHILD_TABLES = [
+  { table: "contact_activities", column: "contact_id", key: "activities", limit: 300, order: "occurred_at" },
+  { table: "contact_audit_log", column: "contact_id", key: "change_history", limit: 500, order: "created_at" },
+  { table: "contact_company_associations", column: "contact_id", key: "company_associations", limit: 100 },
+  { table: "contact_field_suggestions", column: "contact_id", key: "field_suggestions", limit: 200 },
+  { table: "contact_field_suggestion_audit", column: "contact_id", key: "field_suggestion_audit", limit: 200 },
+  { table: "crm_contact_attachments", column: "contact_id", key: "attachments", limit: 200 },
+  { table: "lender_contacts", column: "contact_id", key: "lender_links", limit: 100 },
+  { table: "partner_contacts", column: "contact_id", key: "partner_links", limit: 100 },
+  { table: "crm_company_activities", column: "contact_id", key: "company_activities", limit: 200 },
+  { table: "tasks", column: "contact_id", key: "tasks", limit: 300, order: "created_at" },
+  { table: "channel_entries", column: "contact_id", key: "channel_entries", limit: 100 },
+  { table: "referral_sources", column: "contact_id", key: "referral_sources", limit: 100 },
+  { table: "ai_action_log", column: "contact_id", key: "ai_actions", limit: 300, order: "created_at" },
+  {
+    table: "claap_meeting_participants",
+    column: "contact_id",
+    key: "meeting_participation",
+    limit: 300
+  }
+];
+var get_contact_default = defineTool17({
+  name: "get_contact",
+  title: "Get contact detail",
+  description: "Return the COMPLETE record for one CRM contact \u2014 every column on `contacts` (all custom and standard fields: names, all phone numbers, email(s), job title, geography/city/state/country, LinkedIn, tags, contact type, source, owner, last-contact timestamps, notes and every custom field) \u2014 plus its related rows: linked CRM company record, company associations, deals the contact is attached to (with deal name/stage/pipeline), logged activities, full field-level change history, AI field suggestions and their audit trail, attachments, and any funding-source or partner links. Look up by `contact_id`, or by `email` or partial `name` (ambiguous name matches return the candidates to choose from).",
+  inputSchema: {
+    contact_id: z15.string().uuid().optional(),
+    email: z15.string().trim().max(320).optional(),
+    name: z15.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
+    include_related: z15.boolean().default(true).describe("Include company, deals, activities, change history, suggestions, attachments and links.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ contact_id, email, name, include_related }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!contact_id && !email && !name) return errorResult("Provide contact_id, email or name.");
+    const sb = supabaseForUser(ctx);
+    let contact = null;
+    if (contact_id) {
+      const { data, error } = await sb.from("contacts").select("*").eq("id", contact_id).maybeSingle();
+      if (error) return errorResult(error.message);
+      contact = data ?? null;
+    } else if (email) {
+      const { data, error } = await sb.from("contacts").select("*").ilike("email", email).limit(5);
+      if (error) return errorResult(error.message);
+      contact = (data ?? [])[0] ?? null;
+    } else {
+      const like = orIlike(name);
+      const { data, error } = await sb.from("contacts").select("*").or(`full_name.ilike.${like},first_name.ilike.${like},last_name.ilike.${like}`).limit(10);
+      if (error) return errorResult(error.message);
+      const matches = data ?? [];
+      if (matches.length > 1) {
+        const target = String(name).toLowerCase();
+        const exact = matches.find(
+          (m) => String(m.full_name ?? "").toLowerCase() === target || [m.first_name, m.last_name].filter(Boolean).join(" ").toLowerCase() === target
+        );
+        if (!exact) {
+          return textResult(
+            {
+              ambiguous: true,
+              message: "Multiple contacts match that name; call get_contact again with one of these ids.",
+              matches: matches.map((m) => ({
+                id: m.id,
+                name: m.full_name ?? [m.first_name, m.last_name].filter(Boolean).join(" "),
+                email: m.email,
+                job_title: m.job_title
+              }))
+            },
+            { count: matches.length }
+          );
+        }
+        contact = exact;
+      } else {
+        contact = matches[0] ?? null;
+      }
+    }
+    if (!contact) return errorResult("Contact not found (or not visible to this user).");
+    const id = contact.id;
+    const payload = { contact };
+    if (include_related) {
+      const related = {};
+      const crmCompanyId = contact.crm_company_id;
+      if (crmCompanyId) {
+        const { data: company, error: cErr } = await sb.from("crm_companies").select("*").eq("id", crmCompanyId).maybeSingle();
+        related.crm_company = cErr ? { error: cErr.message } : company ?? null;
+      } else {
+        related.crm_company = null;
+      }
+      const { data: dealLinks, error: dErr } = await sb.from("contact_deals").select("id, deal_id, role, created_at, deals:deal_id(id, company, stage, status, pipeline_id)").eq("contact_id", id).limit(500);
+      related.deals = dErr ? { error: dErr.message } : (dealLinks ?? []).map((r) => ({
+        ...r,
+        deal_name: r.deals?.company ?? null,
+        pipeline_id: r.deals?.pipeline_id ?? null
+      }));
+      await Promise.all(
+        CHILD_TABLES.map(async ({ table, column, key, limit, order }) => {
+          let q = sb.from(table).select("*").eq(column, id).limit(limit);
+          if (order) q = q.order(order, { ascending: false, nullsFirst: false });
+          const { data, error } = await q;
+          related[key] = error ? { error: error.message } : data ?? [];
+        })
+      );
+      const addr = String(contact.email ?? "").trim().toLowerCase();
+      if (addr) {
+        const mailSources = [
+          { table: "emails", key: "emails_received", order: "received_at" },
+          { table: "gmail_messages", key: "gmail_messages", order: "received_at" },
+          { table: "gmail_sent_messages", key: "gmail_sent_messages", order: "sent_at" }
+        ];
+        await Promise.all(
+          mailSources.map(async ({ table, key, order }) => {
+            const { data, error } = await sb.from(table).select("*").or(`from_email.ilike.${addr},to_emails.cs.{"${addr}"}`).order(order, { ascending: false, nullsFirst: false }).limit(200);
+            if (!error) {
+              related[key] = data ?? [];
+              return;
+            }
+            const { data: toData, error: toErr } = await sb.from(table).select("*").contains("to_emails", [addr]).limit(200);
+            related[key] = toErr ? { error: toErr.message } : toData ?? [];
+          })
+        );
+      }
+      const { data: recordings, error: recErr } = await sb.from("event_claap_recordings").select("*").contains("contact_ids", [id]).limit(200);
+      related.claap_recordings = recErr ? { error: recErr.message } : recordings ?? [];
+      payload.related = related;
+    }
+    return textResult(payload, {
+      contact_id: id,
+      name: String(contact.full_name ?? [contact.first_name, contact.last_name].filter(Boolean).join(" "))
+    });
+  }
+});
+
+// src/lib/mcp/tools/search-companies.ts
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z16 } from "npm:zod@^3.23.0";
+var DEFAULT_FIELDS2 = "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at, updated_at";
+var FIELD_RE2 = /^[a-zA-Z0-9_,\s]+$/;
+var search_companies_default = defineTool18({
+  name: "search_companies",
+  title: "Search companies",
+  description: 'Search CRM companies by name, domain or website, with optional filters (industry, company_type, status, lifecycle_stage, city, state, country, tag, owner, has_deals). Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: "*"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies. Use `get_company` for one company\'s full record plus contacts, deals, activity history and attachments.',
+  inputSchema: {
+    query: z16.string().trim().min(1).max(200).optional(),
+    fields: z16.string().trim().max(4e3).optional().describe('"*" for all columns, or a comma-separated column list.'),
+    industry: z16.string().trim().max(120).optional().describe("Case-insensitive partial match on industry or sub_industry."),
+    company_type: z16.string().trim().max(120).optional(),
+    status: z16.string().trim().max(120).optional(),
+    lifecycle_stage: z16.string().trim().max(120).optional(),
+    city: z16.string().trim().max(120).optional(),
+    state: z16.string().trim().max(120).optional(),
+    country: z16.string().trim().max(120).optional(),
+    tag: z16.string().trim().max(120).optional().describe("Match a single tag in the company's tags array."),
+    owner_user_id: z16.string().uuid().optional(),
+    limit: z16.number().int().min(1).max(500).default(50),
+    offset: z16.number().int().min(0).default(0),
+    order_by: z16.string().trim().max(80).default("created_at"),
+    ascending: z16.boolean().default(false)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query, fields, industry, company_type, status, lifecycle_stage, city, state, country, tag, owner_user_id, limit, offset, order_by, ascending }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let select = DEFAULT_FIELDS2;
+    if (fields) {
+      const f = fields.trim();
+      if (f === "*") select = "*";
+      else {
+        if (!FIELD_RE2.test(f)) return errorResult("fields may only contain column names, commas and spaces.");
+        const cols = new Set(f.split(",").map((c) => c.trim()).filter(Boolean));
+        cols.add("id");
+        cols.add("name");
+        select = [...cols].join(", ");
+      }
+    }
+    let q = sb.from("crm_companies").select(select, { count: "exact" }).range(offset, offset + limit - 1);
+    if (query) {
+      const like = orIlike(query);
+      q = q.or(`name.ilike.${like},domain.ilike.${like},website_url.ilike.${like}`);
+    }
+    if (industry) q = q.or(`industry.ilike.${orIlike(industry)},sub_industry.ilike.${orIlike(industry)}`);
+    if (company_type) q = q.ilike("company_type", company_type);
+    if (status) q = q.ilike("status", status);
+    if (lifecycle_stage) q = q.ilike("lifecycle_stage", lifecycle_stage);
+    if (city) q = q.ilike("hq_city", `%${city}%`);
+    if (state) q = q.ilike("hq_state", `%${state}%`);
+    if (country) q = q.ilike("hq_country", `%${country}%`);
+    if (tag) q = q.contains("tags", [tag]);
+    if (owner_user_id) q = q.eq("owner_user_id", owner_user_id);
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error, count } = await q;
+    if (error) return errorResult(error.message);
+    const companies = data ?? [];
+    const total_count = count ?? companies.length;
+    const next = offset + companies.length;
+    const has_more = next < total_count;
+    return textResult(
+      { companies, total_count, returned: companies.length, offset, next_offset: has_more ? next : null, has_more },
+      { count: companies.length, total_count, offset, next_offset: has_more ? next : null, has_more }
+    );
+  }
+});
+
+// src/lib/mcp/tools/get-company.ts
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z17 } from "npm:zod@^3.23.0";
+var CHILD_TABLES2 = [
+  { table: "crm_company_activities", column: "crm_company_id", key: "activities", limit: 500, order: "created_at" },
+  { table: "crm_company_attachments", column: "crm_company_id", key: "attachments", limit: 200 },
+  { table: "crm_company_team", column: "crm_company_id", key: "team", limit: 200 },
+  { table: "contact_company_associations", column: "company_id", key: "contact_associations", limit: 500 },
+  { table: "master_lenders", column: "crm_company_id", key: "funding_sources", limit: 200 },
+  { table: "tasks", column: "crm_company_id", key: "tasks", limit: 300, order: "created_at" }
+];
+var get_company_default = defineTool19({
+  name: "get_company",
+  title: "Get company detail",
+  description: "Return the COMPLETE record for one CRM company \u2014 every column on `crm_companies` (name, domains, industry/sub-industry, type, status, lifecycle stage, employee count/range, revenue/ARR/MRR/contract values, contract and renewal dates, HQ address/city/state/country/postal, regions served, key products, description, socials, phone, tags, owner, source system/external ids, custom fields, notes, timestamps) \u2014 plus its related rows: contacts at the company, deals linked to it (with deal name, stage, status, pipeline), full activity history, attachments, team members, contact-to-company match/association history, linked funding sources, tasks, and the parent/child company records. Look up by `company_id`, `domain`, or partial `name` (ambiguous name matches return the candidates to choose from).",
+  inputSchema: {
+    company_id: z17.string().uuid().optional(),
+    domain: z17.string().trim().max(253).optional(),
+    name: z17.string().trim().min(1).max(200).optional().describe("Case-insensitive partial name match."),
+    include_related: z17.boolean().default(true).describe("Include contacts, deals, activities, attachments, team, funding sources, tasks and match history.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ company_id, domain, name, include_related }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!company_id && !domain && !name) return errorResult("Provide company_id, domain or name.");
+    const sb = supabaseForUser(ctx);
+    let company = null;
+    if (company_id) {
+      const { data, error } = await sb.from("crm_companies").select("*").eq("id", company_id).maybeSingle();
+      if (error) return errorResult(error.message);
+      company = data ?? null;
+    } else if (domain) {
+      const like = orIlike(domain);
+      const { data, error } = await sb.from("crm_companies").select("*").or(`domain.ilike.${like},domain_normalized.ilike.${like},website_url.ilike.${like}`).limit(5);
+      if (error) return errorResult(error.message);
+      company = (data ?? [])[0] ?? null;
+    } else {
+      const like = `%${name}%`;
+      const { data, error } = await sb.from("crm_companies").select("*").ilike("name", like).limit(10);
+      if (error) return errorResult(error.message);
+      const matches = data ?? [];
+      if (matches.length > 1) {
+        const target = String(name).toLowerCase();
+        const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === target);
+        if (!exact) {
+          return textResult(
+            {
+              ambiguous: true,
+              message: "Multiple companies match that name; call get_company again with one of these ids.",
+              matches: matches.map((m) => ({
+                id: m.id,
+                name: m.name,
+                domain: m.domain,
+                industry: m.industry,
+                status: m.status
+              }))
+            },
+            { count: matches.length }
+          );
+        }
+        company = exact;
+      } else {
+        company = matches[0] ?? null;
+      }
+    }
+    if (!company) return errorResult("Company not found (or not visible to this user).");
+    const id = company.id;
+    const payload = { company };
+    if (include_related) {
+      const related = {};
+      const { data: contacts, error: ctErr } = await sb.from("contacts").select("*").eq("crm_company_id", id).limit(500);
+      related.contacts = ctErr ? { error: ctErr.message } : contacts ?? [];
+      const { data: deals, error: dErr } = await sb.from("deals").select("id, company, stage, status, pipeline_id, value, created_at, updated_at").eq("crm_company_id", id).limit(500);
+      related.deals = dErr ? { error: dErr.message } : (deals ?? []).map((d) => ({ ...d, deal_name: d.company ?? null }));
+      const parentId = company.parent_company_id;
+      if (parentId) {
+        const { data: parent, error: pErr } = await sb.from("crm_companies").select("*").eq("id", parentId).maybeSingle();
+        related.parent_company = pErr ? { error: pErr.message } : parent ?? null;
+      } else {
+        related.parent_company = null;
+      }
+      const { data: children, error: chErr } = await sb.from("crm_companies").select("id, name, domain, industry, status").eq("parent_company_id", id).limit(200);
+      related.child_companies = chErr ? { error: chErr.message } : children ?? [];
+      await Promise.all(
+        CHILD_TABLES2.map(async ({ table, column, key, limit, order }) => {
+          let q = sb.from(table).select("*").eq(column, id).limit(limit);
+          if (order) q = q.order(order, { ascending: false, nullsFirst: false });
+          const { data, error } = await q;
+          related[key] = error ? { error: error.message } : data ?? [];
+        })
+      );
+      const { data: matchAudit, error: maErr } = await sb.from("contact_company_match_audit").select("*").eq("proposed_company_id", id).limit(200);
+      related.company_match_audit = maErr ? { error: maErr.message } : matchAudit ?? [];
+      payload.related = related;
+    }
+    return textResult(payload, { company_id: id, name: String(company.name ?? "") });
+  }
+});
+
+// src/lib/mcp/tools/create-contact.ts
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z18 } from "npm:zod@^3.23.0";
+var create_contact_default = defineTool20({
+  name: "create_contact",
+  title: "Create contact",
+  description: "Create a CRM contact. Provide at minimum an email or first_name/last_name.",
+  inputSchema: {
+    first_name: z18.string().trim().max(200).optional(),
+    last_name: z18.string().trim().max(200).optional(),
+    email: z18.string().trim().email().optional(),
+    phone: z18.string().trim().max(50).optional().describe("Stored as mobile phone."),
+    website_url: z18.string().trim().max(500).optional().describe("Contact domain (matches to company)."),
+    job_title: z18.string().trim().max(200).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!input.email && !input.first_name && !input.last_name) {
+      return errorResult("Provide at least email or first_name/last_name.");
+    }
+    const sb = supabaseForUser(ctx);
+    const { phone, ...rest } = input;
+    const row = { created_by: ctx.getUserId() };
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) row[k] = v;
+    if (phone !== void 0) row.phone_mobile = phone;
+    const { data, error } = await sb.from("contacts").insert(row).select("id, first_name, last_name, email, phone_mobile, website_url, job_title").maybeSingle();
+    if (error) return errorResult(error.message);
+    return textResult(data, { contact_id: data?.id });
+  }
+});
+
+// src/lib/mcp/tools/create-company.ts
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z19 } from "npm:zod@^3.23.0";
+var create_company_default = defineTool21({
+  name: "create_company",
+  title: "Create company",
+  description: "Create a CRM company record.",
+  inputSchema: {
+    name: z19.string().trim().min(1).max(300),
+    domain: z19.string().trim().max(300).optional(),
+    website_url: z19.string().trim().max(500).optional(),
+    industry: z19.string().trim().max(200).optional(),
+    hq_city: z19.string().trim().max(200).optional(),
+    hq_state: z19.string().trim().max(200).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const row = { created_by: ctx.getUserId() };
+    for (const [k, v] of Object.entries(input)) if (v !== void 0) row[k] = v;
+    const { data, error } = await sb.from("crm_companies").insert(row).select("id, name, domain, website_url, hq_city, hq_state").maybeSingle();
+    if (error) return errorResult(error.message);
+    return textResult(data, { company_id: data?.id });
+  }
+});
+
+// src/lib/mcp/tools/search-lenders.ts
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z20 } from "npm:zod@^3.23.0";
+var DEFAULT_FIELDS3 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
+var search_lenders_default = defineTool22({
+  name: "search_lenders",
+  title: "Search funding sources / lenders",
+  description: 'Search the master funding-source (lender) directory. By default returns a summary card per lender; pass fields="*" to get EVERY column on master_lenders (criteria, leverage, revenue/EBITDA minimums, industries to avoid, excluded geographies, referral terms, NDA, sync metadata, address, notes) or a comma-separated column list. Filters: name query, deal_size (min_deal <= size <= max_deal), lender_type, tier, appetite_status, active, industry, geography, loan_type. Results are paginated \u2014 the response returns total_count, returned, offset, next_offset and has_more; keep calling with next_offset to walk the entire directory. Use `get_lender` for one lender\'s full record plus contacts, notes, attachments, change history and linked deals.',
+  inputSchema: {
+    query: z20.string().trim().max(200).optional(),
+    deal_size: z20.number().nonnegative().optional(),
+    lender_type: z20.string().trim().max(100).optional(),
+    tier: z20.string().trim().max(60).optional(),
+    appetite_status: z20.string().trim().max(60).optional(),
+    active: z20.boolean().optional(),
+    industry: z20.string().trim().max(120).optional().describe("Matches a value in the lender's industries array."),
+    geography: z20.string().trim().max(120).optional().describe("Matches a value in the lender's geographies array."),
+    loan_type: z20.string().trim().max(120).optional().describe("Matches a value in the lender's loan_types array."),
+    fields: z20.string().trim().max(2e3).optional().describe('"*" for every column, or a comma-separated column list. Defaults to a summary set.'),
+    limit: z20.number().int().min(1).max(500).default(25),
+    offset: z20.number().int().min(0).default(0)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query, deal_size, lender_type, tier, appetite_status, active, industry, geography, loan_type, fields, limit, offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let select = DEFAULT_FIELDS3;
+    if (fields) {
+      if (fields.trim() === "*") select = "*";
+      else if (!/^[a-zA-Z0-9_,\s]+$/.test(fields)) return errorResult('fields may only contain column names, commas and spaces, or be "*".');
+      else {
+        const cols = new Set(fields.split(",").map((f) => f.trim()).filter(Boolean));
+        cols.add("id");
+        cols.add("name");
+        select = Array.from(cols).join(", ");
+      }
+    }
+    let q = sb.from("master_lenders").select(select, { count: "exact" }).order("name", { ascending: true }).range(offset, offset + limit - 1);
+    if (query) q = q.ilike("name", `%${query}%`);
+    if (lender_type) q = q.ilike("lender_type", `%${lender_type}%`);
+    if (tier) q = q.eq("tier", tier);
+    if (appetite_status) q = q.eq("appetite_status", appetite_status);
+    if (active !== void 0) q = q.eq("active", active);
+    if (industry) q = q.contains("industries", [industry]);
+    if (geography) q = q.contains("geographies", [geography]);
+    if (loan_type) q = q.contains("loan_types", [loan_type]);
+    if (deal_size !== void 0) {
+      q = q.or(`min_deal.is.null,min_deal.lte.${deal_size}`).or(`max_deal.is.null,max_deal.gte.${deal_size}`);
+    }
+    const { data, error, count } = await q;
+    if (error) return errorResult(error.message);
+    const rows = (data ?? []).map((r) => ({
+      ...r,
+      min_deal_size: r.min_deal ?? null,
+      max_deal_size: r.max_deal ?? null
+    }));
+    const total = count ?? rows.length;
+    const hasMore = offset + rows.length < total;
+    return textResult(
+      {
+        lenders: rows,
+        total_count: total,
+        returned: rows.length,
+        offset,
+        next_offset: hasMore ? offset + rows.length : null,
+        has_more: hasMore
+      },
+      { count: rows.length, total_count: total, offset, has_more: hasMore }
+    );
+  }
+});
+
+// src/lib/mcp/tools/get-lender.ts
+import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z21 } from "npm:zod@^3.23.0";
+var CHILD_TABLES3 = [
+  { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
+  { table: "lender_notes", column: "master_lender_id", key: "notes", limit: 200 },
+  { table: "lender_attachments", column: "lender_name", key: "attachments", limit: 200 },
+  { table: "lender_audit_logs", column: "lender_id", key: "audit_history", limit: 300 },
+  { table: "lender_disqualifications", column: "master_lender_id", key: "disqualifications", limit: 100 },
+  { table: "lender_doc_flags", column: "lender_name", key: "doc_flags", limit: 100 },
+  { table: "lender_fit_attributes", column: "master_lender_id", key: "fit_attributes", limit: 200 },
+  { table: "lender_pass_detections", column: "lender_name", key: "pass_detections", limit: 200 },
+  { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
+  { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
+];
+var get_lender_default = defineTool23({
+  name: "get_lender",
+  title: "Get funding source / lender detail",
+  description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
+  inputSchema: {
+    lender_id: z21.string().uuid().optional(),
+    name: z21.string().trim().min(1).max(200).optional().describe("Name lookup when the id is unknown (case-insensitive, partial)."),
+    include_related: z21.boolean().default(true).describe("Include contacts, notes, history, attachments and deal links.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lender_id, name, include_related }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!lender_id && !name) return errorResult("Provide lender_id or name.");
+    const sb = supabaseForUser(ctx);
+    let lender = null;
+    if (lender_id) {
+      const { data, error } = await sb.from("master_lenders").select("*").eq("id", lender_id).maybeSingle();
+      if (error) return errorResult(error.message);
+      lender = data ?? null;
+    } else {
+      const { data, error } = await sb.from("master_lenders").select("*").ilike("name", `%${name}%`).limit(5);
+      if (error) return errorResult(error.message);
+      const matches = data ?? [];
+      if (matches.length > 1) {
+        const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === String(name).toLowerCase());
+        if (!exact) {
+          return textResult(
+            {
+              ambiguous: true,
+              message: "Multiple funding sources match that name; call get_lender again with one of these ids.",
+              matches: matches.map((m) => ({ id: m.id, name: m.name, lender_type: m.lender_type }))
+            },
+            { count: matches.length }
+          );
+        }
+        lender = exact;
+      } else {
+        lender = matches[0] ?? null;
+      }
+    }
+    if (!lender) return errorResult("Funding source not found (or not visible to this user).");
+    const id = lender.id;
+    const payload = { lender };
+    if (include_related) {
+      const related = {};
+      const lenderName = String(lender.name ?? "");
+      const { data: dealLinks, error: dlErr } = await sb.from("deal_lenders").select(
+        "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, created_at, updated_at, deals:deal_id(id, company, stage, status, pipeline_id)"
+      ).eq("master_lender_id", id).order("last_status_change_at", { ascending: false, nullsFirst: false }).limit(500);
+      related.deals = dlErr ? { error: dlErr.message } : (dealLinks ?? []).map((r) => ({
+        ...r,
+        deal_name: r.deals?.company ?? null,
+        pipeline_id: r.deals?.pipeline_id ?? null
+      }));
+      const dealLenderIds = dlErr ? [] : (dealLinks ?? []).map((r) => r.id);
+      await Promise.all(
+        CHILD_TABLES3.map(async ({ table, column, key, limit }) => {
+          let q = sb.from(table).select("*").limit(limit);
+          if (column === "lender_name") q = q.eq("lender_name", lenderName);
+          else if (column === "deal_lender_id") {
+            if (dealLenderIds.length === 0) {
+              related[key] = [];
+              return;
+            }
+            q = q.in("deal_lender_id", dealLenderIds.slice(0, 200));
+          } else q = q.eq(column, id);
+          const { data, error } = await q;
+          related[key] = error ? { error: error.message } : data ?? [];
+        })
+      );
+      payload.related = related;
+    }
+    return textResult(payload, { lender_id: id, name: String(lender.name ?? "") });
+  }
+});
+
+// src/lib/mcp/tools/update-lender.ts
+import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z23 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/lenderWrites.ts
+async function resolveLenderId(sb, lender_id, name) {
+  if (lender_id) return { id: lender_id };
+  if (!name) return { error: errorResult("Provide lender_id or name_lookup.") };
+  const { data, error } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${name}%`).limit(5);
+  if (error) return { error: errorResult(error.message) };
+  const matches = data ?? [];
+  if (matches.length === 0) return { error: errorResult("Funding source not found (or not visible to this user).") };
+  if (matches.length > 1) {
+    const exact = matches.find((m) => String(m.name ?? "").toLowerCase() === String(name).toLowerCase());
+    if (!exact) {
+      return {
+        error: textResult(
+          {
+            ambiguous: true,
+            message: "Multiple funding sources match that name; call again with one of these ids.",
+            matches: matches.map((m) => ({ id: m.id, name: m.name, lender_type: m.lender_type }))
+          },
+          { count: matches.length }
+        )
+      };
+    }
+    return { id: exact.id };
+  }
+  return { id: matches[0].id };
+}
+
+// src/lib/mcp/lenderFields.ts
+import { z as z22 } from "npm:zod@^3.23.0";
+var str = (max = 2e3) => z22.string().max(max).nullable().optional();
+var arr = () => z22.array(z22.string().trim().min(1).max(200)).nullable().optional();
+var num = () => z22.number().finite().nullable().optional();
+var timestamp = () => z22.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
+var CRITERIA_CONFIDENCE_MEANINGS = {
+  imported: "Imported criteria; not independently verified.",
+  verified_call: "Confirmed by the lender on a recorded call.",
+  verified_email: "Confirmed by the lender in writing.",
+  verified_attachment: "Confirmed by a lender-produced document (one-pager, term sheet, or deck)."
+};
+var LENDER_FIELD_SCHEMA = {
+  lender_type: str(200),
+  loan_types: arr(),
+  sub_debt: str(500),
+  cash_burn: str(500),
+  sponsorship: str(500),
+  min_revenue: num(),
+  ebitda_min: num(),
+  min_deal: num(),
+  max_deal: num(),
+  sweet_spot_min: num(),
+  sweet_spot_max: num(),
+  min_gross_margin_pct: num(),
+  max_leverage: num(),
+  industries: arr(),
+  industries_to_avoid: arr(),
+  b2b_b2c: str(200),
+  refinancing: str(500),
+  company_requirements: str(5e3),
+  deal_structure_notes: str(1e4),
+  geo: str(500),
+  geographies: arr(),
+  geographies_excluded: arr(),
+  sponsor_requirement: str(500),
+  tier: str(50),
+  active: z22.boolean().nullable().optional(),
+  appetite_status: str(100),
+  tags: arr(),
+  website: str(500),
+  linkedin_url: str(500),
+  address: str(500),
+  city: str(200),
+  state: str(200),
+  country: str(200),
+  phone: str(100),
+  email: str(320),
+  contact_name: str(200),
+  contact_title: str(200),
+  contact_phone: str(100),
+  contact_geography: str(200),
+  relationship_owners: str(500),
+  referral_lender: str(200),
+  referral_fee_offered: str(500),
+  referral_agreement: str(500),
+  nda: str(500),
+  funding_source_notes: str(2e4),
+  about_notes: str(2e4),
+  lender_one_pager_url: str(1e3),
+  criteria_reviewed_at: z22.string().trim().refine((v) => !Number.isNaN(Date.parse(v)), { message: "criteria_reviewed_at must be an ISO date or timestamp, e.g. 2026-09-14" }).nullable().optional().describe("When the lending criteria were last reviewed. ISO date (2026-09-14) or timestamp."),
+  criteria_confidence: z22.enum(["imported", "verified_call", "verified_email", "verified_attachment"]).nullable().optional().describe("Allowed: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document). null clears."),
+  upfront_checklist: str(1e4).describe("Comma-separated list of upfront diligence items, same format as existing rows."),
+  post_term_sheet_checklist: str(1e4).describe("Comma-separated list of post-term-sheet items, same format as existing rows."),
+  crm_company_id: z22.string().uuid().nullable().optional().describe("crm_companies.id to link this funding source to. Must exist and be visible to you."),
+  onboarded_to_flex: str(500),
+  gift_address: str(1e3),
+  sync_source: str(200).describe("Inert historical metadata; does not reconnect FLEx."),
+  flex_lender_id: str(500),
+  last_synced_from_flex: timestamp(),
+  external_created_by: str(500),
+  external_last_modified: timestamp(),
+  resp_emails_sent: z22.number().int().nonnegative().nullable().optional(),
+  resp_replies_received: z22.number().int().nonnegative().nullable().optional(),
+  resp_reply_rate: num(),
+  resp_median_hours_to_reply: num(),
+  resp_reply_rate_excl_mass: num(),
+  resp_last_reply_date: timestamp(),
+  resp_rating: str(200),
+  resp_emails_sent_l12m: z22.number().int().nonnegative().nullable().optional(),
+  resp_reply_rate_l12m: num(),
+  resp_window_label: str(500),
+  resp_updated_at: timestamp()
+};
+var LENDER_FIELD_NAMES = Object.keys(LENDER_FIELD_SCHEMA);
+async function validateLenderPatch(sb, patch) {
+  if (typeof patch.criteria_reviewed_at === "string") {
+    patch.criteria_reviewed_at = new Date(patch.criteria_reviewed_at).toISOString();
+  }
+  if (typeof patch.criteria_confidence === "string") {
+    const value = patch.criteria_confidence.trim();
+    const allowed = new Set(Object.keys(CRITERIA_CONFIDENCE_MEANINGS));
+    if (!allowed.has(value)) {
+      return `Invalid criteria_confidence "${value}". Allowed values: ${[...allowed].sort().join(", ")}.`;
+    }
+    patch.criteria_confidence = value;
+  }
+  if (typeof patch.crm_company_id === "string") {
+    const { data, error } = await sb.from("crm_companies").select("id").eq("id", patch.crm_company_id).maybeSingle();
+    if (error) return `crm_company_id: ${error.message}`;
+    if (!data) return `crm_company_id: no CRM company ${patch.crm_company_id} exists (or it is not visible to you).`;
+  }
+  if (patch.min_deal != null && patch.max_deal != null && Number(patch.min_deal) > Number(patch.max_deal)) {
+    return "min_deal: must be less than or equal to max_deal.";
+  }
+  return null;
+}
+
+// src/lib/mcp/tools/update-lender.ts
+var lenderUpdateItem = z23.object({
+  lender_id: z23.string().uuid().optional(),
+  name_lookup: z23.string().trim().min(1).max(200).optional(),
+  name: z23.string().trim().min(1).max(200).optional(),
+  ...LENDER_FIELD_SCHEMA,
+  mode: z23.enum(["replace", "append", "prepend"]).optional(),
+  expected_updated_at: z23.string().datetime({ offset: true }).optional(),
+  dry_run: z23.boolean().optional(),
+  source: z23.string().max(1e3).optional(),
+  change_reason: z23.string().max(2e3).optional()
+}).strict();
+var update_lender_default = defineTool24({
+  name: "update_lender",
+  title: "Update funding source / lender",
+  description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. FLEx columns are inert metadata; FLEx stays disconnected.",
+  inputSchema: { ...lenderUpdateItem.shape, updates: z23.array(lenderUpdateItem).min(1).max(25).optional() },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { updates, ...single } = input;
+    if (updates && Object.keys(single).some((k) => !["dry_run", "source", "change_reason", "mode"].includes(k))) {
+      return errorResult("Provide either updates or a single lender edit. Only mode, dry_run, source and change_reason may be batch defaults.");
+    }
+    const sb = supabaseForUser(ctx);
+    const results = [];
+    for (const value of updates ?? [single]) {
+      const item = { mode: input.mode, dry_run: input.dry_run, source: input.source, change_reason: input.change_reason, ...value };
+      const { lender_id, name_lookup, mode, expected_updated_at, dry_run, source, change_reason, ...fields } = item;
+      try {
+        const patch = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== void 0));
+        if (!Object.keys(patch).length) throw new Error("No fields to update.");
+        const invalid = await validateLenderPatch(sb, patch);
+        if (invalid) throw new Error(invalid);
+        const resolved = await resolveLenderId(sb, lender_id, name_lookup);
+        if ("error" in resolved) {
+          if (!updates) return resolved.error;
+          results.push({ lender_id: lender_id ?? null, success: false, error: resolved.error.content });
+          continue;
+        }
+        const { data, error } = await sb.rpc("mcp_update_lender", {
+          p_lender_id: resolved.id,
+          p_patch: patch,
+          p_mode: mode ?? "replace",
+          p_expected_updated_at: expected_updated_at ?? null,
+          p_dry_run: dry_run ?? false,
+          p_source: source ?? null,
+          p_change_reason: change_reason ?? null
+        });
+        if (error) throw new Error(error.message);
+        if (!updates) return { ...textResult(data), ...data?.error ? { isError: true } : {} };
+        results.push({ lender_id: resolved.id, success: !data?.error, ...data });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (!updates) return errorResult(message);
+        results.push({ lender_id: lender_id ?? null, success: false, error: message });
+      }
+    }
+    return textResult({ results });
+  }
+});
+
+// src/lib/mcp/tools/upsert-lender-contact.ts
+import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z26 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/lenderRelatedWrites.ts
+import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z25 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/lenderRelatedFields.ts
+import { z as z24 } from "npm:zod@^3.23.0";
+var LENDER_RELATED_FIELDS = {
+  lender_fit_attributes: {
+    summary: z24.string().max(2e4).nullable().optional(),
+    positive_signals: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional(),
+    negative_signals: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional(),
+    exclusions: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional(),
+    nuanced_preferences: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional()
+  },
+  lender_disqualifications: {
+    deal_id: z24.string().uuid().optional(),
+    deal_lender_id: z24.string().uuid().nullable().optional(),
+    reason_category: z24.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
+    reason_details: z24.string().max(2e4).nullable().optional(),
+    deal_size: z24.number().finite().nullable().optional(),
+    deal_industry: z24.string().max(2e4).nullable().optional(),
+    deal_geography: z24.string().max(2e4).nullable().optional()
+  },
+  lender_doc_flags: {
+    has_nda: z24.boolean().optional(),
+    has_marketing: z24.boolean().optional()
+  },
+  funding_source_acquisition_plans: {
+    year: z24.number().int().optional(),
+    cadence: z24.string().max(2e4).optional(),
+    period: z24.number().int().optional(),
+    target_count: z24.number().int().optional()
+  },
+  lender_match_rules: {
+    rule_type: z24.string().max(2e4).optional(),
+    applies_when: z24.record(z24.unknown()).or(z24.array(z24.unknown())).nullable().optional(),
+    reason: z24.string().max(2e4).optional(),
+    delta: z24.number().int().nullable().optional(),
+    active: z24.boolean().optional()
+  },
+  lender_pass_detections: {
+    deal_id: z24.string().uuid().optional(),
+    deal_lender_id: z24.string().uuid().nullable().optional(),
+    gmail_message_id: z24.string().max(2e4).optional(),
+    thread_id: z24.string().max(2e4).nullable().optional(),
+    sender_email: z24.string().max(2e4).nullable().optional(),
+    sender_name: z24.string().max(2e4).nullable().optional(),
+    confidence: z24.string().max(2e4).optional(),
+    is_pass: z24.boolean().optional(),
+    reason_summary: z24.string().max(2e4).nullable().optional(),
+    source_quote: z24.string().max(2e4).nullable().optional(),
+    status: z24.string().max(2e4).optional(),
+    edited_reason: z24.string().max(2e4).nullable().optional(),
+    raw_classification: z24.record(z24.unknown()).or(z24.array(z24.unknown())).nullable().optional()
+  },
+  lender_pass_patterns: {
+    reason_category: z24.enum(["deal_size_mismatch", "industry_exclusion", "geographic_restriction", "risk_profile_concerns", "timing_issues", "relationship_issues", "terms_mismatch", "other"]).optional(),
+    pattern_type: z24.string().max(2e4).optional(),
+    pattern_value: z24.string().max(2e4).optional(),
+    confidence_score: z24.number().finite().nullable().optional()
+  },
+  lender_sync_requests: {
+    source_system: z24.string().max(2e4).optional(),
+    source_lender_id: z24.string().max(2e4).nullable().optional(),
+    request_type: z24.string().max(2e4).optional(),
+    incoming_data: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional(),
+    changes_diff: z24.record(z24.unknown()).or(z24.array(z24.unknown())).nullable().optional(),
+    status: z24.string().max(2e4).optional(),
+    processing_notes: z24.string().max(2e4).nullable().optional(),
+    confidence: z24.string().max(2e4).nullable().optional(),
+    suggested_action: z24.string().max(2e4).nullable().optional(),
+    match_candidates: z24.record(z24.unknown()).or(z24.array(z24.unknown())).optional(),
+    match_reason: z24.string().max(2e4).nullable().optional(),
+    conflict_count: z24.number().int().optional(),
+    contact_change_count: z24.number().int().optional(),
+    assigned_reviewer_id: z24.string().uuid().nullable().optional()
+  },
+  lender_sync_request_decisions: {
+    request_id: z24.string().uuid().optional(),
+    field_name: z24.string().max(2e4).optional(),
+    scope: z24.string().max(2e4).optional(),
+    existing_value: z24.record(z24.unknown()).or(z24.array(z24.unknown())).nullable().optional(),
+    incoming_value: z24.record(z24.unknown()).or(z24.array(z24.unknown())).nullable().optional(),
+    action: z24.string().max(2e4).optional(),
+    notes: z24.string().max(2e4).nullable().optional()
+  },
+  lender_duplicate_dismissals: {
+    dismissal_key: z24.string().max(2e4).optional(),
+    lender_ids: z24.array(z24.string().uuid()).max(100).optional()
+  },
+  lender_history_warning_dismissals: {
+    deal_id: z24.string().uuid().optional()
+  }
+};
+
+// src/lib/mcp/lenderRelatedWrites.ts
+var writeProvenance = {
+  source: z25.string().max(1e3).optional(),
+  change_reason: z25.string().max(2e3).optional()
+};
+async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, confirm, source, reason) {
+  const { data, error } = await sb.rpc("mcp_write_lender_related", {
+    p_table: table,
+    p_action: action,
+    p_lender_id: lenderId,
+    p_record_id: recordId ?? null,
+    p_patch: Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== void 0)),
+    p_confirm: confirm ?? false,
+    p_source: source ?? null,
+    p_change_reason: reason ?? null
+  });
+  if (error) return errorResult(`${table} ${action}: ${error.message}`);
+  return textResult(data);
+}
+function defineLenderRelatedTool(table, action, name) {
+  const fields = LENDER_RELATED_FIELDS[table];
+  return defineTool25({
+    name,
+    title: `${action} ${table.replace(/_/g, " ")}`,
+    description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
+    inputSchema: {
+      lender_id: z25.string().uuid(),
+      record_id: action === "create" ? z25.string().uuid().optional().describe("Not used on creation; IDs are generated.") : z25.string().uuid(),
+      ...action === "delete" ? { confirm: z25.literal(true) } : fields,
+      ...writeProvenance
+    },
+    annotations: { readOnlyHint: false, destructiveHint: action === "delete", idempotentHint: false, openWorldHint: false },
+    handler: async (input, ctx) => {
+      const authErr = requireAuth(ctx);
+      if (authErr) return authErr;
+      const { lender_id, record_id, source, change_reason, confirm, ...patch } = input;
+      return writeLenderRelated(supabaseForUser(ctx), table, action, lender_id, record_id, patch, confirm, source, change_reason);
+    }
+  });
+}
+
+// src/lib/mcp/tools/upsert-lender-contact.ts
+var upsert_lender_contact_default = defineTool26({
+  name: "upsert_lender_contact",
+  title: "Add or update a funding source contact",
+  description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. CRM link must be in the same company. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
+  inputSchema: {
+    lender_id: z26.string().uuid().describe("master_lenders.id of the funding source that owns this contact."),
+    contact_id: z26.string().uuid().optional().describe("Omit to create a new contact; provide to update an existing one."),
+    name: z26.string().trim().max(200).optional(),
+    title: z26.string().trim().max(200).nullable().optional(),
+    email: z26.string().trim().max(320).nullable().optional(),
+    phone: z26.string().trim().max(100).nullable().optional(),
+    city: z26.string().trim().max(200).nullable().optional(),
+    state: z26.string().trim().max(200).nullable().optional(),
+    country: z26.string().trim().max(200).nullable().optional(),
+    geography: z26.string().trim().max(200).nullable().optional(),
+    notes: z26.string().max(1e4).nullable().optional(),
+    is_primary: z26.boolean().optional(),
+    crm_contact_id: z26.string().uuid().nullable().optional().describe("CRM contacts.id; writes lender_contacts.contact_id. null explicitly unlinks. Legacy contact_id above identifies the lender contact row."),
+    ...writeProvenance
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { lender_id, contact_id, crm_contact_id, source, change_reason, ...rest } = input;
+    const patch = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) patch[k] = v;
+    if (crm_contact_id !== void 0) patch.contact_id = crm_contact_id;
+    const sb = supabaseForUser(ctx);
+    const { data: lender, error: lenderErr } = await sb.from("master_lenders").select("id, name").eq("id", lender_id).maybeSingle();
+    if (lenderErr) return errorResult(lenderErr.message);
+    if (!lender) return errorResult("Funding source not found (or not visible to this user).");
+    let before = null;
+    if (contact_id) {
+      const { data, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).eq("lender_id", lender_id).maybeSingle();
+      if (error) return errorResult(error.message);
+      if (!data) return errorResult("Contact not found on this funding source (or not visible to this user).");
+      before = data;
+    } else if (!patch.name) {
+      return errorResult("A `name` is required when creating a new contact.");
+    }
+    const result = await writeLenderRelated(sb, "lender_contacts", contact_id ? "update" : "create", lender_id, contact_id, patch, false, source, change_reason);
+    if ("isError" in result) return result;
+    const payload = JSON.parse(result.content[0].text);
+    const row = payload.record;
+    const fields = Object.keys(patch).filter((k) => JSON.stringify(before?.[k]) !== JSON.stringify(row?.[k]));
+    return textResult({ contact: row, changed_fields: fields, created: !contact_id, demoted_primary_contact_ids: payload.demoted_primary_contact_ids }, { lender_id, contact_id: row.id, created: !contact_id });
+  }
+});
+
+// src/lib/mcp/tools/create-lender.ts
+import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z27 } from "npm:zod@^3.23.0";
+var create_lender_default = defineTool27({
+  name: "create_lender",
+  title: "Create funding source / lender",
+  description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Contacts go in `upsert_lender_contact` afterwards.",
+  inputSchema: {
+    name: z27.string().trim().min(1).max(200).describe("Name of the new funding source."),
+    ...LENDER_FIELD_SCHEMA,
+    ...writeProvenance
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (input, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { name, source, change_reason, ...rest } = input;
+    const cleanName = name.trim();
+    const fields = {};
+    for (const [k, v] of Object.entries(rest)) if (v !== void 0) fields[k] = v;
+    const sb = supabaseForUser(ctx);
+    const invalid = await validateLenderPatch(sb, fields);
+    if (invalid) return errorResult(invalid);
+    const escaped = cleanName.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const { data: similar, error: dupErr } = await sb.from("master_lenders").select("id, name, lender_type").ilike("name", `%${escaped}%`).limit(50);
+    if (dupErr) return errorResult(dupErr.message);
+    const dupes = (similar ?? []).filter(
+      (r) => String(r.name ?? "").trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (dupes.length > 0) {
+      return {
+        ...textResult(
+          {
+            error: "duplicate",
+            field: "name",
+            message: `A funding source named "${cleanName}" already exists. Use update_lender with one of these ids instead.`,
+            matches: dupes.map((d) => ({ id: d.id, name: d.name, lender_type: d.lender_type }))
+          },
+          { duplicate: true, count: dupes.length }
+        ),
+        isError: true
+      };
+    }
+    const { data, error } = await sb.rpc("mcp_create_lender", { p_patch: { ...fields, name: cleanName }, p_source: source ?? null, p_change_reason: change_reason ?? null });
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Funding source was not created (permission denied).");
+    return textResult(data);
+  }
+});
+
+// src/lib/mcp/tools/delete-lender-contact.ts
+import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z28 } from "npm:zod@^3.23.0";
+var delete_lender_contact_default = defineTool28({
+  name: "delete_lender_contact",
+  title: "Delete a funding source contact",
+  description: "Permanently remove one contact from a funding source's multi-contact list (`lender_contacts`), e.g. a duplicate or wrong entry. Requires `confirm: true`. Logged to `lender_audit_logs`. Deleting the primary contact leaves the lender with no primary; promote another with `upsert_lender_contact` (is_primary: true) \u2014 there is never more than one primary.",
+  inputSchema: {
+    contact_id: z28.string().uuid(),
+    confirm: z28.literal(true).describe("Must be true to confirm the permanent deletion."),
+    ...writeProvenance
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ contact_id, confirm, source, change_reason }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: before, error } = await sb.from("lender_contacts").select("*").eq("id", contact_id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!before) return errorResult("contact_id: contact not found (or not visible to this user).");
+    const lenderId = before.lender_id;
+    const deleted = await writeLenderRelated(sb, "lender_contacts", "delete", lenderId, contact_id, {}, confirm, source, change_reason);
+    if ("isError" in deleted) return deleted;
+    const { data: remaining } = await sb.from("lender_contacts").select("id, name, is_primary").eq("lender_id", lenderId);
+    const rem = remaining ?? [];
+    return textResult(
+      { deleted: true, contact: before, remaining_contacts: rem, has_primary: rem.some((r) => r.is_primary) },
+      { contact_id, lender_id: lenderId, deleted: true }
+    );
+  }
+});
+
+// src/lib/mcp/tools/add-lender-attachment.ts
+import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z29 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/lenderAttachments.ts
+var LENDER_ATTACHMENT_BUCKET = "lender-attachments";
+var LENDER_ATTACHMENT_CATEGORIES = [
+  "general",
+  "nda",
+  "marketing_materials",
+  "contracts",
+  "presentations",
+  "due_diligence",
+  "term_sheets",
+  "correspondence",
+  "referral_agreement",
+  "other"
+];
+var MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+var MIME = {
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  md: "text/markdown",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg"
+};
+function guessContentType(fileName) {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return MIME[ext] ?? "application/octet-stream";
+}
+function decodeBase64(b64) {
+  const clean = b64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
+  const bin = atob(clean);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// src/lib/mcp/tools/add-lender-attachment.ts
+var add_lender_attachment_default = defineTool29({
+  name: "add_lender_attachment",
+  title: "Attach a document to a funding source",
+  description: "Upload a document (NDA, one-pager, referral agreement, etc.) to a funding source's Attachments, exactly as the app's upload does. Provide the file as `content_base64` OR as a public https `url` to fetch (max 20 MB). Category 'nda' marks the funding source as having an NDA and 'marketing_materials' as having marketing materials in the app. Does not change the legacy `nda` / `referral_agreement` / `lender_one_pager_url` text columns \u2014 use `update_lender` for those. Returns the new attachment row.",
+  inputSchema: {
+    lender_id: z29.string().uuid(),
+    file_name: z29.string().trim().min(1).max(255).describe("File name including extension, e.g. 'Acme NDA.pdf'."),
+    category: z29.enum(LENDER_ATTACHMENT_CATEGORIES).default("general"),
+    content_base64: z29.string().min(1).optional().describe("File bytes, base64-encoded (a data: URL prefix is accepted)."),
+    url: z29.string().url().optional().describe("Public https URL to download the file from."),
+    content_type: z29.string().max(200).optional().describe("MIME type; inferred from the file extension when omitted."),
+    ...writeProvenance
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  handler: async ({ lender_id, file_name, category, content_base64, url, content_type, source, change_reason }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!!content_base64 === !!url) return errorResult("Provide exactly one of `content_base64` or `url`.");
+    const sb = supabaseForUser(ctx);
+    const { data: lender, error: lErr } = await sb.from("master_lenders").select("id, name, company_id").eq("id", lender_id).maybeSingle();
+    if (lErr) return errorResult(lErr.message);
+    if (!lender) return errorResult("lender_id: funding source not found (or not visible to this user).");
+    if (!lender.company_id) return errorResult("lender_id: this funding source has no company, so attachments cannot be stored for it.");
+    let bytes;
+    let type = content_type || guessContentType(file_name);
+    if (content_base64) {
+      try {
+        bytes = decodeBase64(content_base64);
+      } catch {
+        return errorResult("content_base64: not valid base64.");
+      }
+    } else {
+      if (!url || !url.startsWith("https://")) return errorResult("url: only https URLs are allowed.");
+      let res;
+      try {
+        res = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(15e3) });
+      } catch (e) {
+        return errorResult(`url: download failed (${e.message}).`);
+      }
+      if (!res.ok) return errorResult(`url: download failed with HTTP ${res.status}.`);
+      const len = Number(res.headers.get("content-length") ?? 0);
+      if (len > MAX_ATTACHMENT_BYTES) return errorResult("url: file is larger than 20 MB.");
+      bytes = new Uint8Array(await res.arrayBuffer());
+      if (!content_type) type = res.headers.get("content-type")?.split(";")[0] || type;
+    }
+    if (bytes.byteLength === 0) return errorResult("File is empty.");
+    if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return errorResult("File is larger than 20 MB.");
+    const extType = guessContentType(file_name);
+    if (extType === "application/octet-stream") return errorResult("file_name: unsupported file type.");
+    type = extType;
+    const userId = ctx.getUserId();
+    if (!userId) return errorResult("Caller has no user id.");
+    const ext = (file_name.split(".").pop() || "bin").replace(/[^a-z0-9]/gi, "") || "bin";
+    const storedName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const filePath = `${userId}/${lender.name}/${storedName}`;
+    const { error: upErr } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).upload(filePath, bytes, { contentType: type });
+    if (upErr) return errorResult(`Storage upload failed: ${upErr.message}`);
+    const result = await writeLenderRelated(sb, "lender_attachments", "create", lender_id, void 0, {
+      name: file_name,
+      file_path: filePath,
+      content_type: type,
+      size_bytes: bytes.byteLength,
+      category
+    }, false, source, change_reason);
+    if ("isError" in result) {
+      await sb.storage.from(LENDER_ATTACHMENT_BUCKET).remove([filePath]);
+      return result;
+    }
+    const row = JSON.parse(result.content[0].text).record;
+    return textResult({ attachment: row }, { attachment_id: row.id, lender_id });
+  }
+});
+
+// src/lib/mcp/tools/list-lender-attachments.ts
+import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z30 } from "npm:zod@^3.23.0";
+var list_lender_attachments_default = defineTool30({
+  name: "list_lender_attachments",
+  title: "List funding source attachments",
+  description: "List the documents attached to a funding source (NDAs, one-pagers, referral agreements\u2026) with a signed download URL valid for 1 hour.",
+  inputSchema: { lender_id: z30.string().uuid() },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ lender_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: lender, error: lErr } = await sb.from("master_lenders").select("id, name, company_id").eq("id", lender_id).maybeSingle();
+    if (lErr) return errorResult(lErr.message);
+    if (!lender) return errorResult("lender_id: funding source not found (or not visible to this user).");
+    let q = sb.from("lender_attachments").select("*").eq("lender_name", lender.name).order("created_at", { ascending: false }).limit(200);
+    if (lender.company_id) q = q.eq("company_id", lender.company_id);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    const rows = await Promise.all(
+      (data ?? []).map(async (r) => {
+        const { data: signed } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).createSignedUrl(String(r.file_path), 3600);
+        return { ...r, download_url: signed?.signedUrl ?? null };
+      })
+    );
+    return textResult({ lender_id, lender_name: lender.name, attachments: rows }, { count: rows.length });
+  }
+});
+
+// src/lib/mcp/tools/delete-lender-attachment.ts
+import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z31 } from "npm:zod@^3.23.0";
+var delete_lender_attachment_default = defineTool31({
+  name: "delete_lender_attachment",
+  title: "Delete a funding source attachment",
+  description: "Permanently delete one funding source attachment (file and record). Requires `confirm: true`. Only the person who uploaded a file can delete it (same rule as the app).",
+  inputSchema: {
+    attachment_id: z31.string().uuid(),
+    confirm: z31.literal(true).describe("Must be true to confirm the permanent deletion."),
+    ...writeProvenance
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ attachment_id, confirm, source, change_reason }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: att, error } = await sb.from("lender_attachments").select("*").eq("id", attachment_id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!att) return errorResult("attachment_id: attachment not found (or not visible to this user).");
+    if (att.user_id !== ctx.getUserId()) return errorResult("attachment_id: only the user who uploaded this file can delete it.");
+    let lq = sb.from("master_lenders").select("id").eq("name", att.lender_name).limit(1);
+    if (att.company_id) lq = lq.eq("company_id", att.company_id);
+    const { data: lender } = await lq.maybeSingle();
+    if (!lender?.id) return errorResult("Attachment lender not found; no file or record deleted.");
+    const deleted = await writeLenderRelated(sb, "lender_attachments", "delete", lender.id, attachment_id, {}, confirm, source, change_reason);
+    if ("isError" in deleted) return deleted;
+    const { error: stErr } = await sb.storage.from(LENDER_ATTACHMENT_BUCKET).remove([att.file_path]);
+    return textResult(
+      { deleted: true, attachment: att, storage_warning: stErr ? stErr.message : null },
+      { attachment_id, deleted: true }
+    );
+  }
+});
+
+// src/lib/mcp/tools/add-lender-to-deal.ts
+import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z32 } from "npm:zod@^3.23.0";
+var add_lender_to_deal_default = defineTool32({
+  name: "add_lender_to_deal",
+  title: "Add lender to deal",
+  description: "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
+  inputSchema: {
+    deal_id: z32.string().uuid(),
+    lender_id: z32.string().uuid().optional(),
+    lender_ids: z32.array(z32.string().uuid()).min(1).max(25).optional(),
+    stage: z32.string().trim().min(1).max(100).default("on-deck"),
+    status: z32.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).default("active")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, lender_id, lender_ids, stage, status }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (Boolean(lender_id) === Boolean(lender_ids)) {
+      return errorResult("Provide exactly one of lender_id or lender_ids (up to 25).");
+    }
+    const sb = supabaseForUser(ctx);
+    const { data: deal, error: dealError } = await sb.from("deals").select("id, company_id").eq("id", deal_id).maybeSingle();
+    if (dealError || !deal?.company_id) {
+      return errorResult(dealError?.message ?? "Deal not found, inaccessible, or missing company scope.");
+    }
+    const ids = lender_ids ?? (lender_id ? [lender_id] : []);
+    const results = [];
+    for (const id of ids) {
+      try {
+        const findExisting = () => sb.from("deal_lenders").select("*").eq("deal_id", deal_id).eq("master_lender_id", id).maybeSingle();
+        const { data: existing, error: lookupError } = await findExisting();
+        if (lookupError) throw new Error(lookupError.message);
+        if (existing) {
+          results.push({ lender_id: id, outcome: "already_on_deal", message: "Already on deal", deal_lender: existing });
+          continue;
+        }
+        const { data: lender, error: lenderError } = await sb.from("master_lenders").select("id, name").eq("id", id).eq("company_id", deal.company_id).maybeSingle();
+        if (lenderError || !lender) throw new Error(lenderError?.message ?? "Lender not found or inaccessible in this deal's company.");
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        const { data, error } = await sb.from("deal_lenders").insert({
+          deal_id,
+          name: lender.name,
+          master_lender_id: id,
+          stage,
+          tracking_status: status,
+          last_status_change_at: now,
+          ...stage === "on-deck" ? { on_deck_at: now } : {}
+        }).select("*").single();
+        if (error?.code === "23505") {
+          const raced = await findExisting();
+          if (raced.error) throw new Error(raced.error.message);
+          if (raced.data) {
+            results.push({ lender_id: id, outcome: "already_on_deal", message: "Already on deal", deal_lender: raced.data });
+            continue;
+          }
+        }
+        if (error || !data) throw new Error(error?.message ?? "Insert returned no funding source.");
+        const warnings = [];
+        const metadata2 = { lender_name: lender.name, lender_id: data.id, master_lender_id: id };
+        for (const [table, payload] of [
+          ["activity_logs", { deal_id, user_id: ctx.getUserId(), user_display_name: ctx.getUserEmail() ?? "Unknown User", activity_type: "lender_added", description: `Added lender ${lender.name}`, metadata: metadata2 }],
+          ["deal_activity", { deal_id, user_id: ctx.getUserId(), source: "mcp", action_type: "lender_added", before: {}, after: metadata2 }]
+        ]) {
+          try {
+            const audit = await sb.from(table).insert(payload);
+            if (audit.error) warnings.push(`${table} logging failed: ${audit.error.message}`);
+          } catch (auditError) {
+            warnings.push(`${table} logging failed: ${auditError instanceof Error ? auditError.message : "Unknown error"}`);
+          }
+        }
+        results.push({ lender_id: id, outcome: "added", message: "Added to deal", deal_lender: data, ...warnings.length ? { warnings } : {} });
+      } catch (error) {
+        results.push({ lender_id: id, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
+      }
+    }
+    const single = lender_id ? results[0] : void 0;
+    return textResult({ results }, { results, ...single?.deal_lender ? { deal_lender_id: single.deal_lender.id } : {} });
+  }
+});
+
+// src/lib/mcp/tools/update-deal-lender.ts
+import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z33 } from "npm:zod@^3.23.0";
+var fieldSchema = {
+  notes: z33.string().max(1e4).nullable().optional(),
+  mode: z33.enum(["replace", "append", "prepend"]).default("replace"),
+  stage: z33.string().trim().min(1).max(100).optional(),
+  tracking_status: z33.string().trim().min(1).max(100).optional(),
+  tags: z33.array(z33.string().trim().min(1).max(100)).max(50).optional(),
+  quote_amount: z33.number().finite().nullable().optional(),
+  quote_rate: z33.number().finite().nullable().optional(),
+  quote_term: z33.string().max(200).nullable().optional(),
+  pass_reason: z33.string().max(2e3).nullable().optional()
+};
+var itemSchema = z33.object({
+  lender_id: z33.string().uuid().optional(),
+  deal_lender_id: z33.string().uuid().optional(),
+  ...fieldSchema
+});
+var EDITABLE = ["stage", "tracking_status", "tags", "quote_amount", "quote_rate", "quote_term", "pass_reason"];
+function combineNotes(existing, next, mode) {
+  if (mode === "replace" || next === null) return next;
+  const old = (existing ?? "").trim();
+  if (!old) return next;
+  return mode === "append" ? `${old}
+
+${next}` : `${next}
+
+${old}`;
+}
+function buildUpdates(row, item) {
+  const updates = {};
+  if (item.notes !== void 0) {
+    const notes = combineNotes(row.notes, item.notes, item.mode ?? "replace");
+    if (notes !== null && notes.length > 1e4) throw new Error("Resulting notes exceed 10,000 characters.");
+    updates.notes = notes;
+  }
+  for (const key of EDITABLE) if (item[key] !== void 0) updates[key] = item[key];
+  return updates;
+}
+var update_deal_lender_default = defineTool33({
+  name: "update_deal_lender",
+  title: "Update funding source on deal",
+  description: "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
+  inputSchema: {
+    deal_id: z33.string().uuid(),
+    lender_id: z33.string().uuid().optional(),
+    deal_lender_id: z33.string().uuid().optional(),
+    ...fieldSchema,
+    updates: z33.array(itemSchema).min(1).max(25).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (args, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const { deal_id, updates: bulk, ...single } = args;
+    if (bulk && (single.lender_id || single.deal_lender_id)) {
+      return errorResult("Provide either `updates` or a single lender_id/deal_lender_id, not both.");
+    }
+    const items = bulk ?? [single];
+    const sb = supabaseForUser(ctx);
+    const { data: deal, error: dealError } = await sb.from("deals").select("id, company_id").eq("id", deal_id).maybeSingle();
+    if (dealError || !deal?.company_id) {
+      return errorResult(dealError?.message ?? "Deal not found, inaccessible, or missing company scope.");
+    }
+    const results = [];
+    for (const item of items) {
+      const target = item.deal_lender_id ?? item.lender_id ?? null;
+      try {
+        if (Boolean(item.lender_id) === Boolean(item.deal_lender_id)) {
+          throw new Error("Provide exactly one of lender_id or deal_lender_id.");
+        }
+        let q = sb.from("deal_lenders").select("*").eq("deal_id", deal_id);
+        q = item.deal_lender_id ? q.eq("id", item.deal_lender_id) : q.eq("master_lender_id", item.lender_id);
+        const { data: row, error: lookupError } = await q.maybeSingle();
+        if (lookupError) throw new Error(lookupError.message);
+        if (!row) throw new Error("This funding source is not on the deal (or is inaccessible). No row was created.");
+        const changes = buildUpdates(row, item);
+        if (Object.keys(changes).length === 0) throw new Error("No editable fields were provided.");
+        const warnings = [];
+        if ("notes" in changes && row.notes && String(row.notes).trim() && changes.notes !== row.notes) {
+          const h = await sb.from("lender_notes_history").insert({ deal_lender_id: row.id, text: row.notes });
+          if (h.error) warnings.push(`notes history failed: ${h.error.message}`);
+        }
+        const { data: updated, error: updateError } = await sb.from("deal_lenders").update({ ...changes, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", row.id).eq("deal_id", deal_id).select("*").maybeSingle();
+        if (updateError) throw new Error(updateError.message);
+        if (!updated) throw new Error("Update was blocked (no permission to edit this funding source).");
+        const before = {};
+        for (const k of Object.keys(changes)) before[k] = row[k] ?? null;
+        const meta = { lender_name: row.name, lender_id: row.id, master_lender_id: row.master_lender_id };
+        const logs = [
+          ["deal_activity", { deal_id, user_id: ctx.getUserId(), source: "mcp", action_type: "lender_updated", before: { ...meta, ...before }, after: { ...meta, ...changes } }]
+        ];
+        if ("stage" in changes && row.stage !== changes.stage) {
+          logs.push(["activity_logs", { deal_id, user_id: ctx.getUserId(), user_display_name: ctx.getUserEmail() ?? "Unknown User", activity_type: "lender_stage_change", description: `${row.name} stage changed from ${row.stage} to ${changes.stage}`, metadata: { lender_id: row.id, lender_name: row.name, from: row.stage, to: changes.stage } }]);
+        }
+        for (const [table, payload] of logs) {
+          try {
+            const r = await sb.from(table).insert(payload);
+            if (r.error) warnings.push(`${table} logging failed: ${r.error.message}`);
+          } catch (e) {
+            warnings.push(`${table} logging failed: ${e instanceof Error ? e.message : "Unknown error"}`);
+          }
+        }
+        results.push({ target, outcome: "updated", deal_lender: updated, ...warnings.length ? { warnings } : {} });
+      } catch (error) {
+        results.push({ target, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
+      }
+    }
+    if (!bulk) {
+      const r = results[0];
+      if (r.outcome === "error") return errorResult(r.reason ?? "Update failed");
+      return textResult(r, { result: r });
+    }
+    return textResult({ results }, { results });
+  }
+});
+
+// src/lib/mcp/tools/search-deal-notes.ts
+import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z34 } from "npm:zod@^3.23.0";
+var search_deal_notes_default = defineTool34({
+  name: "search_deal_notes",
+  title: "Search deal notes",
+  description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
+  inputSchema: {
+    deal_id: z34.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z34.array(z34.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z34.string().trim().min(1).max(200).optional(),
+    limit: z34.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, deal_ids, query, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_notes");
+      if (denied) return denied;
+    }
+    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("updated_at", { ascending: false }).limit(limit);
+    if (query) {
+      const like = orIlike(query);
+      q = q.or(`title.ilike.${like},content.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/add-deal-note-entry.ts
+import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z35 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/dealNoteEntry.ts
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function inline(s) {
+  return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+function entryToHtml(entry, format) {
+  const trimmed = entry.trim();
+  if (format === "html") return trimmed;
+  const out = [];
+  let list = [];
+  const flush = () => {
+    if (list.length) out.push(`<ul>${list.map((li) => `<li><p>${li}</p></li>`).join("")}</ul>`);
+    list = [];
+  };
+  for (const raw of trimmed.split(/\r?\n/)) {
+    const line = raw.trim();
+    const bullet = line.match(/^[-*•]\s+(.*)$/);
+    const heading = line.match(/^#{1,6}\s+(.*)$/);
+    if (bullet) {
+      list.push(inline(bullet[1]));
+      continue;
+    }
+    flush();
+    if (!line) continue;
+    out.push(heading ? `<h3>${inline(heading[1])}</h3>` : `<p>${inline(line)}</p>`);
+  }
+  flush();
+  return out.join("");
+}
+
+// src/lib/mcp/tools/add-deal-note-entry.ts
+var add_deal_note_entry_default = defineTool35({
+  name: "add_deal_note_entry",
+  title: "Add deal note entry",
+  description: "Prepend or append an entry to a deal's Deal Space note (the notes pop-up), matched by title (default 'Q&A Notes'), creating the note if missing. Never replaces existing content; saves a version and logs deal activity. Use idempotency_key (e.g. a Claap recording ID) to avoid duplicate entries.",
+  inputSchema: {
+    deal_id: z35.string().uuid(),
+    title: z35.string().trim().min(1).max(200).default("Q&A Notes").describe("Note title, matched case-insensitively and trimmed."),
+    entry: z35.string().trim().min(1, "Entry cannot be empty.").max(5e4),
+    format: z35.enum(["text", "html"]).default("text").describe("text (default): plain text; '- ' lines become bullets, '# ' lines headings, **bold** supported. html: TipTap-compatible HTML stored as-is."),
+    mode: z35.enum(["prepend", "append"]).default("prepend"),
+    create_if_missing: z35.boolean().default(true),
+    idempotency_key: z35.string().trim().min(1).max(200).optional(),
+    source: z35.string().trim().min(1).max(100).default("Claude agent").describe("Attribution recorded in the activity log.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async (args, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.rpc("add_deal_note_entry", {
+      _deal_id: args.deal_id,
+      _title: args.title,
+      _entry_html: entryToHtml(args.entry, args.format),
+      _mode: args.mode,
+      _create_if_missing: args.create_if_missing,
+      _idempotency_key: args.idempotency_key ?? null,
+      _source: args.source
+    });
+    if (error) return errorResult(error.message);
+    const res = data ?? {};
+    if (res.status === "ambiguous") {
+      return { ...textResult({ error: "Multiple notes match this title; nothing was written.", ...res }, res), isError: true };
+    }
+    if (res.status === "not_found") return errorResult(`No note titled "${args.title}" on this deal and create_if_missing is false.`);
+    return textResult(res, res);
+  }
+});
+
+// src/lib/mcp/tools/get-deal-note.ts
+import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z36 } from "npm:zod@^3.23.0";
+var get_deal_note_default = defineTool36({
+  name: "get_deal_note",
+  title: "Get deal note",
+  description: "Read one Deal Space note's full HTML content, by note_id or by deal_id plus title (case-insensitive). Returns candidates if several notes share the title.",
+  inputSchema: {
+    note_id: z36.string().uuid().optional(),
+    deal_id: z36.string().uuid().optional(),
+    title: z36.string().trim().min(1).max(200).optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ note_id, deal_id, title }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    if (!note_id && !(deal_id && title)) return errorResult("Provide note_id, or deal_id and title.");
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("deal_space_notes").select("id, deal_id, title, content, folder, tags, is_pinned, user_id, created_at, updated_at");
+    q = note_id ? q.eq("id", note_id) : q.eq("deal_id", deal_id);
+    const { data, error } = await q.limit(200);
+    if (error) return errorResult(error.message);
+    const rows = note_id ? data ?? [] : (data ?? []).filter((n3) => n3.title.trim().toLowerCase() === title.trim().toLowerCase());
+    if (rows.length === 0) return errorResult("Note not found or not accessible.");
+    if (rows.length > 1) {
+      const candidates = rows.map((n3) => ({ note_id: n3.id, title: n3.title, updated_at: n3.updated_at }));
+      return { ...textResult({ error: "Multiple notes match this title.", candidates }, { candidates }), isError: true };
+    }
+    const n2 = rows[0];
+    return textResult(n2, { note: { ...n2, tags: n2.tags ?? [] } });
+  }
+});
+
+// src/lib/mcp/tools/list-deal-activity.ts
+import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z37 } from "npm:zod@^3.23.0";
+var list_deal_activity_default = defineTool37({
+  name: "list_deal_activity",
+  title: "List deal activity",
+  description: "List recent activity/timeline events \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
+  inputSchema: {
+    deal_id: z37.string().uuid().optional().describe("Optional. Omit to return activity across all deals."),
+    activity_type: z37.string().trim().min(1).max(60).optional().describe("Optional activity_type filter for activity_logs (e.g. 'email', 'call', 'note', 'stage_change')."),
+    since: z37.string().trim().max(40).optional().describe("ISO timestamp lower bound on created_at (inclusive)."),
+    until: z37.string().trim().max(40).optional().describe("ISO timestamp upper bound on created_at (exclusive)."),
+    limit: z37.number().int().min(1).max(200).default(50)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, activity_type, since, until, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_activity");
+      if (denied) return denied;
+    }
+    let logsQ = sb.from("activity_logs").select(
+      "id, deal_id, activity_type, description, user_display_name, direction, subject, from_address, to_addresses, sent_at, thread_id, provider, metadata, created_at"
+    ).order("created_at", { ascending: false }).limit(limit);
+    let changesQ = sb.from("deal_activity").select("id, deal_id, source, action_type, before, after, user_id, created_at").order("created_at", { ascending: false }).limit(limit);
+    if (deal_id) {
+      logsQ = logsQ.eq("deal_id", deal_id);
+      changesQ = changesQ.eq("deal_id", deal_id);
+    }
+    if (activity_type) logsQ = logsQ.eq("activity_type", activity_type);
+    if (since) {
+      logsQ = logsQ.gte("created_at", since);
+      changesQ = changesQ.gte("created_at", since);
+    }
+    if (until) {
+      logsQ = logsQ.lt("created_at", until);
+      changesQ = changesQ.lt("created_at", until);
+    }
+    const [logsRes, changesRes] = await Promise.all([logsQ, changesQ]);
+    if (logsRes.error) return errorResult(logsRes.error.message);
+    if (changesRes.error) return errorResult(changesRes.error.message);
+    return textResult({
+      scope: deal_id ? "single_deal" : "all_deals",
+      activity_logs: logsRes.data ?? [],
+      field_changes: changesRes.data ?? []
+    });
+  }
+});
+
+// src/lib/mcp/tools/search-deal-documents.ts
+import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z38 } from "npm:zod@^3.23.0";
+var search_deal_documents_default = defineTool38({
+  name: "search_deal_documents",
+  title: "Search deal documents",
+  description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
+  inputSchema: {
+    deal_id: z38.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z38.array(z38.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z38.string().trim().min(1).max(200).optional(),
+    category: z38.string().trim().min(1).max(100).optional(),
+    limit: z38.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, deal_ids, query, category, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_documents");
+      if (denied) return denied;
+    }
+    let q = sb.from("deal_attachments").select(
+      "id, deal_id, name, category, size_bytes, content_type, source, source_subject, source_sender, extraction_status, created_at, user_id"
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("created_at", { ascending: false }).limit(limit);
+    if (category) q = q.eq("category", category);
+    if (query) {
+      const like = orIlike(query);
+      q = q.or(`name.ilike.${like},source_subject.ilike.${like},extracted_text.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/get-deal-document.ts
+import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z39 } from "npm:zod@^3.23.0";
+var get_deal_document_default = defineTool39({
+  name: "get_deal_document",
+  title: "Get deal document",
+  description: "Fetch a single deal document/attachment record by id, including extracted_text when available. Use search_deal_documents first to find the id.",
+  inputSchema: {
+    document_id: z39.string().uuid(),
+    include_extracted_text: z39.boolean().default(true)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ document_id, include_extracted_text }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const cols = include_extracted_text ? "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_text, extracted_at, created_at, user_id" : "id, deal_id, name, category, size_bytes, content_type, file_path, source, source_email_id, source_thread_id, source_subject, source_sender, extraction_status, extraction_error, extracted_at, created_at, user_id";
+    const { data, error } = await sb.from("deal_attachments").select(cols).eq("id", document_id).maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Document not found or you do not have access.");
+    return textResult(data);
+  }
+});
+
+// src/lib/mcp/tools/search-deal-emails.ts
+import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z40 } from "npm:zod@^3.23.0";
+var search_deal_emails_default = defineTool40({
+  name: "search_deal_emails",
+  title: "Search deal emails",
+  description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
+  inputSchema: {
+    deal_id: z40.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z40.array(z40.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z40.string().trim().min(1).max(200).optional(),
+    direction: z40.enum(["inbound", "outbound"]).optional(),
+    limit: z40.number().int().min(1).max(100).default(25)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, deal_ids, query, direction, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_emails");
+      if (denied) return denied;
+    }
+    let q = sb.from("activity_logs").select(
+      "id, subject, body, direction, from_address, to_addresses, cc_addresses, sent_at, thread_id, message_id, provider, user_display_name, created_at"
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).eq("activity_type", "email").order("sent_at", { ascending: false, nullsFirst: false }).limit(limit);
+    if (direction) q = q.eq("direction", direction);
+    if (query) {
+      const like = orIlike(query);
+      q = q.or(`subject.ilike.${like},body.ilike.${like},from_address.ilike.${like}`);
+    }
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/search-deal-recordings.ts
+import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z41 } from "npm:zod@^3.23.0";
+var search_deal_recordings_default = defineTool41({
+  name: "search_deal_recordings",
+  title: "Search deal meeting recordings",
+  description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
+  inputSchema: {
+    deal_id: z41.string().uuid().optional().describe("Single deal. Provide this or deal_ids."),
+    deal_ids: z41.array(z41.string().uuid()).min(1).max(200).optional().describe("Bulk mode: fetch for many deals in one call (RLS scoped). Rows include deal_id."),
+    query: z41.string().trim().min(1).max(200).optional(),
+    include_transcript: z41.boolean().default(false),
+    limit: z41.number().int().min(1).max(50).default(20)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, deal_ids, query, include_transcript, limit }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (!deal_id && (!deal_ids || deal_ids.length === 0)) {
+      return errorResult("Provide deal_id or deal_ids.");
+    }
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "search_deal_recordings");
+      if (denied) return denied;
+    }
+    let recQ = sb.from("deal_claap_recordings").select(
+      "id, recording_id, recording_title, recording_url, thumbnail_url, duration_seconds, recorder_name, recorder_email, linked_at, notes, created_at"
+    ).in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("linked_at", { ascending: false, nullsFirst: false }).limit(limit);
+    if (query) recQ = recQ.ilike("recording_title", `%${query}%`);
+    const { data: recordings, error } = await recQ;
+    if (error) return errorResult(error.message);
+    let transcripts = [];
+    if (include_transcript) {
+      let tQ = sb.from("claap_transcripts").select("id, claap_meeting_id, transcript_text, summary, participants, duration_seconds, recorded_at, call_type").in("deal_id", deal_id ? [deal_id] : deal_ids ?? []).order("recorded_at", { ascending: false, nullsFirst: false }).limit(limit);
+      if (query) {
+        const like = orIlike(query);
+        tQ = tQ.or(`transcript_text.ilike.${like},summary.ilike.${like}`);
+      }
+      const tRes = await tQ;
+      if (tRes.error) return errorResult(tRes.error.message);
+      transcripts = tRes.data ?? [];
+    }
+    return textResult({ recordings: recordings ?? [], transcripts });
+  }
+});
+
+// src/lib/mcp/tools/list-deal-funding-sources.ts
+import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z42 } from "npm:zod@^3.23.0";
+var list_deal_funding_sources_default = defineTool42({
+  name: "list_deal_funding_sources",
+  title: "List deal funding sources / lenders",
+  description: "List funding sources (lenders) attached to deals \u2014 the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal. Results are paginated: the response returns total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false to cover the entire book.",
+  inputSchema: {
+    deal_id: z42.string().uuid().optional().describe("Optional. Omit to return funding sources across all deals."),
+    deal_query: z42.string().trim().min(1).max(200).optional().describe("Substring filter on the deal/company name."),
+    pipeline_id: z42.string().uuid().optional(),
+    tracking_status: z42.string().trim().min(1).max(60).optional(),
+    stage: z42.string().trim().min(1).max(100).optional(),
+    lender_name: z42.string().trim().min(1).max(200).optional(),
+    limit: z42.number().int().min(1).max(500).default(100),
+    offset: z42.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous page.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ deal_id, deal_query, pipeline_id, tracking_status, stage, lender_name, limit, offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (deal_id) {
+      const denied = await assertDealAccess(sb, ctx, deal_id, "list_deal_funding_sources");
+      if (denied) return denied;
+    }
+    let dealIds = null;
+    if (deal_query || pipeline_id) {
+      const PAGE2 = 1e3;
+      const collected = [];
+      for (let page2 = 0; page2 < 50; page2++) {
+        let dq = sb.from("deals").select("id").order("id", { ascending: true }).range(page2 * PAGE2, page2 * PAGE2 + PAGE2 - 1);
+        if (deal_query) dq = dq.ilike("company", `%${deal_query}%`);
+        if (pipeline_id) dq = dq.eq("pipeline_id", pipeline_id);
+        const { data: dealRows, error: dealErr } = await dq;
+        if (dealErr) return errorResult(dealErr.message);
+        const ids = (dealRows ?? []).map((d) => d.id);
+        collected.push(...ids);
+        if (ids.length < PAGE2) break;
+      }
+      dealIds = collected;
+      if (dealIds.length === 0) return textResult([], { count: 0, total_count: 0, has_more: false, next_offset: null });
+    }
+    let q = sb.from("deal_lenders").select(
+      "id, deal_id, name, stage, substage, tracking_status, tags, score, notes, pass_reason, quote_amount, quote_rate, quote_term, submitted_at, approved_at, declined_at, passed_at, on_deck_at, on_hold_at, excluded_at, last_status_change_at, last_contact_at, master_lender_id, selected_contact_id, created_at, updated_at, master_lenders:master_lender_id(id, name, lender_type, tier, loan_types), deals:deal_id(id, company, company_id, pipeline_id, stage, status)",
+      { count: "exact" }
+    ).order("last_status_change_at", { ascending: false, nullsFirst: false }).order("id", { ascending: true }).range(offset, offset + limit - 1);
+    if (deal_id) q = q.eq("deal_id", deal_id);
+    if (dealIds) q = q.in("deal_id", dealIds);
+    if (tracking_status) q = q.eq("tracking_status", tracking_status);
+    if (stage) q = q.eq("stage", stage);
+    if (lender_name) q = q.ilike("name", `%${lender_name}%`);
+    const { data, error, count: totalCount } = await q;
+    if (error) {
+      console.error("[list_deal_funding_sources] query error", {
+        deal_id,
+        user_id: ctx.getUserId?.(),
+        message: error.message
+      });
+      return errorResult(error.message);
+    }
+    const { data: cfgs } = await sb.from("lender_stage_configs").select("company_id, stages, substages");
+    const labelMaps = /* @__PURE__ */ new Map();
+    const anyMap = /* @__PURE__ */ new Map();
+    const collect = (v, m) => {
+      if (Array.isArray(v)) v.forEach((x) => collect(x, m));
+      else if (v && typeof v === "object") {
+        const o = v;
+        if (typeof o.id === "string" && typeof o.label === "string") m.set(o.id, o.label);
+        Object.values(o).forEach((x) => {
+          if (x && typeof x === "object") collect(x, m);
+        });
+      }
+    };
+    for (const c of cfgs ?? []) {
+      const m = labelMaps.get(c.company_id ?? "") ?? /* @__PURE__ */ new Map();
+      collect(c.stages, m);
+      collect(c.substages, m);
+      labelMaps.set(c.company_id ?? "", m);
+      m.forEach((l, k) => {
+        if (!anyMap.has(k)) anyMap.set(k, l);
+      });
+    }
+    const labelFor = (companyId, id) => id ? labelMaps.get(companyId ?? "")?.get(id) ?? anyMap.get(id) ?? id : null;
+    const rows = (data ?? []).map((r) => ({
+      ...r,
+      deal_lender_id: r.id,
+      lender_id: r.master_lender_id ?? null,
+      lender_name: r.master_lenders?.name ?? r.name ?? null,
+      stage_label: labelFor(r.deals?.company_id, r.stage),
+      substage_label: labelFor(r.deals?.company_id, r.substage),
+      pass_reason: r.pass_reason ?? null,
+      notes: r.notes ?? null,
+      funding_source_type: r.master_lenders?.lender_type ?? null,
+      loan_types: r.master_lenders?.loan_types ?? null,
+      lender_tier: r.master_lenders?.tier ?? null,
+      commitment_amount: r.quote_amount ?? null,
+      status: r.tracking_status ?? r.stage ?? null,
+      deal_name: r.deals?.company ?? null,
+      pipeline_id: r.deals?.pipeline_id ?? null
+    }));
+    const total = totalCount ?? rows.length;
+    const hasMore = offset + rows.length < total;
+    console.log("[list_deal_funding_sources] ok", {
+      deal_id: deal_id ?? "all",
+      user_id: ctx.getUserId?.(),
+      count: rows.length,
+      total,
+      offset
+    });
+    return textResult(
+      { funding_sources: rows, total_count: total, returned: rows.length, offset, next_offset: hasMore ? offset + rows.length : null, has_more: hasMore },
+      {
+        count: rows.length,
+        total_count: total,
+        offset,
+        next_offset: hasMore ? offset + rows.length : null,
+        has_more: hasMore,
+        deal_id: deal_id ?? null,
+        scope: deal_id ? "single_deal" : "all_deals"
+      }
+    );
+  }
+});
+
+// src/lib/mcp/tools/get-daily-rundown.ts
+import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z43 } from "npm:zod@^3.23.0";
+
+// src/lib/mcp/rundownAccess.ts
+var RUNDOWN_ALLOWED_EMAIL = "jturner@5thline.co";
+function requireRundownAccess(ctx) {
+  if (!ctx.isAuthenticated()) {
+    return errorResult("Not authenticated");
+  }
+  const email = (ctx.getUserEmail?.() ?? "").toLowerCase();
+  if (email !== RUNDOWN_ALLOWED_EMAIL) {
+    return errorResult(
+      `Daily rundown access is restricted. Signed-in user must be ${RUNDOWN_ALLOWED_EMAIL}.`
+    );
+  }
+  return null;
+}
+async function logRundownAudit(ctx, action, payload = {}, itemId = null, initiatedBy = "openclaw") {
+  try {
+    const sb = supabaseForUser(ctx);
+    await sb.from("daily_rundown_audit_log").insert({
+      user_id: ctx.getUserId(),
+      user_email: ctx.getUserEmail?.() ?? null,
+      action,
+      initiated_by: initiatedBy,
+      item_id: itemId,
+      payload
+    });
+  } catch (err) {
+    console.error("[rundown-audit] failed to write audit row", err);
+  }
+}
+
+// src/lib/mcp/tools/get-daily-rundown.ts
+var get_daily_rundown_default = defineTool43({
+  name: "get_daily_rundown",
+  title: "Get daily rundown",
+  description: "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
+  inputSchema: {
+    status: z43.enum(["pending", "complete", "all"]).default("all"),
+    limit: z43.number().int().min(1).max(200).default(100)
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from("daily_rundown_items").select("id, title, content, status, sort_order, source, completed_at, created_at, updated_at").order("sort_order", { ascending: true }).order("created_at", { ascending: true }).limit(limit);
+    if (status !== "all") q = q.eq("status", status);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    await logRundownAudit(ctx, "get_daily_rundown", { status, count: data?.length ?? 0 });
+    return textResult(data ?? [], { count: data?.length ?? 0 });
+  }
+});
+
+// src/lib/mcp/tools/add-daily-rundown-item.ts
+import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z44 } from "npm:zod@^3.23.0";
+var add_daily_rundown_item_default = defineTool44({
+  name: "add_daily_rundown_item",
+  title: "Add daily rundown item",
+  description: "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
+  inputSchema: {
+    title: z44.string().trim().min(1).max(500),
+    content: z44.string().max(1e4).optional(),
+    sort_order: z44.number().int().optional(),
+    source: z44.string().max(50).optional().describe("Origin marker, e.g. 'openclaw' or 'user'.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ title, content, sort_order, source }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    let nextOrder = sort_order;
+    if (nextOrder === void 0) {
+      const { data: tail } = await sb.from("daily_rundown_items").select("sort_order").order("sort_order", { ascending: false }).limit(1);
+      nextOrder = (tail?.[0]?.sort_order ?? 0) + 10;
+    }
+    const { data, error } = await sb.from("daily_rundown_items").insert({
+      user_id: userId,
+      user_email: RUNDOWN_ALLOWED_EMAIL,
+      title,
+      content: content ?? null,
+      sort_order: nextOrder,
+      source: source ?? "openclaw",
+      created_by: userId,
+      updated_by: userId
+    }).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    await logRundownAudit(ctx, "add_daily_rundown_item", { title, sort_order: nextOrder }, data?.id ?? null);
+    return textResult(data, { item_id: data?.id });
+  }
+});
+
+// src/lib/mcp/tools/update-daily-rundown-item.ts
+import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z45 } from "npm:zod@^3.23.0";
+var update_daily_rundown_item_default = defineTool45({
+  name: "update_daily_rundown_item",
+  title: "Update daily rundown item",
+  description: "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
+  inputSchema: {
+    id: z45.string().uuid(),
+    title: z45.string().trim().min(1).max(500).optional(),
+    content: z45.string().max(1e4).nullable().optional(),
+    sort_order: z45.number().int().optional(),
+    source: z45.string().max(50).optional()
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  handler: async ({ id, ...patch }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const update = { updated_by: ctx.getUserId() };
+    for (const [k, v] of Object.entries(patch)) if (v !== void 0) update[k] = v;
+    const { data, error } = await sb.from("daily_rundown_items").update(update).eq("id", id).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Rundown item not found or not accessible.");
+    await logRundownAudit(ctx, "update_daily_rundown_item", { id, patch }, id);
+    return textResult(data, { item_id: id });
+  }
+});
+
+// src/lib/mcp/tools/complete-daily-rundown-item.ts
+import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z46 } from "npm:zod@^3.23.0";
+var complete_daily_rundown_item_default = defineTool46({
+  name: "complete_daily_rundown_item",
+  title: "Complete or reopen daily rundown item",
+  description: "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
+  inputSchema: {
+    id: z46.string().uuid(),
+    complete: z46.boolean().default(true)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id, complete }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.from("daily_rundown_items").update({ status: complete ? "complete" : "pending", updated_by: ctx.getUserId() }).eq("id", id).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    if (!data) return errorResult("Rundown item not found or not accessible.");
+    await logRundownAudit(
+      ctx,
+      complete ? "complete_daily_rundown_item" : "reopen_daily_rundown_item",
+      { id },
+      id
+    );
+    return textResult(data, { item_id: id, status: data.status });
+  }
+});
+
+// src/lib/mcp/tools/reorder-daily-rundown-items.ts
+import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z47 } from "npm:zod@^3.23.0";
+var reorder_daily_rundown_items_default = defineTool47({
+  name: "reorder_daily_rundown_items",
+  title: "Reorder daily rundown items",
+  description: "Apply a new display order to rundown items. Accepts an array of {id, sort_order} \u2014 only rows owned by the signed-in user (jturner@5thline.co) are updated.",
+  inputSchema: {
+    items: z47.array(z47.object({ id: z47.string().uuid(), sort_order: z47.number().int() })).min(1).max(200)
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ items }, ctx) => {
+    const gate = requireRundownAccess(ctx);
+    if (gate) return gate;
+    const sb = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const results = [];
+    for (const it of items) {
+      const { error } = await sb.from("daily_rundown_items").update({ sort_order: it.sort_order, updated_by: userId }).eq("id", it.id);
+      results.push({ id: it.id, ok: !error, ...error ? { error: error.message } : {} });
+    }
+    const failed = results.filter((r) => !r.ok);
+    if (failed.length === items.length) return errorResult(`All updates failed: ${failed[0].error ?? "unknown"}`);
+    await logRundownAudit(ctx, "reorder_daily_rundown_items", { count: items.length, failed: failed.length });
+    return textResult({ updated: items.length - failed.length, failed }, { count: items.length });
+  }
+});
+
+// src/lib/mcp/tools/list-insights-dashboards.ts
+import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z48 } from "npm:zod@^3.23.0";
+var list_insights_dashboards_default = defineTool48({
+  name: "list_insights_dashboards",
+  title: "List Insights dashboards and widgets",
+  description: "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
+  inputSchema: {
+    dashboard_id: z48.string().trim().max(80).optional().describe("Only return layouts for this dashboard id.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ dashboard_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let layoutQuery = sb.from("dashboard_grid_layouts").select("id, dashboard_id, layout, updated_at").order("updated_at", { ascending: false }).limit(100);
+    if (dashboard_id) layoutQuery = layoutQuery.eq("dashboard_id", dashboard_id);
+    const [{ data: layouts, error: layoutError }, { data: custom, error: customError }] = await Promise.all([
+      layoutQuery,
+      sb.from("custom_metrics").select("id, name, description, formula, result_type, format_options, updated_at").limit(200)
+    ]);
+    if (layoutError) return errorResult(layoutError.message);
+    if (customError) return errorResult(customError.message);
+    const payload = {
+      dashboards: dashboard_id ? DASHBOARD_OPTIONS.filter((d) => d.id === dashboard_id) : DASHBOARD_OPTIONS,
+      saved_layouts: layouts ?? [],
+      custom_metrics: custom ?? []
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-pipeline-metrics.ts
+import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z49 } from "npm:zod@^3.23.0";
+var get_pipeline_metrics_default = defineTool49({
+  name: "get_pipeline_metrics",
+  title: "Get pipeline metrics (Insights)",
+  description: "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
+  inputSchema: {
+    date_field: z49.enum(["created_at", "updated_at", "closing_date", "dashboard_closing_date"]).default("created_at").describe("Which date column the timeframe window applies to."),
+    from: z49.string().trim().max(40).optional().describe("ISO date/timestamp lower bound (inclusive)."),
+    to: z49.string().trim().max(40).optional().describe("ISO date/timestamp upper bound (exclusive)."),
+    pipeline_id: z49.string().uuid().optional(),
+    manager: z49.string().trim().max(120).optional(),
+    status: z49.string().trim().max(60).optional(),
+    stage: z49.string().trim().max(100).optional(),
+    include_deals: z49.boolean().default(false).describe("Also return the underlying deal rows used in the aggregation.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ date_field, from, to, pipeline_id, manager, status, stage, include_deals }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const select = "id, company, value, total_fee, retainer_fee, milestone_fee, status, stage, deal_type, manager, deal_owner, on_hold, pipeline_id, created_at, updated_at, closing_date, dashboard_closing_date";
+    const rows = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("deals").select(select).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte(date_field, from);
+      if (to) q = q.lt(date_field, to);
+      if (pipeline_id) q = q.eq("pipeline_id", pipeline_id);
+      if (manager) q = q.eq("manager", manager);
+      if (status) q = q.eq("status", status);
+      if (stage) q = q.eq("stage", stage);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page2 = data ?? [];
+      rows.push(...page2);
+      if (page2.length < pageSize) break;
+    }
+    const deals = rows.filter((r) => !isExcludedDealName(r.company));
+    const value = (r) => Number(r.value) || 0;
+    const summary = {
+      deal_count: deals.length,
+      total_value: sum(deals.map(value)),
+      avg_deal_size: deals.length ? sum(deals.map(value)) / deals.length : 0,
+      total_fees: sum(deals.map((d) => d.total_fee)),
+      retainer_fees: sum(deals.map((d) => d.retainer_fee)),
+      milestone_fees: sum(deals.map((d) => d.milestone_fee)),
+      on_hold_count: deals.filter((d) => d.on_hold).length
+    };
+    const { data: pipelineRows } = await sb.from("deal_pipelines").select("id, name, is_default, stages");
+    const pipeMap = new Map((pipelineRows ?? []).map((p) => [p.id, p]));
+    const labelFor = (pid, stageId) => {
+      const stages = pid && pipeMap.get(pid)?.stages || [];
+      const match = Array.isArray(stages) ? stages.find((s) => s?.id === stageId) : void 0;
+      return match?.label ?? stageId;
+    };
+    const byPipeline = groupAggregate(deals, (d) => d.pipeline_id ?? "none", value).map((entry) => {
+      const pid = entry.key === "none" ? null : entry.key;
+      const subset = deals.filter((d) => (d.pipeline_id ?? "none") === entry.key);
+      return {
+        pipeline_id: pid,
+        pipeline_name: pid ? pipeMap.get(pid)?.name ?? null : "Unassigned (no pipeline)",
+        is_default: pid ? pipeMap.get(pid)?.is_default ?? false : false,
+        count: entry.count,
+        total_value: entry.total_value,
+        by_stage: groupAggregate(subset, (d) => d.stage ?? "unknown", value).map((s) => ({
+          stage_id: s.key,
+          stage_label: labelFor(pid, s.key),
+          count: s.count,
+          total_value: s.total_value
+        }))
+      };
+    });
+    const payload = {
+      timeframe: { date_field, from: from ?? null, to: to ?? null },
+      filters: { pipeline_id: pipeline_id ?? null, manager: manager ?? null, status: status ?? null, stage: stage ?? null },
+      summary,
+      by_stage: groupAggregate(deals, (d) => d.stage ?? "unknown", value),
+      by_pipeline_stage: byPipeline,
+      by_status: groupAggregate(deals, (d) => d.status ?? "unknown", value),
+      by_type: groupAggregate(deals, (d) => d.deal_type ?? "unknown", value),
+      by_manager: groupAggregate(deals, (d) => d.manager ?? "unassigned", value),
+      by_owner: groupAggregate(deals, (d) => d.deal_owner ?? "unassigned", value),
+      by_pipeline: byPipeline.map((p) => ({
+        key: p.pipeline_id ?? "none",
+        pipeline_name: p.pipeline_name,
+        count: p.count,
+        total_value: p.total_value
+      })),
+      by_month: groupAggregate(deals, (d) => monthKey(d[date_field]) ?? "unknown", value).sort(
+        (a, b) => a.key.localeCompare(b.key)
+      ),
+      excluded_test_deals: rows.length - deals.length,
+      ...include_deals ? { deals } : {}
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-funnel-velocity.ts
+import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z50 } from "npm:zod@^3.23.0";
+var get_funnel_velocity_default = defineTool50({
+  name: "get_funnel_velocity",
+  title: "Get funnel velocity / stage durations",
+  description: "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
+  inputSchema: {
+    stage_path: z50.array(z50.string().trim().min(1).max(100)).min(2).max(20).optional().describe("Ordered list of stage ids, e.g. ['nda-needs-list','on-deck','closed-won']."),
+    consecutive_only: z50.boolean().default(false),
+    deal_id: z50.string().uuid().optional().describe("When set, returns per-stage durations for this deal instead."),
+    pipeline_id: z50.string().uuid().optional().describe("Restrict the funnel to deals in this pipeline (stage ids mean different things per pipeline).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ stage_path, consecutive_only, deal_id, pipeline_id }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    if (deal_id) {
+      const { data: data2, error: error2 } = await sb.rpc("get_deal_stage_durations", { p_deal_id: deal_id });
+      if (error2) return errorResult(error2.message);
+      return textResult(data2 ?? [], { deal_id, stages: data2 ?? [] });
+    }
+    if (!stage_path || stage_path.length < 2) {
+      return errorResult("Provide either stage_path (2+ stage ids) or deal_id.");
+    }
+    if (pipeline_id) {
+      const rows = [];
+      const pageSize = 1e3;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data: page2, error: histErr } = await sb.from("deal_stage_history").select("deal_id, to_stage, changed_at").eq("pipeline_id", pipeline_id).order("changed_at", { ascending: true }).range(offset, offset + pageSize - 1);
+        if (histErr) return errorResult(histErr.message);
+        const chunk = page2 ?? [];
+        rows.push(...chunk);
+        if (chunk.length < pageSize) break;
+      }
+      const firstEntry = /* @__PURE__ */ new Map();
+      for (const r of rows) {
+        if (!r.to_stage || !r.changed_at) continue;
+        const perDeal = firstEntry.get(r.deal_id) ?? /* @__PURE__ */ new Map();
+        const prev = perDeal.get(r.to_stage);
+        if (!prev || r.changed_at < prev) perDeal.set(r.to_stage, r.changed_at);
+        firstEntry.set(r.deal_id, perDeal);
+      }
+      const dealIds = Array.from(firstEntry.keys());
+      const steps = [];
+      for (let i = 0; i < stage_path.length - 1; i++) {
+        const fromStage = stage_path[i];
+        const toStage = stage_path[i + 1];
+        const durations = [];
+        let fromCount = 0;
+        let toCount = 0;
+        for (const id of dealIds) {
+          const perDeal = firstEntry.get(id);
+          const a = perDeal.get(fromStage);
+          if (!a) continue;
+          fromCount++;
+          const b = perDeal.get(toStage);
+          if (!b || b < a) continue;
+          toCount++;
+          durations.push((new Date(b).getTime() - new Date(a).getTime()) / 864e5);
+        }
+        durations.sort((x, y) => x - y);
+        const median = durations.length ? durations.length % 2 ? durations[(durations.length - 1) / 2] : (durations[durations.length / 2 - 1] + durations[durations.length / 2]) / 2 : null;
+        steps.push({
+          from_stage: fromStage,
+          to_stage: toStage,
+          deals_reaching_from: fromCount,
+          deals_reaching_to: toCount,
+          conversion_rate: fromCount ? toCount / fromCount : null,
+          median_days: median,
+          avg_days: durations.length ? durations.reduce((s, d) => s + d, 0) / durations.length : null
+        });
+      }
+      const payload = { pipeline_id, stage_path, basis: "first entry per stage from deal_stage_history", steps };
+      return textResult(payload, payload);
+    }
+    const { data, error } = await sb.rpc("get_funnel_velocity", {
+      p_stage_path: stage_path,
+      p_consecutive_only: consecutive_only
+    });
+    if (error) return errorResult(error.message);
+    return textResult(data ?? [], { stage_path, consecutive_only, steps: data ?? [] });
+  }
+});
+
+// src/lib/mcp/tools/get-revenue-metrics.ts
+import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z51 } from "npm:zod@^3.23.0";
+
+// src/lib/qboMonthly.ts
+function isoMonthKey(date2) {
+  if (!date2 || !/^\d{4}-\d{2}/.test(date2)) return null;
+  return date2.slice(0, 7);
+}
+function lastDayOfMonth(key) {
+  const [y, m] = key.split("-").map(Number);
+  return `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+}
+function pickMonthlySnapshots(rows) {
+  const best = {};
+  for (const r of rows) {
+    if (!r.realm_id) continue;
+    if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
+    const startKey = isoMonthKey(r.period_start);
+    const endKey = isoMonthKey(r.period_end ?? r.period_start);
+    if (!startKey || startKey !== endKey) continue;
+    if (!r.period_start.endsWith("-01") || r.period_end !== lastDayOfMonth(startKey)) continue;
+    const key = `${r.realm_id}::${startKey}`;
+    const prev = best[key];
+    if (!prev || (r.fetched_at ?? "") > (prev.fetched_at ?? "")) best[key] = r;
+  }
+  return best;
+}
+var DEBT_REVENUE_REALM_ID = "193514877331929";
+var PNL_REVENUE_REALM_IDS = [
+  DEBT_REVENUE_REALM_ID,
+  // Capital Advisors
+  "9341451968897660",
+  // Financial Services
+  "9130350272677286",
+  // Technologies
+  "123146077561874"
+  // Parent
+];
+function withPnlRevenue(invoices, snapshots) {
+  const pnlRealms = new Set(PNL_REVENUE_REALM_IDS);
+  const out = invoices.filter((r) => !r.realm_id || !pnlRealms.has(r.realm_id));
+  const best = pickMonthlySnapshots(snapshots.filter((s) => s.realm_id && pnlRealms.has(s.realm_id)));
+  for (const key of Object.keys(best)) {
+    const [realm, month] = key.split("::");
+    out.push({ realm_id: realm, txn_date: `${month}-01`, total_amt: Number(best[key].income_total ?? 0) });
+  }
+  return out;
+}
+
+// src/lib/mcp/tools/get-revenue-metrics.ts
+var get_revenue_metrics_default = defineTool51({
+  name: "get_revenue_metrics",
+  title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
+  description: "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
+  inputSchema: {
+    from: z51.string().trim().max(40).optional().describe("ISO date lower bound (inclusive) on invoice txn_date / snapshot period."),
+    to: z51.string().trim().max(40).optional().describe("ISO date upper bound (exclusive)."),
+    realm_id: z51.string().trim().max(64).optional().describe("QuickBooks entity/realm id to scope to."),
+    include_invoices: z51.boolean().default(false).describe("Also return the underlying invoice rows.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ from, to, realm_id, include_invoices }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const invoices = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("quickbooks_invoices").select("id, realm_id, customer_name, txn_date, total_amt, balance, status").order("txn_date", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte("txn_date", from);
+      if (to) q = q.lt("txn_date", to);
+      if (realm_id) q = q.eq("realm_id", realm_id);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page2 = data ?? [];
+      invoices.push(...page2);
+      if (page2.length < pageSize) break;
+    }
+    let pnlQuery = sb.from("qbo_pnl_snapshots").select(
+      "realm_id, period_start, period_end, accounting_method, fetched_at, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income"
+    ).order("period_start", { ascending: true }).limit(500);
+    if (from) pnlQuery = pnlQuery.gte("period_start", from);
+    if (to) pnlQuery = pnlQuery.lt("period_end", to);
+    if (realm_id) pnlQuery = pnlQuery.eq("realm_id", realm_id);
+    const { data: pnl, error: pnlError } = await pnlQuery;
+    if (pnlError) return errorResult(pnlError.message);
+    const amount = (i) => Number(i.total_amt) || 0;
+    const revenueRows = withPnlRevenue(invoices, pnl ?? []);
+    const revAmount = (r) => Number(r.total_amt) || 0;
+    const payload = {
+      timeframe: { from: from ?? null, to: to ?? null, realm_id: realm_id ?? null },
+      summary: {
+        invoice_count: invoices.length,
+        invoiced_total: sum(invoices.map(amount)),
+        outstanding_balance: sum(invoices.map((i) => i.balance))
+      },
+      by_month: groupAggregate(invoices, (i) => (i.txn_date ?? "").slice(0, 7) || "unknown", amount).sort(
+        (a, b) => a.key.localeCompare(b.key)
+      ),
+      by_customer: groupAggregate(invoices, (i) => i.customer_name ?? "unknown", amount).slice(0, 100),
+      by_entity: groupAggregate(invoices, (i) => i.realm_id ?? "unknown", amount),
+      revenue: {
+        basis: "All entities use QBO Accrual P&L Total Income (Debt Advisory excludes Ramp). Use these figures for revenue reporting; invoiced_total/by_customer are billing views.",
+        total: sum(revenueRows.map(revAmount)),
+        by_month: groupAggregate(revenueRows, (r) => (r.txn_date ?? "").slice(0, 7) || "unknown", revAmount).sort((a, b) => a.key.localeCompare(b.key)),
+        by_entity: groupAggregate(revenueRows, (r) => r.realm_id ?? "unknown", revAmount)
+      },
+      pnl_snapshots: pnl ?? [],
+      ...include_invoices ? { invoices } : {}
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-lender-metrics.ts
+import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z52 } from "npm:zod@^3.23.0";
+var get_lender_metrics_default = defineTool52({
+  name: "get_lender_metrics",
+  title: "Get lender / funding-source metrics (Lender Intelligence dashboard)",
+  description: "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
+  inputSchema: {
+    date_field: z52.enum(["created_at", "last_status_change_at", "submitted_at"]).default("created_at"),
+    from: z52.string().trim().max(40).optional(),
+    to: z52.string().trim().max(40).optional(),
+    deal_id: z52.string().uuid().optional().describe("Scope to a single deal."),
+    lender_name: z52.string().trim().max(160).optional()
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ date_field, from, to, deal_id, lender_name }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const rows = [];
+    const pageSize = 1e3;
+    for (let offset = 0; ; offset += pageSize) {
+      let q = sb.from("deal_lenders").select(
+        "id, deal_id, name, stage, tracking_status, quote_amount, pass_reason, submitted_at, approved_at, declined_at, passed_at, created_at, last_status_change_at"
+      ).order("created_at", { ascending: false }).range(offset, offset + pageSize - 1);
+      if (from) q = q.gte(date_field, from);
+      if (to) q = q.lt(date_field, to);
+      if (deal_id) q = q.eq("deal_id", deal_id);
+      if (lender_name) q = q.ilike("name", `%${lender_name}%`);
+      const { data, error } = await q;
+      if (error) return errorResult(error.message);
+      const page2 = data ?? [];
+      rows.push(...page2);
+      if (page2.length < pageSize) break;
+    }
+    const dealIds = [...new Set(rows.map((r) => r.deal_id))];
+    const excluded = /* @__PURE__ */ new Set();
+    for (let i = 0; i < dealIds.length; i += 200) {
+      const { data, error } = await sb.from("deals").select("id, company").in("id", dealIds.slice(i, i + 200));
+      if (error) return errorResult(error.message);
+      for (const d of data ?? []) {
+        if (isExcludedDealName(d.company)) excluded.add(d.id);
+      }
+    }
+    const lenders = rows.filter((r) => !excluded.has(r.deal_id));
+    const quote = (r) => Number(r.quote_amount) || 0;
+    const submitted = lenders.filter((l) => l.submitted_at).length;
+    const approved = lenders.filter((l) => l.approved_at).length;
+    const payload = {
+      timeframe: { date_field, from: from ?? null, to: to ?? null },
+      filters: { deal_id: deal_id ?? null, lender_name: lender_name ?? null },
+      summary: {
+        entry_count: lenders.length,
+        distinct_lenders: new Set(lenders.map((l) => l.name ?? "unknown")).size,
+        distinct_deals: new Set(lenders.map((l) => l.deal_id)).size,
+        total_quoted: sum(lenders.map(quote)),
+        submitted,
+        approved,
+        passed: lenders.filter((l) => l.passed_at).length,
+        declined: lenders.filter((l) => l.declined_at).length,
+        submit_to_approve_rate: submitted ? approved / submitted : 0
+      },
+      by_stage: groupAggregate(lenders, (l) => l.stage ?? "unknown", quote),
+      by_tracking_status: groupAggregate(lenders, (l) => l.tracking_status ?? "unknown", quote),
+      by_lender: groupAggregate(lenders, (l) => l.name ?? "unknown", quote).slice(0, 100),
+      top_pass_reasons: groupAggregate(
+        lenders.filter((l) => l.pass_reason),
+        (l) => (l.pass_reason ?? "").slice(0, 120),
+        () => 0
+      ).sort((a, b) => b.count - a.count).slice(0, 25)
+    };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/get-metric-targets.ts
+import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z53 } from "npm:zod@^3.23.0";
+var get_metric_targets_default = defineTool53({
+  name: "get_metric_targets",
+  title: "Get Insights plan targets and manual metric inputs",
+  description: "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
+  inputSchema: {
+    metric_key: z53.string().trim().max(120).optional(),
+    month_from: z53.string().trim().max(7).optional().describe("Inclusive lower bound, format YYYY-MM."),
+    month_to: z53.string().trim().max(7).optional().describe("Inclusive upper bound, format YYYY-MM.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ metric_key, month_from, month_to }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let targets = sb.from("insights_metric_targets").select("id, metric_key, metric_label, period_month, target_value, notes, updated_at").order("period_month", { ascending: true }).limit(1e3);
+    let manual = sb.from("metric_manual_inputs").select("id, metric_key, month_key, value, updated_at").order("month_key", { ascending: true }).limit(1e3);
+    if (metric_key) {
+      targets = targets.eq("metric_key", metric_key);
+      manual = manual.eq("metric_key", metric_key);
+    }
+    if (month_from) {
+      targets = targets.gte("period_month", month_from);
+      manual = manual.gte("month_key", month_from);
+    }
+    if (month_to) {
+      targets = targets.lte("period_month", month_to);
+      manual = manual.lte("month_key", month_to);
+    }
+    const [{ data: targetRows, error: targetError }, { data: manualRows, error: manualError }] = await Promise.all([
+      targets,
+      manual
+    ]);
+    if (targetError) return errorResult(targetError.message);
+    if (manualError) return errorResult(manualError.message);
+    const payload = { targets: targetRows ?? [], manual_inputs: manualRows ?? [] };
+    return textResult(payload, payload);
+  }
+});
+
+// src/lib/mcp/tools/query-insights-dataset.ts
+import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z54 } from "npm:zod@^3.23.0";
+var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
+var query_insights_dataset_default = defineTool54({
+  name: "query_insights_dataset",
+  title: "Query any Insights source dataset",
+  description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns), filters (column + operator + value), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
+  inputSchema: {
+    dataset: z54.enum(INSIGHTS_DATASETS),
+    columns: z54.string().trim().max(1e3).optional().describe("Comma-separated column list; defaults to all columns."),
+    filters: z54.array(
+      z54.object({
+        column: z54.string().trim().min(1).max(80),
+        op: z54.enum(OPERATORS).default("eq"),
+        value: z54.union([z54.string(), z54.number(), z54.boolean(), z54.null(), z54.array(z54.union([z54.string(), z54.number()]))])
+      })
+    ).max(10).optional(),
+    order_by: z54.string().trim().max(80).optional(),
+    ascending: z54.boolean().default(false),
+    limit: z54.number().int().min(1).max(1e3).default(200),
+    offset: z54.number().int().min(0).default(0).describe("Row offset for pagination; use next_offset from the previous response.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ dataset, columns, filters, order_by, ascending, limit, offset }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    let q = sb.from(dataset).select(columns?.trim() || "*", { count: "exact" }).range(offset, offset + limit - 1);
+    for (const f of filters ?? []) {
+      switch (f.op) {
+        case "in":
+          q = q.in(f.column, Array.isArray(f.value) ? f.value : [f.value]);
+          break;
+        case "is":
+          q = q.is(f.column, f.value);
+          break;
+        default: {
+          const apply = q;
+          q = apply[f.op].call(q, f.column, f.value);
+        }
+      }
+    }
+    if (order_by) q = q.order(order_by, { ascending, nullsFirst: false });
+    const { data, error, count } = await q;
+    if (error) {
+      console.error("[query_insights_dataset] error", { dataset, user_id: ctx.getUserId?.(), message: error.message });
+      return errorResult(error.message);
+    }
+    const rows = data ?? [];
+    const total_count = count ?? rows.length;
+    const next = offset + rows.length;
+    const has_more = next < total_count;
+    const payload = {
+      dataset,
+      total_count,
+      returned: rows.length,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more,
+      rows
+    };
+    return textResult(payload, {
+      dataset,
+      count: rows.length,
+      total_count,
+      offset,
+      next_offset: has_more ? next : null,
+      has_more
+    });
+  }
+});
+
+// src/lib/mcp/tools/describe-schema.ts
+import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z55 } from "npm:zod@^3.23.0";
+var EXTRA_TABLES = [
+  "deal_writeups",
+  "deal_memos",
+  "deal_checklist_items",
+  "deal_checklist_status",
+  "deal_attachments",
+  "deal_status_notes",
+  "deal_financial_data",
+  "deal_flag_notes",
+  "deal_ownership",
+  "deal_space_notes",
+  "deal_activity",
+  "contact_deals",
+  "deal_pipeline_configs",
+  "funding_source_acquisition_plans",
+  "lender_master_note_history"
+];
+var DESCRIBABLE = Array.from(/* @__PURE__ */ new Set([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
+var describe_schema_default = defineTool55({
+  name: "describe_schema",
+  title: "Describe table schema",
+  description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
+  inputSchema: {
+    tables: z55.array(z55.string().trim().min(1).max(80)).max(20).optional().describe("Table names to describe. Omit to list the tables that can be described."),
+    include_field_layout: z55.boolean().default(false).describe(
+      "Also return the configured Deal Information field layout (order + visibility) per company, and which deal columns are actually populated per pipeline."
+    )
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ tables, include_field_layout }, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    let fieldLayout = void 0;
+    if (include_field_layout) {
+      const sbLayout = supabaseForUser(ctx);
+      const { data: settings } = await sbLayout.from("company_settings").select("company_id, deal_info_layout");
+      const { data: pipes } = await sbLayout.from("deal_pipelines").select("id, name, company_id");
+      const usage = [];
+      for (const p of pipes ?? []) {
+        const { data: sample } = await sbLayout.from("deals").select("*").eq("pipeline_id", p.id).limit(500);
+        const rowsSample = sample ?? [];
+        const populated = /* @__PURE__ */ new Set();
+        for (const r of rowsSample) {
+          for (const [k, v] of Object.entries(r)) {
+            if (v !== null && v !== void 0 && v !== "") populated.add(k);
+          }
+        }
+        usage.push({
+          pipeline_id: p.id,
+          pipeline_name: p.name ?? null,
+          populated_fields: Array.from(populated).sort(),
+          sampled_deals: rowsSample.length
+        });
+      }
+      fieldLayout = {
+        company_deal_info_layout: settings ?? [],
+        pipeline_field_usage: usage,
+        note: "Deal Information field order/visibility is configured per company; pipeline_field_usage shows which deal columns are actually used by deals in each pipeline (sample of up to 500 deals)."
+      };
+    }
+    if (!tables || tables.length === 0) {
+      return textResult(
+        { describable_tables: DESCRIBABLE, ...fieldLayout ? { field_layout: fieldLayout } : {} },
+        { count: DESCRIBABLE.length }
+      );
+    }
+    const invalid = tables.filter((t) => !DESCRIBABLE.includes(t));
+    if (invalid.length) {
+      return errorResult(
+        `Not describable: ${invalid.join(", ")}. Allowed tables: ${DESCRIBABLE.join(", ")}.`
+      );
+    }
+    const sb = supabaseForUser(ctx);
+    const { data, error } = await sb.rpc("mcp_describe_tables", { p_tables: tables });
+    if (error) {
+      console.error("[describe_schema] error", { tables, user_id: ctx.getUserId?.(), message: error.message });
+      return errorResult(error.message);
+    }
+    const rows = data ?? [];
+    const grouped = {};
+    for (const r of rows) {
+      const { table_name, ...rest } = r;
+      (grouped[table_name] ??= []).push(rest);
+    }
+    const payload = {
+      tables: Object.entries(grouped).map(([table, columns]) => ({
+        table,
+        column_count: columns.length,
+        columns,
+        write_contract: table === "master_lenders" ? {
+          editable_columns: ["name", ...Object.keys(LENDER_FIELD_SCHEMA)],
+          immutable_columns: ["id", "user_id", "company_id", "created_at", "updated_at"],
+          criteria_confidence_values: CRITERIA_CONFIDENCE_MEANINGS,
+          text_modes: ["replace", "append", "prepend"],
+          max_batch: 25
+        } : table in LENDER_RELATED_FIELDS ? {
+          editable_columns: Object.keys(LENDER_RELATED_FIELDS[table]),
+          permissions: "Existing RLS applies; actor and tenancy are derived server-side. Availability is not a permission grant."
+        } : void 0
+      })),
+      ...fieldLayout ? { field_layout: fieldLayout } : {}
+    };
+    return textResult(payload, { tables: tables.join(","), column_count: rows.length });
+  }
+});
+
+// src/lib/mcp/tools/list-referral-partners.ts
+import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z56 } from "npm:zod@^3.23.0";
+var list_referral_partners_default = defineTool56({
   name: "list_referral_partners",
   title: "List referral partners",
   description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are skipped and counted in `missing_email`. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
   inputSchema: {
-    stages: z54.array(z54.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
-    limit: z54.number().int().min(1).max(1e3).default(200),
-    offset: z54.number().int().min(0).default(0)
+    stages: z56.array(z56.enum(REFERRAL_STAGES)).min(1).max(4).optional().describe('Stages to include. Defaults to all four: "Nurturing", "Tier 3", "Tier 2", "Tier 1".'),
+    limit: z56.number().int().min(1).max(1e3).default(200),
+    offset: z56.number().int().min(0).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ stages, limit, offset }, ctx) => {
@@ -4325,61 +5648,7 @@ var list_referral_partners_default = defineTool54({
       if (mErr) return errorResult(mErr.message);
       if (!member?.company_id) return errorResult("forbidden: the signed-in user is not a member of a company.");
       const companyId = member.company_id;
-      const { data: pipelines, error: pErr } = await sb.from("deal_pipelines").select("id, name, is_default").eq("company_id", companyId);
-      if (pErr) return errorResult(pErr.message);
-      const pipelineIds = (pipelines ?? []).filter((p) => {
-        const l = String(p.name ?? "").toLowerCase();
-        return l.includes("in development") || l.includes("in-development") || p.is_default || l.includes("active");
-      }).map((p) => p.id);
-      const [pipelineDeals, allDeals, manualSources, rulesRes] = await Promise.all([
-        pipelineIds.length ? fetchAll((f, t) => sb.from("deals").select("id, company, stage, referred_by, referred_by_contact_id, referred_by_crm_company_id, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").in("pipeline_id", pipelineIds).order("id").range(f, t)) : Promise.resolve([]),
-        fetchAll((f, t) => sb.from("deals").select("id, stage, referred_by, sourced_via, closing_date, created_at, pipeline_id").eq("company_id", companyId).not("referred_by", "is", null).neq("referred_by", "").order("id").range(f, t)),
-        fetchAll((f, t) => sb.from("referral_sources").select("id, name, email, company, contact_id, created_at, updated_at").or(`company_id.eq.${companyId},and(company_id.is.null,user_id.eq.${userId})`).order("id").range(f, t)),
-        sb.from("sales_bd_rules").select("tier1_qualified_deals, tier1_trailing_months, tier1_signed_clients, tier2_qualified_deals_min, tier2_qualified_deals_max, tier2_trailing_months, tier2_deals_on_board, tier3_deals_per_quarter, qualified_deal_stages").limit(1).maybeSingle()
-      ]);
-      if (rulesRes.error) return errorResult(rulesRes.error.message);
-      const activeIds = new Set((pipelines ?? []).filter((p) => p.is_default).map((p) => p.id));
-      const dealPipeline = new Map(allDeals.map((d) => [d.id, d.pipeline_id]));
-      const history = await fetchByIds(
-        sb,
-        "deal_stage_history",
-        "deal_id, changed_at, pipeline_id, event_type, to_stage_id, to_stage",
-        "deal_id",
-        allDeals.map((d) => d.id)
-      );
-      const entries = earliestNdaEntries(
-        history.filter((h) => h.event_type === "stage_enter"),
-        activeIds,
-        dealPipeline
-      );
-      for (const d of allDeals) d.nda_entered_at = resolveNdaEnteredAt(d, entries, activeIds);
-      const ndaById = new Map(allDeals.map((d) => [d.id, d.nda_entered_at]));
-      for (const d of pipelineDeals) d.nda_entered_at = ndaById.get(d.id) ?? null;
-      const contactIds = [...new Set([
-        ...pipelineDeals.map((d) => d.referred_by_contact_id),
-        ...manualSources.map((m) => m.contact_id)
-      ].filter((v) => !!v))];
-      const contacts = await fetchByIds(
-        sb,
-        "contacts",
-        "id, full_name, first_name, last_name, email, job_title, crm_company_id, owner_user_id, updated_at",
-        "id",
-        contactIds
-      );
-      const companyIds = [...new Set([
-        ...pipelineDeals.map((d) => d.referred_by_crm_company_id),
-        ...contacts.map((c) => c.crm_company_id)
-      ].filter((v) => !!v))];
-      const companies = await fetchByIds(sb, "crm_companies", "id, name", "id", companyIds);
-      const companyNames = new Map(companies.filter((c) => c.name).map((c) => [c.id, c.name]));
-      const classified = classifyReferralPipeline({
-        pipelineDeals,
-        allDeals,
-        manualSources,
-        contacts,
-        companyNames,
-        rules: rulesRes.data ?? null
-      });
+      const { classified, contacts, companyNames } = await loadReferralClassification(sb, companyId, userId);
       const contactById = new Map(contacts.map((c) => [c.id, c]));
       const ownerIds = [...new Set(contacts.map((c) => c.owner_user_id).filter((v) => !!v))];
       const owners = await fetchByIds(
@@ -4422,17 +5691,17 @@ var list_referral_partners_default = defineTool54({
       }
       const order = new Map(REFERRAL_STAGES.map((s, i) => [s, i]));
       rows.sort((a, b) => order.get(b.stage) - order.get(a.stage) || `${a.last_name ?? ""} ${a.first_name ?? ""}`.localeCompare(`${b.last_name ?? ""} ${b.first_name ?? ""}`));
-      const page = rows.slice(offset, offset + limit);
-      const next = offset + page.length;
+      const page2 = rows.slice(offset, offset + limit);
+      const next = offset + page2.length;
       const payload = {
         total_count: rows.length,
-        returned: page.length,
+        returned: page2.length,
         offset,
         next_offset: next < rows.length ? next : null,
         has_more: next < rows.length,
         stage_counts,
         missing_email,
-        partners: page
+        partners: page2
       };
       return textResult(payload, payload);
     } catch (e) {
@@ -4442,8 +5711,8 @@ var list_referral_partners_default = defineTool54({
 });
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z55 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z57 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/salesCallsWeekly.ts
 function weekStartUtc(d) {
@@ -4469,20 +5738,38 @@ function bucketSalesCallsByWeek(events, from, to) {
   }
   return [...weeks.values()];
 }
+function bucketSalesCallsByMonth(events, from, to) {
+  const key = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const months = /* @__PURE__ */ new Map();
+  for (let m = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1)); m <= to; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+    months.set(key(m), { month: key(m), count: 0, companies: [] });
+  }
+  for (const ev of events) {
+    if (!ev.start) continue;
+    const d = new Date(ev.start);
+    if (Number.isNaN(d.getTime()) || d < from || d > to) continue;
+    const row = months.get(key(d));
+    if (!row) continue;
+    row.count += 1;
+    if (ev.company) row.companies.push(ev.company);
+  }
+  return [...months.values()];
+}
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-var get_sales_calls_weekly_default = defineTool55({
+var get_sales_calls_weekly_default = defineTool57({
   name: "get_sales_calls_weekly",
   title: "Get weekly sales call counts",
-  description: 'Returns the Sales Calls metric shown on Insights \u2192 Sales Dashboard, bucketed by week (Monday\u2013Sunday, UTC). Debt counts deduped calendar events titled "[Company] <> 5th Line Financing Review"; FinServ counts "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro". Defaults to the last 12 weeks ending today.',
+  description: `Returns the Sales Calls metric shown on Insights \u2192 Sales Dashboard, bucketed by week (Monday\u2013Sunday, UTC). Debt counts deduped calendar events titled "[Company] <> 5th Line Financing Review"; FinServ counts "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro". Defaults to the last 12 weeks ending today. Weekly output (default) counts every event the sales-calls service returns; group_by="month" applies the Sales Dashboard tile's exact title rule (FinServ excludes any Debt financing review) and UTC month buckets.`,
   inputSchema: {
-    weeks: z55.number().int().min(1).max(53).default(12).describe("Number of weeks back from end_date."),
-    end_date: z55.string().trim().max(30).optional().describe("ISO date (YYYY-MM-DD) to end on; defaults to today."),
-    variant: z55.enum(["debt", "finserv"]).default("debt"),
-    include_events: z55.boolean().default(false).describe("Also return each qualifying call.")
+    weeks: z57.number().int().min(1).max(53).default(12).describe("Number of weeks back from end_date."),
+    end_date: z57.string().trim().max(30).optional().describe("ISO date (YYYY-MM-DD) to end on; defaults to today."),
+    variant: z57.enum(["debt", "finserv"]).default("debt"),
+    include_events: z57.boolean().default(false).describe("Also return each qualifying call."),
+    group_by: z57.enum(["week", "month"]).default("week").describe('"month" adds UTC calendar-month buckets (Sales Dashboard month boundaries) and uses the exact Sales Dashboard tile title rule.')
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
-  handler: async ({ weeks, end_date, variant, include_events }, ctx) => {
+  handler: async ({ weeks, end_date, variant, include_events, group_by }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
     const end = end_date ? /* @__PURE__ */ new Date(`${end_date}T23:59:59.999Z`) : /* @__PURE__ */ new Date();
@@ -4494,6 +5781,21 @@ var get_sales_calls_weekly_default = defineTool55({
     });
     if (error) return errorResult(`Sales calls unavailable: ${error.message}`);
     const events = Array.isArray(data?.events) ? data.events : [];
+    if (group_by === "month") {
+      const kept = events.filter((e) => isSalesCallTitleForVariant(e.title, variant));
+      const months = bucketSalesCallsByMonth(kept, start, end);
+      const payload2 = {
+        variant,
+        group_by,
+        time_zone: "UTC",
+        rule: "Same rule as the Sales Dashboard tile: deduped calendar events re-filtered by the dashboard title rule, bucketed by UTC calendar month of the start time.",
+        range: { from: start.toISOString(), to: end.toISOString() },
+        total: months.reduce((a, r) => a + r.count, 0),
+        months,
+        ...include_events ? { events: kept.map((e) => ({ start: e.start, company: e.company, title: e.title, host: e.user_name ?? null })) } : {}
+      };
+      return textResult(payload2, payload2);
+    }
     const rows = bucketSalesCallsByWeek(events, start, end).slice(-weeks);
     const total = rows.reduce((a, r) => a + r.count, 0);
     const payload = {
@@ -4508,8 +5810,8 @@ var get_sales_calls_weekly_default = defineTool55({
 });
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z56 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z58 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealHoursFees.ts
 var n = (v) => Number(v) || 0;
@@ -4555,18 +5857,18 @@ function rollupHoursFees(rows) {
 }
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-var get_deal_hours_fees_default = defineTool56({
+var get_deal_hours_fees_default = defineTool58({
   name: "get_deal_hours_fees",
   title: "Get deal hours & fees",
   description: "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
   inputSchema: {
-    deal_id: z56.string().uuid().optional(),
-    pipeline_id: z56.string().uuid().optional(),
-    stage: z56.string().trim().max(100).optional().describe("Raw stage id."),
-    query: z56.string().trim().min(1).max(200).optional().describe("Substring match on deal/company name."),
-    only_missing_fees: z56.boolean().default(false),
-    include_weekly_hours: z56.boolean().default(false),
-    limit: z56.number().int().min(1).max(2e3).default(500).describe("Max deals listed (rollups always cover all matches).")
+    deal_id: z58.string().uuid().optional(),
+    pipeline_id: z58.string().uuid().optional(),
+    stage: z58.string().trim().max(100).optional().describe("Raw stage id."),
+    query: z58.string().trim().min(1).max(200).optional().describe("Substring match on deal/company name."),
+    only_missing_fees: z58.boolean().default(false),
+    include_weekly_hours: z58.boolean().default(false),
+    limit: z58.number().int().min(1).max(2e3).default(500).describe("Max deals listed (rollups always cover all matches).")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, pipeline_id, stage, query, only_missing_fees, include_weekly_hours, limit }, ctx) => {
@@ -4583,9 +5885,9 @@ var get_deal_hours_fees_default = defineTool56({
       if (query) q = q.ilike("company", `%${query}%`);
       const { data, error } = await q;
       if (error) return errorResult(error.message);
-      const page = data ?? [];
-      rows.push(...page);
-      if (page.length < 1e3) break;
+      const page2 = data ?? [];
+      rows.push(...page2);
+      if (page2.length < 1e3) break;
     }
     const labelled = await withStageLabels(sb, rows.filter((r) => deal_id || !isExcludedDealName(r.company)));
     let deals = labelled.map((r) => ({
@@ -4636,8 +5938,8 @@ var get_deal_hours_fees_default = defineTool56({
 });
 
 // src/lib/mcp/tools/get-cashflow-metrics.ts
-import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z57 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z59 } from "npm:zod@^3.23.0";
 
 // src/components/cashflow/weeklyHistoricalSeed.ts
 var LAST_HISTORICAL_WEEK_ENDING = "2026-04-17";
@@ -7076,8 +8378,8 @@ function generateOccurrences(entry, rangeStart, rangeEnd) {
     while (cur <= effectiveEnd) {
       const year = cur.getFullYear();
       const month = cur.getMonth();
-      const lastDay = lastDayOfMonth2(year, month);
-      const day = Math.min(dom, lastDay);
+      const lastDay2 = lastDayOfMonth2(year, month);
+      const day = Math.min(dom, lastDay2);
       const target = new Date(year, month, day);
       if (target >= effectiveStart && target <= effectiveEnd) {
         push(fmtDate(target));
@@ -7560,15 +8862,15 @@ function computeCashflowKpis(weekly, weeksFuture, weeksPast, todayISO = (/* @__P
 var DEFAULT_WEEKS_FUTURE = 8;
 var DEFAULT_WEEKS_PAST = 1;
 var num2 = (v) => Math.round(Number(v) || 0);
-var get_cashflow_metrics_default = defineTool57({
+var get_cashflow_metrics_default = defineTool59({
   name: "get_cashflow_metrics",
   title: "Get cash flow metrics (Finance headline widgets)",
   description: "Returns the exact Finance > Cash Flow headline figures: Cash In, Cash Out, Net Change (current week through weeks_future), and Peak Cash / Low Cash with their week-ending dates (weeks_past through weeks_future). Uses the same calculation as the Finance page, including scheduled entries, deal fee projections, manual date/amount moves and weekly overrides. Defaults to the workspace's saved Finance window. Figures match the page with no Year/Quarter/Entity/Category filters applied.",
   inputSchema: {
-    weeks_future: z57.number().int().min(0).max(104).optional().describe("Weeks after the current week. Defaults to the Finance page default."),
-    weeks_past: z57.number().int().min(0).max(104).optional().describe("Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."),
-    as_of: z57.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."),
-    include_weekly_breakdown: z57.boolean().default(false).describe("Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash.")
+    weeks_future: z59.number().int().min(0).max(104).optional().describe("Weeks after the current week. Defaults to the Finance page default."),
+    weeks_past: z59.number().int().min(0).max(104).optional().describe("Weeks before the current week used for Peak/Low Cash. Defaults to the Finance page default."),
+    as_of: z59.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Anchor date (YYYY-MM-DD). Defaults to today (UTC), like the page."),
+    include_weekly_breakdown: z59.boolean().default(false).describe("Also return each visible week's beginning cash, receipts, disbursements, net change and ending cash.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ weeks_future, weeks_past, as_of, include_weekly_breakdown }, ctx) => {
@@ -7670,8 +8972,8 @@ var get_cashflow_metrics_default = defineTool57({
 });
 
 // src/lib/mcp/tools/get-headcount.ts
-import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z58 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z60 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/workforceMetrics.ts
 var WORKSPACE_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
@@ -7741,10 +9043,10 @@ function ttmPerHead(endMonth, amountByMonth, hcByMonth) {
 }
 
 // src/lib/mcp/tools/_workforceLoad.ts
-async function loadAll(page) {
+async function loadAll(page2) {
   const out = [];
   for (let from = 0; ; from += 1e3) {
-    const { data, error } = await page(from, from + 999);
+    const { data, error } = await page2(from, from + 999);
     if (error) throw new Error(error.message);
     out.push(...data ?? []);
     if ((data ?? []).length < 1e3) return out;
@@ -7775,13 +9077,13 @@ async function monthlyPnl(sb, realmIds, from, to) {
 }
 
 // src/lib/mcp/tools/get-headcount.ts
-var get_headcount_default = defineTool58({
+var get_headcount_default = defineTool60({
   name: "get_headcount",
   title: "Get monthly headcount by entity",
   description: "Monthly headcount from the Insights Headcount editor for each QuickBooks entity (Debt, FinServ, Tech, Parent) plus the firm-wide total (sum minus 1 for James's Debt/Parent duplicate) and yearly averages. 5th Line workspace only.",
   inputSchema: {
-    from_month: z58.string().regex(/^\d{4}-\d{2}$/).optional().describe("First month YYYY-MM (default: all)."),
-    to_month: z58.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last month YYYY-MM inclusive.")
+    from_month: z60.string().regex(/^\d{4}-\d{2}$/).optional().describe("First month YYYY-MM (default: all)."),
+    to_month: z60.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last month YYYY-MM inclusive.")
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from_month, to_month }, ctx) => {
@@ -7812,17 +9114,17 @@ var get_headcount_default = defineTool58({
 });
 
 // src/lib/mcp/tools/get-harvest-metrics.ts
-import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z59 } from "npm:zod@^3.23.0";
-var get_harvest_metrics_default = defineTool59({
+import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z61 } from "npm:zod@^3.23.0";
+var get_harvest_metrics_default = defineTool61({
   name: "get_harvest_metrics",
   title: "Get Harvest hours and FinServ revenue/profit per hour",
   description: "Harvest time data from the latest completed sync (Jan 2024 onward) as shown on the FinServ Financial Metrics dashboard: monthly total/billable hours, billable amount, per-person hours and utilization, plus FinServ Revenue per Hour (QuickBooks income \xF7 billable hours of ALL users), Gross Profit per Hour and Profit per Hour (operating profit \xF7 billable hours), monthly and for the whole period. Set include_entries=true for raw time entries.",
   inputSchema: {
-    from: z59.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Start date (default 2024-01-01)."),
-    to: z59.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("End date inclusive (default today)."),
-    include_entries: z59.boolean().default(false),
-    entries_limit: z59.number().int().min(1).max(5e3).default(1e3)
+    from: z61.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("Start date (default 2024-01-01)."),
+    to: z61.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe("End date inclusive (default today)."),
+    include_entries: z61.boolean().default(false),
+    entries_limit: z61.number().int().min(1).max(5e3).default(1e3)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ from, to, include_entries, entries_limit }, ctx) => {
@@ -7894,17 +9196,17 @@ var get_harvest_metrics_default = defineTool59({
 });
 
 // src/lib/mcp/tools/get-per-head-metrics.ts
-import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z60 } from "npm:zod@^3.23.0";
-var get_per_head_metrics_default = defineTool60({
+import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z62 } from "npm:zod@^3.23.0";
+var get_per_head_metrics_default = defineTool62({
   name: "get_per_head_metrics",
   title: "Get TTM revenue and gross profit per head",
   description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors \xF7 Debt headcount), 'finserv' (5th Line Financial Services \xF7 FinServ headcount) or 'firm' (all entities \xF7 firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
   inputSchema: {
-    scope: z60.enum(["debt", "finserv", "firm"]).default("debt"),
-    end_month: z60.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
-    view: z60.enum(["month", "quarter"]).default("month"),
-    periods: z60.number().int().min(1).max(36).default(12)
+    scope: z62.enum(["debt", "finserv", "firm"]).default("debt"),
+    end_month: z62.string().regex(/^\d{4}-\d{2}$/).optional().describe("Last period month YYYY-MM (default: current month)."),
+    view: z62.enum(["month", "quarter"]).default("month"),
+    periods: z62.number().int().min(1).max(36).default(12)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ scope, end_month, view, periods }, ctx) => {
@@ -8051,13 +9353,13 @@ var update_lender_history_warning_dismissal_default = defineLenderRelatedTool("l
 var delete_lender_history_warning_dismissal_default = defineLenderRelatedTool("lender_history_warning_dismissals", "delete", "delete_lender_history_warning_dismissal");
 
 // src/lib/mcp/tools/add-lender-note.ts
-import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z61 } from "npm:zod@^3.23.0";
-var add_lender_note_default = defineTool61({
+import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z63 } from "npm:zod@^3.23.0";
+var add_lender_note_default = defineTool63({
   name: "add_lender_note",
   title: "Add funding source note",
   description: "Create lender_notes body, tags and is_flag. Server derives author, lender name and company. Writes field-level audit atomically; does not write deal_lenders or deal-note history.",
-  inputSchema: { lender_id: z61.string().uuid(), body: z61.string().min(1).max(2e4), tags: z61.array(z61.string().max(200)).max(100).optional(), is_flag: z61.boolean().optional(), ...writeProvenance },
+  inputSchema: { lender_id: z63.string().uuid(), body: z63.string().min(1).max(2e4), tags: z63.array(z63.string().max(200)).max(100).optional(), is_flag: z63.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ lender_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -8067,13 +9369,13 @@ var add_lender_note_default = defineTool61({
 });
 
 // src/lib/mcp/tools/update-lender-note.ts
-import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z62 } from "npm:zod@^3.23.0";
-var update_lender_note_default = defineTool62({
+import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z64 } from "npm:zod@^3.23.0";
+var update_lender_note_default = defineTool64({
   name: "update_lender_note",
   title: "Edit funding source note",
   description: "Update only supplied lender_notes body, tags, is_flag. Author-only RLS remains. Atomically preserves prior record in lender_master_note_history and audits every field. lender_notes_history is deal-specific and is NOT used for directory notes.",
-  inputSchema: { note_id: z62.string().uuid(), body: z62.string().min(1).max(2e4).optional(), tags: z62.array(z62.string().max(200)).max(100).optional(), is_flag: z62.boolean().optional(), ...writeProvenance },
+  inputSchema: { note_id: z64.string().uuid(), body: z64.string().min(1).max(2e4).optional(), tags: z64.array(z64.string().max(200)).max(100).optional(), is_flag: z64.boolean().optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ note_id, source, change_reason, ...patch }, ctx) => {
     const err = requireAuth(ctx);
@@ -8086,13 +9388,13 @@ var update_lender_note_default = defineTool62({
 });
 
 // src/lib/mcp/tools/delete-lender-note.ts
-import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z63 } from "npm:zod@^3.23.0";
-var delete_lender_note_default = defineTool63({
+import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z65 } from "npm:zod@^3.23.0";
+var delete_lender_note_default = defineTool65({
   name: "delete_lender_note",
   title: "Delete funding source note",
   description: "Delete one lender_notes row with confirm:true, preserving its previous record in lender_master_note_history and field-level lender_audit_logs atomically. Existing author/admin delete permissions apply; no deal-specific notes are touched.",
-  inputSchema: { note_id: z63.string().uuid(), confirm: z63.literal(true), ...writeProvenance },
+  inputSchema: { note_id: z65.string().uuid(), confirm: z65.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ note_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8105,13 +9407,13 @@ var delete_lender_note_default = defineTool63({
 });
 
 // src/lib/mcp/tools/update-lender-attachment.ts
-import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z64 } from "npm:zod@^3.23.0";
-var update_lender_attachment_default = defineTool64({
+import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z66 } from "npm:zod@^3.23.0";
+var update_lender_attachment_default = defineTool66({
   name: "update_lender_attachment",
   title: "Edit funding source attachment",
   description: "Rename (file_name -> lender_attachments.name) or recategorize an attachment; only supplied fields change. Does not move or replace stored bytes, file_path, size, MIME type or uploader. Existing uploader/company permissions apply; field diffs audited transactionally.",
-  inputSchema: { attachment_id: z64.string().uuid(), file_name: z64.string().trim().min(1).max(255).optional(), category: z64.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
+  inputSchema: { attachment_id: z66.string().uuid(), file_name: z66.string().trim().min(1).max(255).optional(), category: z66.enum(LENDER_ATTACHMENT_CATEGORIES).optional(), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ attachment_id, file_name, category, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8127,13 +9429,13 @@ var update_lender_attachment_default = defineTool64({
 });
 
 // src/lib/mcp/tools/delete-lender.ts
-import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z65 } from "npm:zod@^3.23.0";
-var delete_lender_default = defineTool65({
+import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z67 } from "npm:zod@^3.23.0";
+var delete_lender_default = defineTool67({
   name: "delete_lender",
   title: "Archive funding source",
   description: "SOFT DELETE: set master_lenders.active=false, preserving contacts, notes, attachments, deal links and audit history. Requires confirm:true and existing lender deletion permission. Refuses deal-linked lenders unless force:true (still preserves links). Never hard deletes or removes stored files. Field diff audited atomically.",
-  inputSchema: { lender_id: z65.string().uuid(), confirm: z65.literal(true), force: z65.boolean().default(false), ...writeProvenance },
+  inputSchema: { lender_id: z67.string().uuid(), confirm: z67.literal(true), force: z67.boolean().default(false), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ lender_id, confirm, force, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8144,13 +9446,13 @@ var delete_lender_default = defineTool65({
 });
 
 // src/lib/mcp/tools/merge-lenders.ts
-import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z66 } from "npm:zod@^3.23.0";
-var merge_lenders_default = defineTool66({
+import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z68 } from "npm:zod@^3.23.0";
+var merge_lenders_default = defineTool68({
   name: "merge_lenders",
   title: "Merge funding sources",
   description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. Does not use the legacy broad merge RPC or reconnect FLEx.",
-  inputSchema: { keep_lender_id: z66.string().uuid(), merge_lender_id: z66.string().uuid(), confirm: z66.literal(true), ...writeProvenance },
+  inputSchema: { keep_lender_id: z68.string().uuid(), merge_lender_id: z68.string().uuid(), confirm: z68.literal(true), ...writeProvenance },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
   handler: async ({ keep_lender_id, merge_lender_id, confirm, source, change_reason }, ctx) => {
     const err = requireAuth(ctx);
@@ -8161,18 +9463,18 @@ var merge_lenders_default = defineTool66({
 });
 
 // src/lib/mcp/tools/update-claap-meeting-match.ts
-import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z67 } from "npm:zod@^3.23.0";
-var update_claap_meeting_match_default = defineTool67({
+import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z69 } from "npm:zod@^3.23.0";
+var update_claap_meeting_match_default = defineTool69({
   name: "update_claap_meeting_match",
   title: "Update Claap funding-source match",
   description: "Confirm, reassign, or clear one Claap meeting's funding-source match after user approval. Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
   inputSchema: {
-    meeting_id: z67.string().uuid(),
-    matched_lender_id: z67.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
-    match_status: z67.enum(["matched", "needs_review", "unmatched"]),
-    reason: z67.string().max(1e4).optional(),
-    status: z67.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
+    meeting_id: z69.string().uuid(),
+    matched_lender_id: z69.string().uuid().nullable().describe("Visible master_lenders.id in the meeting's company, or null to clear."),
+    match_status: z69.enum(["matched", "needs_review", "unmatched"]),
+    reason: z69.string().max(1e4).optional(),
+    status: z69.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8190,19 +9492,19 @@ var update_claap_meeting_match_default = defineTool67({
 });
 
 // src/lib/mcp/tools/list-lender-claap-meetings.ts
-import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z68 } from "npm:zod@^3.23.0";
-var list_lender_claap_meetings_default = defineTool68({
+import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z70 } from "npm:zod@^3.23.0";
+var list_lender_claap_meetings_default = defineTool70({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
   description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection.",
   inputSchema: {
-    lender_ids: z68.array(z68.string().uuid()).max(200).optional(),
-    updated_after: z68.string().datetime({ offset: true }).optional(),
-    match_statuses: z68.array(z68.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
-    include_transcript: z68.boolean().default(false),
-    limit: z68.number().int().min(1).max(200).default(50),
-    offset: z68.number().int().min(0).max(1e6).default(0)
+    lender_ids: z70.array(z70.string().uuid()).max(200).optional(),
+    updated_after: z70.string().datetime({ offset: true }).optional(),
+    match_statuses: z70.array(z70.enum(["matched", "needs_review", "unmatched"])).max(3).optional(),
+    include_transcript: z70.boolean().default(false),
+    limit: z70.number().int().min(1).max(200).default(50),
+    offset: z70.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8221,26 +9523,26 @@ var list_lender_claap_meetings_default = defineTool68({
 });
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z70 } from "npm:zod@^3.23.0";
+import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z72 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/outstandingItemFields.ts
-import { z as z69 } from "npm:zod@^3.23.0";
-var outstandingStatus = z69.enum(["requested", "received", "submitted"]);
-var outstandingPriority = z69.enum(["normal", "high", "urgent"]);
-var date = z69.string().date();
-var metadata = z69.record(z69.string(), z69.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
+import { z as z71 } from "npm:zod@^3.23.0";
+var outstandingStatus = z71.enum(["requested", "received", "submitted"]);
+var outstandingPriority = z71.enum(["normal", "high", "urgent"]);
+var date = z71.string().date();
+var metadata = z71.record(z71.string(), z71.unknown()).refine((value) => JSON.stringify(value).length <= 2e4, "Metadata must not exceed 20,000 characters.");
 var outstandingCreateFields = {
-  description: z69.string().trim().min(1).max(2e3),
-  lender_id: z69.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
+  description: z71.string().trim().min(1).max(2e3),
+  lender_id: z71.string().uuid().optional().describe("deal_lenders.id attached to this deal, NOT master_lenders.id."),
   status: outstandingStatus.default("requested"),
   priority: outstandingPriority.default("normal"),
   due_date: date.optional(),
   eta: date.optional(),
-  assigned_to: z69.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
-  notes: z69.string().max(1e4).optional(),
+  assigned_to: z71.string().max(500).optional().describe("Opaque assignment text; the current widget has no assignee selector."),
+  notes: z71.string().max(1e4).optional(),
   source_metadata: metadata.optional(),
-  idempotency_key: z69.string().trim().min(1).max(200).optional()
+  idempotency_key: z71.string().trim().min(1).max(200).optional()
 };
 var outstandingUpdateFields = {
   description: outstandingCreateFields.description.optional(),
@@ -8248,28 +9550,28 @@ var outstandingUpdateFields = {
   priority: outstandingPriority.optional(),
   due_date: date.nullable().optional(),
   eta: date.nullable().optional(),
-  assigned_to: z69.string().max(500).nullable().optional(),
-  lender_id: z69.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
-  notes: z69.string().max(1e4).nullable().optional(),
-  is_archived: z69.boolean().optional(),
+  assigned_to: z71.string().max(500).nullable().optional(),
+  lender_id: z71.string().uuid().nullable().optional().describe("deal_lenders.id attached to the item's deal; null clears."),
+  notes: z71.string().max(1e4).nullable().optional(),
+  is_archived: z71.boolean().optional(),
   source_metadata_merge: metadata.optional(),
-  append_note: z69.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
+  append_note: z71.string().trim().min(1).max(1e4).optional().describe("Append a UTC-dated YYYY-MM-DD: text line. Cannot be combined with notes.")
 };
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-var list_outstanding_items_default = defineTool69({
+var list_outstanding_items_default = defineTool71({
   name: "list_outstanding_items",
   title: "List Open Items",
   description: "Read full deal Open Items rows ordered by position. open_only excludes items both Received and Submitted (the current Open Items tab itself includes completed items). Archived rows are excluded by default. lender_id is deal_lenders.id. Use offset/next_offset to page through all results.",
   inputSchema: {
-    deal_id: z70.string().uuid(),
-    lender_id: z70.string().uuid().optional(),
+    deal_id: z72.string().uuid(),
+    lender_id: z72.string().uuid().optional(),
     status: outstandingStatus.optional(),
-    open_only: z70.boolean().default(false),
-    include_archived: z70.boolean().default(false),
-    updated_since: z70.string().datetime({ offset: true }).optional(),
-    limit: z70.number().int().min(1).max(500).default(100),
-    offset: z70.number().int().min(0).max(1e6).default(0)
+    open_only: z72.boolean().default(false),
+    include_archived: z72.boolean().default(false),
+    updated_since: z72.string().datetime({ offset: true }).optional(),
+    limit: z72.number().int().min(1).max(500).default(100),
+    offset: z72.number().int().min(0).max(1e6).default(0)
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -8281,13 +9583,13 @@ var list_outstanding_items_default = defineTool69({
 });
 
 // src/lib/mcp/tools/create-outstanding-item.ts
-import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z71 } from "npm:zod@^3.23.0";
-var create_outstanding_item_default = defineTool70({
+import { defineTool as defineTool72 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z73 } from "npm:zod@^3.23.0";
+var create_outstanding_item_default = defineTool72({
   name: "create_outstanding_item",
   title: "Create Open Item",
   description: "After user approval, create an Open Item on an accessible deal. Defaults to Requested/normal, appends to the active list, validates deal_lenders.id, stores provenance and deduplicates idempotency keys even for archived items. Returns the full item and created flag; logs an MCP-attributed activity atomically. No email is sent.",
-  inputSchema: { deal_id: z71.string().uuid(), ...outstandingCreateFields },
+  inputSchema: { deal_id: z73.string().uuid(), ...outstandingCreateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8299,13 +9601,13 @@ var create_outstanding_item_default = defineTool70({
 });
 
 // src/lib/mcp/tools/update-outstanding-item.ts
-import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z72 } from "npm:zod@^3.23.0";
-var update_outstanding_item_default = defineTool71({
+import { defineTool as defineTool73 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z74 } from "npm:zod@^3.23.0";
+var update_outstanding_item_default = defineTool73({
   name: "update_outstanding_item",
   title: "Update Open Item",
   description: "After user approval, partially update an existing Open Item under caller RLS. Requested/Received/Submitted translate into the UI JSON state without losing requester/delivery lists. Shallow-merge provenance; append_note preserves notes with a UTC date. notes and append_note are mutually exclusive. Retire with is_archived, never delete. Returns the full row and logs MCP-attributed activity atomically; no email is sent.",
-  inputSchema: { id: z72.string().uuid(), ...outstandingUpdateFields },
+  inputSchema: { id: z74.string().uuid(), ...outstandingUpdateFields },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8319,13 +9621,13 @@ var update_outstanding_item_default = defineTool71({
 });
 
 // src/lib/mcp/tools/batch-create-outstanding-items.ts
-import { defineTool as defineTool72 } from "npm:@lovable.dev/mcp-js@3.0.0";
-import { z as z73 } from "npm:zod@^3.23.0";
-var batch_create_outstanding_items_default = defineTool72({
+import { defineTool as defineTool74 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { z as z75 } from "npm:zod@^3.23.0";
+var batch_create_outstanding_items_default = defineTool74({
   name: "batch_create_outstanding_items",
   title: "Create Open Items batch",
   description: "After user approval, create up to 25 Open Items on one deal, with per-item idempotency and independent created/existing/error results. Same defaults and permissions as create_outstanding_item. No delete or email actions.",
-  inputSchema: { deal_id: z73.string().uuid(), items: z73.array(z73.object(outstandingCreateFields).strict()).min(1).max(25) },
+  inputSchema: { deal_id: z75.string().uuid(), items: z75.array(z75.object(outstandingCreateFields).strict()).min(1).max(25) },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
     const denied = requireAuth(ctx);
@@ -8357,6 +9659,8 @@ var mcp_default = defineMcp({
   }),
   tools: [
     list_deals_default,
+    get_dashboard_tile_values_default,
+    list_calendar_meetings_default,
     list_pipelines_default,
     get_deal_default,
     update_deal_default,

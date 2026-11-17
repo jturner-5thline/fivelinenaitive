@@ -1,4 +1,4 @@
-import { finservClientKey, isFinServActiveClientAt, countsTowardFinServMrrAt, type FinServDealLike, type StageHistoryRow } from '@/lib/finservActiveAt';
+import { loadFinServPipelineSnapshot } from '@/lib/dashboardTiles/finservTiles';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1177,44 +1177,8 @@ function FinServFinancialMetricsDashboardInner() {
   const pipelineSnapshot = useQuery({
     queryKey: ['finserv-pipeline-snapshot', FINSERV_PIPELINE_ID, range.resolved.end],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('deals')
-        .select('id, company, crm_company_id, stage, mrr, created_at, contract_start_date, contract_end_date, stage_entered_at')
-        .eq('pipeline_id', FINSERV_PIPELINE_ID);
-      if (error) throw error;
-      const rows = (data ?? []) as Array<FinServDealLike & { mrr: number | string | null }>;
-      const { data: hist, error: histErr } = await supabase
-        .from('deal_stage_history')
-        .select('deal_id, to_stage, changed_at')
-        .eq('pipeline_id', FINSERV_PIPELINE_ID)
-        .order('changed_at', { ascending: true });
-      if (histErr) throw histErr;
-      const historyByDeal = new Map<string, StageHistoryRow[]>();
-      for (const h of hist ?? []) {
-        const arr = historyByDeal.get(h.deal_id) ?? [];
-        arr.push({ to_stage: h.to_stage, changed_at: h.changed_at });
-        historyByDeal.set(h.deal_id, arr);
-      }
-      const endStr = range.resolved.end;
-      const effective = endStr ? new Date(endStr + 'T23:59:59') : new Date();
-      const today = new Date();
-      const effClamped = effective > today ? today : effective;
-      const CURRENT_PIPELINE_STAGES = new Set([
-        'fs-qualification', 'fs-discovery', 'fs-qualified',
-        'fs-scoping', 'fs-proposal-sent', 'fs-negotiation',
-      ]);
-      const clientKeys = new Set<string>();
-      let totalMrr = 0;
-      let currentPipeline = 0;
-      for (const r of rows) {
-        const stage = r.stage ?? '';
-        const h = historyByDeal.get(r.id);
-        // Point-in-time at the selected period end (pre-May-2026 contract-start rule included).
-        if (isFinServActiveClientAt(r, h, effClamped)) clientKeys.add(finservClientKey(r));
-        if (CURRENT_PIPELINE_STAGES.has(stage)) currentPipeline += 1;
-        if (countsTowardFinServMrrAt(r, h, effClamped)) totalMrr += Number(r.mrr ?? 0);
-      }
-      return { totalClients: clientKeys.size, totalMrr, currentPipeline };
+      const r = await loadFinServPipelineSnapshot(supabase, range.resolved.end);
+      return { totalClients: r.totalClients, totalMrr: r.totalMrr, currentPipeline: r.currentPipeline };
     },
     staleTime: 60_000,
   });

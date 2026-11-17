@@ -1,6 +1,8 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
 import listDeals from "./tools/list-deals";
 import getFinservClientMetrics from "./tools/get-finserv-client-metrics";
+import getDashboardTileValues from "./tools/get-dashboard-tile-values";
+import listCalendarMeetings from "./tools/list-calendar-meetings";
 import listPipelines from "./tools/list-pipelines";
 import getDeal from "./tools/get-deal";
 import updateDeal from "./tools/update-deal";
@@ -122,6 +124,8 @@ export default defineMcp({
   }),
   tools: [
     listDeals,
+    getDashboardTileValues,
+    listCalendarMeetings,
     listPipelines,
     getDeal,
     updateDeal,

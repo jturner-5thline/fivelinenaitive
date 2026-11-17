@@ -34,3 +34,22 @@ export function bucketSalesCallsByWeek(events: SalesCallLike[], from: Date, to: 
   }
   return [...weeks.values()];
 }
+
+/** One row per UTC calendar month in [from, to], including zero-count months. */
+export function bucketSalesCallsByMonth(events: SalesCallLike[], from: Date, to: Date) {
+  const key = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  const months = new Map<string, { month: string; count: number; companies: string[] }>();
+  for (let m = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), 1)); m <= to; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+    months.set(key(m), { month: key(m), count: 0, companies: [] });
+  }
+  for (const ev of events) {
+    if (!ev.start) continue;
+    const d = new Date(ev.start);
+    if (Number.isNaN(d.getTime()) || d < from || d > to) continue;
+    const row = months.get(key(d));
+    if (!row) continue;
+    row.count += 1;
+    if (ev.company) row.companies.push(ev.company);
+  }
+  return [...months.values()];
+}

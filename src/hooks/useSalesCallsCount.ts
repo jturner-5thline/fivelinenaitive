@@ -7,19 +7,14 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-const DEBT_FINANCING_RE = /5\s*th\s*line[\s\S]{0,80}\bfinancing\s+review\b/i;
-const FINSERV_FINANCIAL_RE = /^\s*5\s*th\s+line\s*(?:<>|[-–—|:/])\s*.+?\s+financial\s+review\s*$/i;
-const FINSERV_INTRO_RE = /^\s*.+?\s*(?:<>|[-–—|/])\s*5\s*th\s+line\s*[:\-–—]?\s*intro\s*$/i;
+import { isSalesCallTitleForVariant } from '@/lib/dashboardTiles/salesCallFilters';
 
 export function isSalesCallEventForVariant(
   eventOrTitle: Pick<SalesCallEvent, 'title'> | string,
   variant: 'debt' | 'finserv',
 ) {
   const title = typeof eventOrTitle === 'string' ? eventOrTitle : eventOrTitle.title || '';
-  if (variant === 'finserv') {
-    return (FINSERV_FINANCIAL_RE.test(title) || FINSERV_INTRO_RE.test(title)) && !DEBT_FINANCING_RE.test(title);
-  }
-  return DEBT_FINANCING_RE.test(title);
+  return isSalesCallTitleForVariant(title, variant);
 }
 
 export function filterSalesCallEventsForVariant(events: SalesCallEvent[], variant: 'debt' | 'finserv') {

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { mergeMasterPlanRows } from '@/lib/dashboardTiles/salesModelPlan';
 
 /**
  * Master Plan monthly values, keyed as `${YYYY}-${MM}` (month is 1-12,
@@ -37,31 +38,7 @@ export function useMasterPlanMonthly(widgetKeys: string[]): {
     staleTime: 30_000,
   });
 
-  const values = useMemo(() => {
-    const out: Record<string, Record<string, { v2?: number; cdp?: number }>> = {};
-    for (const row of data ?? []) {
-      if (!row.period_month) continue;
-      const parts = row.metric_key.split(':');
-      if (parts.length !== 3 || parts[0] !== 'plan') continue;
-      const namespace = parts[1];
-      const widgetKey = parts[2];
-      if (!keySet.has(widgetKey)) continue;
-      const monthMap = out[widgetKey] ?? (out[widgetKey] = {});
-      const bucket = monthMap[row.period_month] ?? (monthMap[row.period_month] = {});
-      if (namespace === 'sales-dashboard-v2') bucket.v2 = Number(row.target_value) || 0;
-      else if (namespace === 'consolidated-debt-pipeline') bucket.cdp = Number(row.target_value) || 0;
-    }
-    const flat: Record<string, Record<string, number>> = {};
-    for (const [wk, months] of Object.entries(out)) {
-      const m: Record<string, number> = {};
-      for (const [ym, b] of Object.entries(months)) {
-        const v = b.v2 ?? b.cdp;
-        if (v !== undefined) m[ym] = v;
-      }
-      flat[wk] = m;
-    }
-    return flat;
-  }, [data, keySet]);
+  const values = useMemo(() => mergeMasterPlanRows(data ?? [], keySet), [data, keySet]);
 
   return { isLoaded: isSuccess, values };
 }

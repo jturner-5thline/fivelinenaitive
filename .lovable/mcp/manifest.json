@@ -100,6 +100,135 @@
         "outputSchema": null
       },
       {
+        "name": "get_dashboard_tile_values",
+        "title": "Get Insights dashboard tile values",
+        "description": "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "dashboard_id": {
+              "type": "string",
+              "enum": [
+                "sales-bd-page",
+                "sales-dashboard-v2",
+                "finserv-financial-metrics"
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "month",
+                "quarter",
+                "custom"
+              ],
+              "default": "month"
+            },
+            "period": {
+              "type": "string",
+              "maxLength": 10,
+              "description": "\"YYYY-MM\" (month view) or \"YYYY-QN\" (quarter view)."
+            },
+            "periods": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 10
+              },
+              "maxItems": 60,
+              "description": "Several periods in one call; overrides period."
+            },
+            "from": {
+              "type": "string",
+              "maxLength": 10,
+              "description": "Custom view start YYYY-MM-DD."
+            },
+            "to": {
+              "type": "string",
+              "maxLength": 10,
+              "description": "Custom view end YYYY-MM-DD."
+            },
+            "include_rows": {
+              "type": "boolean",
+              "default": false
+            },
+            "rows_limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "rows_offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "required": [
+            "dashboard_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_calendar_meetings",
+        "title": "List synced calendar meetings",
+        "description": "Read-only. Lists the synced team calendar meetings that the Sales & BD and Sales Dashboard tiles read (the same calendar-meetings-all source, scoped to the signed-in user's company and its approved team calendars). Returns id, title, start, end, organizer, attendee emails, matched contact/company ids and whether the meeting was manually removed from the referral-meeting count (referral_meeting_exclusions). Filters: from/to (required), optional contact_id (matched contact or attendee email), optional title substring. Paginated with limit/offset.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Start date YYYY-MM-DD (UTC, inclusive)."
+            },
+            "to": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "End date YYYY-MM-DD (UTC, inclusive)."
+            },
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title_contains": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_pipelines",
         "title": "List pipelines",
         "description": "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
@@ -4759,7 +4888,7 @@
       {
         "name": "get_sales_calls_weekly",
         "title": "Get weekly sales call counts",
-        "description": "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\" or \"[Company] <> 5th Line: Intro\". Defaults to the last 12 weeks ending today.",
+        "description": "Returns the Sales Calls metric shown on Insights → Sales Dashboard, bucketed by week (Monday–Sunday, UTC). Debt counts deduped calendar events titled \"[Company] <> 5th Line Financing Review\"; FinServ counts \"5th Line <> [Company] Financial Review\" or \"[Company] <> 5th Line: Intro\". Defaults to the last 12 weeks ending today. Weekly output (default) counts every event the sales-calls service returns; group_by=\"month\" applies the Sales Dashboard tile's exact title rule (FinServ excludes any Debt financing review) and UTC month buckets.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -4792,6 +4921,15 @@
               "type": "boolean",
               "default": false,
               "description": "Also return each qualifying call."
+            },
+            "group_by": {
+              "type": "string",
+              "enum": [
+                "week",
+                "month"
+              ],
+              "default": "week",
+              "description": "\"month\" adds UTC calendar-month buckets (Sales Dashboard month boundaries) and uses the exact Sales Dashboard tile title rule."
             }
           },
           "additionalProperties": false,

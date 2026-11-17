@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { SEED_YEAR, SEED_MONTH_INDEXES, ROW_ORDER, PLAN, PLAN_OVERLAY_MAP, type MetricKey, type RowDef } from '@/lib/dashboardTiles/salesModelPlan';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -96,66 +97,6 @@ const MONTHS_ALL = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct',
 const ELAPSED = 6;
 
 // Calendar-month indexed (0=Jan ... 8=Sep) seeded data covers 2026 only.
-const SEED_YEAR = 2026;
-const SEED_MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-
-type MetricKey =
-  | 'salesCalls'
-  | 'dealsOnBoard'
-  | 'dollarsOnBoard'
-  | 'proposalsIssued'
-  | 'dollarsProposed'
-  | 'clientsSigned'
-  | 'dollarsSigned'
-  | 'clientsReceivingTerms'
-  | 'termsSigned'
-  | 'volumeOfTermsSigned'
-  | 'dealsClosed'
-  | 'dollarsFunded'
-  | 'finservProposalsIssued'
-  | 'finservDollarsProposed';
-
-interface RowDef {
-  key: MetricKey;
-  label: string;
-  type: 'count' | 'money';
-  bold?: boolean;
-}
-
-const ROW_ORDER: RowDef[] = [
-  { key: 'salesCalls', label: 'Sales Calls', type: 'count' },
-  { key: 'dealsOnBoard', label: 'Deals on Board', type: 'count' },
-  { key: 'dollarsOnBoard', label: 'Dollars on Board', type: 'money' },
-  { key: 'proposalsIssued', label: 'Proposals Issued', type: 'count' },
-  { key: 'dollarsProposed', label: 'Dollars Proposed', type: 'money' },
-  { key: 'clientsSigned', label: 'Clients Signed', type: 'count' },
-  { key: 'dollarsSigned', label: 'Dollars Signed', type: 'money' },
-  { key: 'clientsReceivingTerms', label: 'Clients Receiving Terms', type: 'count' },
-  { key: 'termsSigned', label: 'Terms Signed', type: 'count' },
-  { key: 'volumeOfTermsSigned', label: 'Volume of Terms Signed', type: 'money' },
-  { key: 'dealsClosed', label: 'FinServ: Deals on the Board', type: 'count' },
-  { key: 'dollarsFunded', label: 'FinServ $ on the Board', type: 'money', bold: true },
-  { key: 'finservProposalsIssued', label: 'FinServ: Proposals Issued', type: 'count' },
-  { key: 'finservDollarsProposed', label: 'FinServ Proposals Issued $', type: 'money' },
-];
-
-const PLAN: Record<MetricKey, number[]> = {
-  salesCalls: [44, 46, 48, 48, 50, 50, 52, 52, 54],
-  dealsOnBoard: [2, 2, 2, 2, 2, 2, 2, 2, 2],
-  dollarsOnBoard: [30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3, 30.3],
-  proposalsIssued: [7, 7, 7, 7, 7, 7, 7, 7, 7],
-  dollarsProposed: [20, 20, 20, 20, 20, 20, 20, 20, 20],
-  clientsSigned: [1, 2, 2, 2, 2, 2, 2, 2, 2],
-  dollarsSigned: [4.8, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 12.0, 12.0],
-  clientsReceivingTerms: [2, 2, 2, 1, 2, 2, 2, 2, 2],
-  termsSigned: [2, 2, 2, 2, 1, 2, 2, 2, 2],
-  volumeOfTermsSigned: [6.4, 6.4, 6.4, 6.4, 3.5, 7.2, 8.0, 8.0, 8.0],
-  dealsClosed: [2, 2, 2, 2, 2, 2, 2, 1, 2],
-  dollarsFunded: [6.4, 6.4, 6.4, 6.4, 6.7, 7.2, 8.0, 4.8, 8.0],
-  finservProposalsIssued: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-  finservDollarsProposed: [0, 0, 0, 0, 0, 0, 0, 0, 0],
-};
-
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
   salesCalls: pad([]),
   dealsOnBoard: pad([]), // overridden by live useDealsOnBoardByMonth
@@ -175,22 +116,6 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
 
 // Map dashboard MetricKey → Master Plan widget key + divisor.
 // Currency metrics store raw USD in the Master Plan; dashboard renders $MM.
-const PLAN_OVERLAY_MAP: Partial<Record<MetricKey, { widgetKey: string; divisor: number }>> = {
-  dealsOnBoard: { widgetKey: 'deals-on-board', divisor: 1 },
-  dollarsOnBoard: { widgetKey: 'deals-on-board-value', divisor: 1_000_000 },
-  proposalsIssued: { widgetKey: 'proposals-issued', divisor: 1 },
-  dollarsProposed: { widgetKey: 'dollars-proposed', divisor: 1_000_000 },
-  clientsSigned: { widgetKey: 'deals-signed', divisor: 1 },
-  dollarsSigned: { widgetKey: 'dollars-signed', divisor: 1_000_000 },
-  clientsReceivingTerms: { widgetKey: 'clients-receiving-terms', divisor: 1 },
-  termsSigned: { widgetKey: 'terms-signed', divisor: 1 },
-  volumeOfTermsSigned: { widgetKey: 'volume-of-terms-signed', divisor: 1_000_000 },
-  dealsClosed: { widgetKey: 'deals-closed', divisor: 1 },
-  dollarsFunded: { widgetKey: 'dollars-funded', divisor: 1_000_000 },
-  finservProposalsIssued: { widgetKey: 'finserv-proposals-issued', divisor: 1 },
-  finservDollarsProposed: { widgetKey: 'finserv-dollars-proposed', divisor: 1_000_000 },
-};
-
 const MASTER_PLAN_WIDGET_KEYS = Array.from(
   new Set(Object.values(PLAN_OVERLAY_MAP).map((m) => m.widgetKey)),
 );

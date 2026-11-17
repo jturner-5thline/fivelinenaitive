@@ -1,14 +1,18 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { isExcludedDealName } from '@/utils/excludedDeals';
+import {
+  ACTIVE_PIPELINE_ID,
+  computeStageEntryDeals,
+  fetchStageEntryWindowRows,
+  type StageEntryDeal,
+} from '@/lib/dashboardTiles/stageQueries';
 
 /**
  * Count of distinct deals that entered a given stage within a trailing window.
  * Reads from `deal_stage_history` (event_type = 'stage_enter'), scoped to the
  * Active Deals pipeline and excluding globally-excluded test deals.
  */
-const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
 export interface StageEntryCountResult {
   count: number;
@@ -18,13 +22,7 @@ export interface StageEntryCountResult {
   error: Error | null;
 }
 
-export interface StageEntryDeal {
-  deal_id: string;
-  company: string;
-  value: number;
-  manager: string | null;
-  changed_at: string;
-}
+export type { StageEntryDeal };
 
 export interface StageEntryEventsResult {
   events: StageEntryDeal[]; // raw, one row per stage_enter event (not deduped)
@@ -47,19 +45,7 @@ export function useStageEntryEvents(
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['stage-entry-events', ACTIVE_PIPELINE_ID, stageId, startIso, endIso],
-    queryFn: async () => {
-      const { data: rows, error: err } = await supabase
-        .from('deal_stage_history')
-        .select('deal_id, changed_at, deals!inner(company, value, manager)')
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
-        .eq('event_type', 'stage_enter')
-        .or(`to_stage_id.eq.${stageId},to_stage.eq.${stageId}`)
-        .gte('changed_at', startIso)
-        .lt('changed_at', endIso)
-        .order('changed_at', { ascending: false });
-      if (err) throw err;
-      return rows ?? [];
-    },
+    queryFn: () => fetchStageEntryWindowRows(supabase, stageId, startIso, endIso),
     enabled: !!user,
     // TTM windows shift as the user changes the selected timeframe. Keep
     // recent results warm and show them while the next window is fetched
@@ -71,19 +57,7 @@ export function useStageEntryEvents(
     placeholderData: keepPreviousData,
   });
 
-  const events: StageEntryDeal[] = [];
-  for (const r of (data ?? []) as any[]) {
-    const company = r.deals?.company ?? '';
-    if (isExcludedDealName(company)) continue;
-    if (!r.deal_id) continue;
-    events.push({
-      deal_id: r.deal_id,
-      company,
-      value: Number(r.deals?.value) || 0,
-      manager: r.deals?.manager ?? null,
-      changed_at: r.changed_at,
-    });
-  }
+  const events = computeStageEntryDeals(data ?? [], false);
 
   return {
     events,
@@ -117,19 +91,7 @@ export function useStageEntryCount(
 
   const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['stage-entry-count', ACTIVE_PIPELINE_ID, stageId, startIso, endIso],
-    queryFn: async () => {
-      const { data: rows, error: err } = await supabase
-        .from('deal_stage_history')
-        .select('deal_id, changed_at, deals!inner(company, value, manager)')
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
-        .eq('event_type', 'stage_enter')
-        .or(`to_stage_id.eq.${stageId},to_stage.eq.${stageId}`)
-        .gte('changed_at', startIso)
-        .lt('changed_at', endIso)
-        .order('changed_at', { ascending: false });
-      if (err) throw err;
-      return rows ?? [];
-    },
+    queryFn: () => fetchStageEntryWindowRows(supabase, stageId, startIso, endIso),
     enabled: !!user,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
@@ -138,24 +100,10 @@ export function useStageEntryCount(
     placeholderData: keepPreviousData,
   });
 
-  const seen = new Set<string>();
-  const deals: StageEntryDeal[] = [];
-  for (const r of (data ?? []) as any[]) {
-    const company = r.deals?.company ?? '';
-    if (isExcludedDealName(company)) continue;
-    if (!r.deal_id || seen.has(r.deal_id)) continue;
-    seen.add(r.deal_id);
-    deals.push({
-      deal_id: r.deal_id,
-      company,
-      value: Number(r.deals?.value) || 0,
-      manager: r.deals?.manager ?? null,
-      changed_at: r.changed_at,
-    });
-  }
+  const deals = computeStageEntryDeals(data ?? [], true);
 
   return {
-    count: seen.size,
+    count: deals.length,
     deals,
     isLoading,
     isFetching,

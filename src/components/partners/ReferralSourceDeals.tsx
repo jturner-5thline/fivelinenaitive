@@ -1,4 +1,3 @@
-import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +13,7 @@ import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/comp
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTtmActivePipelineConversion, ttmAnchorFromTimeframeEnd } from '@/lib/salesBdActivePipelineConversion';
+import { loadReferralDealsOnBoard } from '@/lib/dashboardTiles/referralDeals';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { useDealFirstActivityDates, filterByEffectiveDate } from '@/hooks/useDealFirstActivityDates';
@@ -119,44 +119,8 @@ export function ReferralSourceDeals({
   const matchedDeals = deals;
 
 
-  // "On Board" = deals that ENTERED (or became) the "NDA / Needs List Sent"
-  // stage of the Active pipeline within the selected timeframe, sourced via
-  // Referral. Entry date = the stage_enter event in deal_stage_history when
-  // one exists, otherwise the deal's created_at (stage-history tracking is
-  // recent, so most deals only have their creation date).
-  const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
-  const NDA_STAGE_ID = 'ndaneeds-list-sent';
-  // Stages that imply the deal reached NDA / Needs List Sent. `on-hold` and
-  // `closed-lost` are excluded because a deal can land there without ever
-  // having reached the NDA stage.
-  const REACHED_NDA_STAGES = [
-    'ndaneeds-list-sent',
-    'pre-credit-needs',
-    'initial-lender-review',
-    'initial-feedback',
-    'proposal-in-development',
-    'proposal-issued',
-    'agreement-pending',
-    'final-credit-items',
-    'client-strategy-review',
-    'write-up-pending',
-    'submitted-to-lenders',
-    'lenders-in-review',
-    'terms-issued',
-    'in-due-diligence',
-    'funded-invoiced',
-    'closed-won',
-  ];
-
-  // Firm-wide "Deals on the Board" — mirrors the Debt Advisory Metrics
-  // calculation: distinct deals with a stage_enter into NDA / Needs List Sent
-  // on the Active Pipeline within the timeframe, excluding John Moffitt-owned
-  // or -authored entries and de-duped by company name. All acquisition
-  // Only referral-sourced deals are included.
-  const NDA_EXCLUDED_OWNERS = ['john moffitt'];
-  const NDA_EXCLUDED_CHANGED_BY = ['2e65a4b1-bd94-46ef-87c6-9afe697b3180'];
-  void REACHED_NDA_STAGES;
-
+  // "On Board" = referral-sourced deals entering NDA / Needs List Sent on the
+  // Active Pipeline within the timeframe (shared with the MCP dashboard tool).
   const { data: onBoardDeals = [] } = useQuery({
     queryKey: [
       'firm_on_board_deals',
@@ -165,54 +129,7 @@ export function ReferralSourceDeals({
       rangeEnd?.toISOString() ?? null,
     ],
     enabled: !!company?.id,
-    queryFn: async () => {
-      const select = 'id, company, value, stage, referred_by, sourced_via, created_at, deal_owner';
-      let hq = supabase
-        .from('deal_stage_history')
-        .select(`deal_id, changed_at, changed_by, pipeline_id, deals!inner(${select}, company_id, pipeline_id)`)
-        .eq('event_type', 'stage_enter')
-        .or(`to_stage_id.eq.${NDA_STAGE_ID},to_stage.eq.${NDA_STAGE_ID}`)
-        .eq('deals.company_id', company!.id)
-        .order('changed_at', { ascending: true });
-      if (rangeStart) hq = hq.gte('changed_at', rangeStart.toISOString());
-      if (rangeEnd) hq = hq.lte('changed_at', rangeEnd.toISOString());
-      const { data, error } = await hq;
-      if (error) throw error;
-
-      const seenIds = new Set<string>();
-      const seenNames = new Set<string>();
-      const rows: DealRow[] = [];
-      for (const r of (data || []) as any[]) {
-        const d = r.deals;
-        if (!d?.id) continue;
-        if (r.pipeline_id && r.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
-        if (!r.pipeline_id && d.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
-        if (r.changed_by && NDA_EXCLUDED_CHANGED_BY.includes(r.changed_by)) continue;
-        if (NDA_EXCLUDED_OWNERS.includes(String(d.deal_owner || '').toLowerCase().trim())) continue;
-        if (isExcludedDealName(d.company)) continue;
-        // Referral-sourced only: a "Referred by" value or Sourced Via = Referral.
-        const isReferral =
-          !!String(d.referred_by || '').trim() ||
-          /^referral/i.test(String(d.sourced_via || '').trim());
-        if (!isReferral) continue;
-        const nameKey = String(d.company || '').toLowerCase().trim();
-        if (seenIds.has(d.id) || (nameKey && seenNames.has(nameKey))) continue;
-        seenIds.add(d.id);
-        if (nameKey) seenNames.add(nameKey);
-        rows.push({
-          id: d.id,
-          company: d.company,
-          value: d.value,
-          stage: d.stage,
-          referred_by: d.referred_by,
-          sourced_via: d.sourced_via,
-          created_at: r.changed_at,
-          closing_date: null,
-        });
-      }
-      rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-      return rows;
-    },
+    queryFn: async (): Promise<DealRow[]> => (await loadReferralDealsOnBoard(supabase, company!.id, rangeStart, rangeEnd)) as DealRow[],
   });
 
 
