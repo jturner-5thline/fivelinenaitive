@@ -575,6 +575,13 @@
       "when": 1794936740536,
       "tag": "0081_isolate_dynamic_sql_definer_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794962194522,
+      "tag": "0082_fix_lender_match_rules_internal_check",
+      "breakpoints": true
     }
   ]
 }

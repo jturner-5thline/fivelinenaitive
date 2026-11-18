@@ -31131,6 +31131,7 @@ export type Database = {
       is_fifth_line_internal_admin: { Args: never; Returns: boolean }
       is_flex_hidden_stage: { Args: { p_stage: string }; Returns: boolean }
       is_freemail_domain: { Args: { d: string }; Returns: boolean }
+      is_internal_staff_user: { Args: never; Returns: boolean }
       is_rundown_authorized_user: { Args: never; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
