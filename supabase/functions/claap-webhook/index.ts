@@ -211,7 +211,7 @@ async function runSmartMatching(
         let bestSource = "";
 
         // Exact substring match in title (high confidence)
-        if (dealName.length >= 3 && titleNorm.includes(dealName)) {
+        if (dealName.length >= 3 && ` ${titleNorm} `.includes(` ${dealName} `)) {
           bestScore = 90;
           bestSource = `Deal name in title: "${deal.company}"`;
         }
@@ -228,7 +228,7 @@ async function runSmartMatching(
         // Check aliases
         const dealAliases = aliasMap.get(deal.id) || [];
         for (const alias of dealAliases) {
-          if (alias.length >= 3 && titleNorm.includes(alias)) {
+          if (alias.length >= 3 && ` ${titleNorm} `.includes(` ${alias} `)) {
             const aliasScore = 85;
             if (aliasScore > bestScore) {
               bestScore = aliasScore;

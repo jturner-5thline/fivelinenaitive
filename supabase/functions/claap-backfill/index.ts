@@ -130,7 +130,7 @@ async function runSmartMatching(
         let bestScore = 0;
         let bestSource = "";
 
-        if (dealName.length >= 3 && titleNorm.includes(dealName)) {
+        if (dealName.length >= 3 && ` ${titleNorm} `.includes(` ${dealName} `)) {
           bestScore = 90;
           bestSource = `Deal name in title: "${deal.company}"`;
         }
@@ -145,7 +145,7 @@ async function runSmartMatching(
 
         const dealAliases = aliasMap.get(deal.id) || [];
         for (const alias of dealAliases) {
-          if (alias.length >= 3 && titleNorm.includes(alias)) {
+          if (alias.length >= 3 && ` ${titleNorm} `.includes(` ${alias} `)) {
             if (85 > bestScore) { bestScore = 85; bestSource = `Deal alias in title: "${alias}" → "${deal.company}"`; }
           }
           if (alias.length >= 4) {

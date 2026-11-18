@@ -31317,6 +31317,10 @@ export type Database = {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined
       }
+      mcp_update_claap_meeting_deal: {
+        Args: { p_deal_id: string; p_meeting_id: string; p_reason?: string }
+        Returns: Json
+      }
       mcp_update_claap_meeting_match: {
         Args: {
           p_match_status: string

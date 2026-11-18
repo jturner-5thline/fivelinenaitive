@@ -329,10 +329,10 @@ serve(async (req) => {
       // Title matching: exact substring → strong; normalized substring → strong; token overlap → medium; dice → weak
       const cleanTitle = normalizeTitle(meeting.title || "");
       const cleanDeal = normalizeTitle(deal.company || "");
-      if (dealNameLower.length > 2 && titleLower.includes(dealNameLower)) {
+      if (dealNameLower.length > 2 && new RegExp(`(^|[^a-z0-9])${dealNameLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`).test(titleLower)) {
         score += 55;
         reasons.push(`Title contains "${deal.company}"`);
-      } else if (cleanDeal.length > 2 && cleanTitle.includes(cleanDeal)) {
+      } else if (cleanDeal.length > 2 && ` ${cleanTitle} `.includes(` ${cleanDeal} `)) {
         score += 50;
         reasons.push(`Title contains "${deal.company}" (after stripping prefixes)`);
       } else {
@@ -356,7 +356,7 @@ serve(async (req) => {
       const dealAliases = aliasMap[deal.id] || [];
       for (const alias of dealAliases) {
         if (alias.length <= 2) continue;
-        if (titleLower.includes(alias) || cleanTitle.includes(alias)) {
+        if (` ${titleLower.replace(/[^a-z0-9]+/g, " ")} `.includes(` ${alias.replace(/[^a-z0-9]+/g, " ").trim()} `)) {
           score += 45;
           reasons.push(`Title matches deal alias "${alias}"`);
           break;
