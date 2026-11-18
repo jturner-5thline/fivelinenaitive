@@ -45,7 +45,7 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
   const revTotal = byStatus.reduce((t, r) => t + r.value, 0);
   const dealTable = (list: typeof rows, amountLabel?: string) => (
     <table className="w-full text-sm">
-      <thead className="sticky top-0 bg-background">
+      <thead className="sticky top-0 bg-card">
         <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
           <th className="text-left font-medium px-2 py-2">Deal</th>
           <th className="text-left font-medium px-2 py-2">Stage</th>
@@ -87,22 +87,34 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
       </div>
 
       <Dialog open={!!open} onOpenChange={o => !o && setOpen(null)}>
-        <DialogContent className="max-w-2xl">
+        {open === 'total_revenue' ? (
+        <DialogContent className="max-w-6xl w-[95vw] h-[85vh] flex flex-col gap-3 overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-baseline justify-between gap-4 pr-6">
-              <span>{kpi?.label}</span>
-              <span className="tabular-nums text-primary">{open ? values[open] : ''}</span>
-            </DialogTitle>
-            <DialogDescription>{rows.length} deal{rows.length === 1 ? '' : 's'} included · click a deal to open it</DialogDescription>
+            <DialogTitle>Total Revenue</DialogTitle>
+            <DialogDescription>Click a deal to open it</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[65vh] overflow-y-auto -mx-2 px-2">
-            {open === 'total_revenue' && (
-              <div className="mb-4">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Revenue by status</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+            {[
+              ['Total Revenue', values.total_revenue, `${rows.length} deals`],
+              ['Pending Revenue', formatUSDFromDollars(pendingTotal), `${pending.length} deals · Agreement Pending onward`],
+              ['Largest Status', byStatus[0] ? statusLabel([...byStatus].sort((a, b) => b.value - a.value)[0].status) : '—', revTotal ? `${Math.round(([...byStatus].sort((a, b) => b.value - a.value)[0].value / revTotal) * 100)}% of revenue` : ''],
+              ['Revenue + Pending', formatUSDFromDollars(revTotal + pendingTotal), 'Pending may overlap'],
+            ].map(([l, v, sub]) => (
+              <div key={l} className="rounded-lg border border-border bg-card px-4 py-3 min-w-0">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground truncate">{l}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-primary truncate">{v}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{sub}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-0">
+            <div className="rounded-lg border border-border bg-card p-4 flex flex-col min-h-0 overflow-hidden">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Revenue by status</p>
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 {revTotal === 0 ? (
                   <p className="text-sm text-muted-foreground">No revenue yet.</p>
                 ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="flex flex-col items-center gap-4">
                     <div className="relative h-[170px] w-[170px] shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -134,24 +146,37 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
                   </div>
                 )}
               </div>
-            )}
-            {open === 'total_revenue' && <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Deals in Total Revenue</p>}
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 flex flex-col min-h-0">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1 px-1">Deals in Total Revenue</p>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {rows.length === 0 ? <p className="py-6 text-sm text-muted-foreground text-center">No deals.</p> : dealTable(rows, 'Revenue')}
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3 flex flex-col min-h-0">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1 px-1">Pending Revenue deals</p>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {pending.length === 0 ? <p className="py-6 text-sm text-muted-foreground text-center">No deals at Agreement Pending or later.</p> : dealTable(pending, 'Total Fee')}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+        ) : (
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-baseline justify-between gap-4 pr-6">
+              <span>{kpi?.label}</span>
+              <span className="tabular-nums text-primary">{open ? values[open] : ''}</span>
+            </DialogTitle>
+            <DialogDescription>{rows.length} deal{rows.length === 1 ? '' : 's'} included · click a deal to open it</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[65vh] overflow-y-auto -mx-2 px-2">
             {rows.length === 0 ? (
               <p className="px-2 py-6 text-sm text-muted-foreground text-center">No deals currently count toward this number.</p>
             ) : dealTable(rows, kpi?.amountLabel)}
-            {open === 'total_revenue' && (
-              <div className="mt-6 border-t border-border pt-4">
-                <div className="flex items-baseline justify-between mb-1">
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Revenue · Agreement Pending onward</p>
-                  <span className="text-base font-semibold tabular-nums text-primary">{formatUSDFromDollars(pendingTotal)}</span>
-                </div>
-                {pending.length === 0
-                  ? <p className="py-4 text-sm text-muted-foreground text-center">No deals at Agreement Pending or later.</p>
-                  : dealTable(pending, 'Total Fee')}
-              </div>
-            )}
           </div>
         </DialogContent>
+        )}
       </Dialog>
     </>
   );
