@@ -1,8 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Layers, DollarSign, Hash, TrendingUp } from 'lucide-react';
-import type { Deal } from '@/types/deal';
-import { activeDealsCount, currentRevenuePerHour, kpiDrilldownRows, totalActivePipelineValue, totalActiveRevenue, totalSalesPipelineValue, type KpiKey } from '@/lib/activePipelineKpis';
+import { STATUS_CONFIG, type Deal, type DealStatus } from '@/types/deal';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+
+const STATUS_COLORS: Record<string, string> = {
+  'on-track': 'hsl(var(--success, 142 70% 45%))',
+  'at-risk': 'hsl(var(--warning, 38 92% 50%))',
+  'off-track': 'hsl(var(--destructive))',
+  'on-hold': 'hsl(var(--muted-foreground))',
+  archived: 'hsl(var(--border))',
+  none: 'hsl(var(--primary))',
+};
+const statusLabel = (s: string) => STATUS_CONFIG[s as DealStatus]?.label ?? 'No status';
+import { activeDealsCount, currentRevenuePerHour, kpiDrilldownRows, pendingRevenueRows, totalRevenueByStatus, totalActivePipelineValue, totalActiveRevenue, totalSalesPipelineValue, type KpiKey } from '@/lib/activePipelineKpis';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
@@ -28,6 +39,33 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
   };
   const kpi = KPIS.find(k => k.key === open);
   const rows = useMemo(() => (open ? kpiDrilldownRows(open, deals, stages) : []), [open, deals, stages]);
+  const byStatus = useMemo(() => (open === 'total_revenue' ? totalRevenueByStatus(deals, stages) : []), [open, deals, stages]);
+  const pending = useMemo(() => (open === 'total_revenue' ? pendingRevenueRows(deals, stages) : []), [open, deals, stages]);
+  const pendingTotal = pending.reduce((t, r) => t + (r.amount ?? 0), 0);
+  const revTotal = byStatus.reduce((t, r) => t + r.value, 0);
+  const dealTable = (list: typeof rows, amountLabel?: string) => (
+    <table className="w-full text-sm">
+      <thead className="sticky top-0 bg-background">
+        <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          <th className="text-left font-medium px-2 py-2">Deal</th>
+          <th className="text-left font-medium px-2 py-2">Stage</th>
+          <th className="text-right font-medium px-2 py-2">{amountLabel}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {list.map(r => (
+          <tr key={r.deal.id} onClick={() => navigate(`/deals/${r.deal.id}`)} className="cursor-pointer border-t border-border hover:bg-foreground/[0.04]">
+            <td className="px-2 py-2 text-foreground truncate max-w-[220px]">{r.deal.company}</td>
+            <td className="px-2 py-2 text-muted-foreground">{r.stageLabel}</td>
+            <td className="px-2 py-2 text-right tabular-nums text-foreground">
+              {r.amount == null ? '—' : formatUSDFromDollars(r.amount)}
+              {r.detail && <div className="text-[11px] text-muted-foreground">{r.detail}</div>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 
   return (
     <>
@@ -57,31 +95,60 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
             </DialogTitle>
             <DialogDescription>{rows.length} deal{rows.length === 1 ? '' : 's'} included · click a deal to open it</DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto -mx-2">
+          <div className="max-h-[65vh] overflow-y-auto -mx-2 px-2">
+            {open === 'total_revenue' && (
+              <div className="mb-4">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Revenue by status</p>
+                {revTotal === 0 ? (
+                  <p className="text-sm text-muted-foreground">No revenue yet.</p>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative h-[170px] w-[170px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={byStatus} dataKey="value" nameKey="status" innerRadius={50} outerRadius={78} paddingAngle={2} stroke="none">
+                            {byStatus.map(d => <Cell key={d.status} fill={STATUS_COLORS[d.status] ?? STATUS_COLORS.none} />)}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                            itemStyle={{ color: 'hsl(var(--foreground))' }}
+                            formatter={(v: number, n: string) => [`${formatUSDFromDollars(v)} (${Math.round((v / revTotal) * 100)}%)`, statusLabel(n)]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-sm font-semibold tabular-nums">{formatUSDFromDollars(revTotal)}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 w-full space-y-1">
+                      {byStatus.map(d => (
+                        <div key={d.status} className="flex items-center gap-2 text-sm">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[d.status] ?? STATUS_COLORS.none }} />
+                          <span className="flex-1 text-foreground">{statusLabel(d.status)}</span>
+                          <span className="tabular-nums text-foreground">{formatUSDFromDollars(d.value)}</span>
+                          <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">{Math.round((d.value / revTotal) * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {open === 'total_revenue' && <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Deals in Total Revenue</p>}
             {rows.length === 0 ? (
               <p className="px-2 py-6 text-sm text-muted-foreground text-center">No deals currently count toward this number.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-background">
-                  <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th className="text-left font-medium px-2 py-2">Deal</th>
-                    <th className="text-left font-medium px-2 py-2">Stage</th>
-                    <th className="text-right font-medium px-2 py-2">{kpi?.amountLabel}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(r => (
-                    <tr key={r.deal.id} onClick={() => navigate(`/deals/${r.deal.id}`)} className="cursor-pointer border-t border-border hover:bg-foreground/[0.04]">
-                      <td className="px-2 py-2 text-foreground truncate max-w-[220px]">{r.deal.company}</td>
-                      <td className="px-2 py-2 text-muted-foreground">{r.stageLabel}</td>
-                      <td className="px-2 py-2 text-right tabular-nums text-foreground">
-                        {r.amount == null ? '—' : formatUSDFromDollars(r.amount)}
-                        {r.detail && <div className="text-[11px] text-muted-foreground">{r.detail}</div>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            ) : dealTable(rows, kpi?.amountLabel)}
+            {open === 'total_revenue' && (
+              <div className="mt-6 border-t border-border pt-4">
+                <div className="flex items-baseline justify-between mb-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Pending Revenue · Agreement Pending onward</p>
+                  <span className="text-base font-semibold tabular-nums text-primary">{formatUSDFromDollars(pendingTotal)}</span>
+                </div>
+                {pending.length === 0
+                  ? <p className="py-4 text-sm text-muted-foreground text-center">No deals at Agreement Pending or later.</p>
+                  : dealTable(pending, 'Total Fee')}
+              </div>
             )}
           </div>
         </DialogContent>

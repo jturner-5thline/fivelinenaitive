@@ -164,3 +164,16 @@ describe('kpiDrilldownRows', () => {
     expect(kpiDrilldownRows('total_revenue', deals, stages).find(r => r.deal.id === 'd')?.amount).toBe(35);
   });
 });
+
+import { pendingRevenueRows, totalRevenueByStatus } from '../activePipelineKpis';
+describe('total revenue pop-up breakdowns', () => {
+  const st = ['Proposal Issued','Agreement Pending','Final Credit Items','In Due Diligence','Closed Won'].map((l, i) => ({ id: `p${i}`, label: l }));
+  const m = (id: string, stage: string, totalFee: number, status: any) => ({ id, company: id, stage, totalFee, status }) as any;
+  const deals = [m('a','p0',100,'on-track'), m('b','p1',200,'on-track'), m('c','p2',300,'at-risk'), m('d','p4',400,'on-track'), m('e','p2',50,'on-track')];
+  it('pending revenue starts at Agreement Pending and excludes closed', () => {
+    expect(pendingRevenueRows(deals, st).map(r => r.deal.id)).toEqual(['c','b','e']);
+  });
+  it('groups total revenue by status', () => {
+    expect(totalRevenueByStatus(deals, st)).toEqual([{ status: 'at-risk', value: 300 }, { status: 'on-track', value: 50 }]);
+  });
+});

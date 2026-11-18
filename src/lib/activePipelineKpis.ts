@@ -140,3 +140,31 @@ export function kpiDrilldownRows(key: KpiKey, deals: Deal[], stages: PipelineSta
   }
   return rows.sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
 }
+
+/** Total Revenue grouped by deal status (same per-deal amounts as totalActiveRevenue). */
+export function totalRevenueByStatus(deals: Deal[], stages: PipelineStage[] = []): { status: string; value: number }[] {
+  const map = new Map<string, number>();
+  for (const d of deals) {
+    if (!activeDealPosition(d, stages)) continue;
+    const v = totalActiveRevenue([d], stages);
+    const key = d.status || 'none';
+    map.set(key, (map.get(key) ?? 0) + v);
+  }
+  return [...map.entries()].map(([status, value]) => ({ status, value })).filter(r => r.value > 0).sort((a, b) => b.value - a.value);
+}
+
+/** Pending Revenue: Total Fee of open deals at Agreement Pending or later in the pipeline order. */
+export function pendingRevenueRows(deals: Deal[], stages: PipelineStage[] = []): KpiDrilldownRow[] {
+  const start = stages.findIndex(s => normalizeStage(s.label) === 'agreement pending');
+  if (start < 0) return [];
+  const rows: KpiDrilldownRow[] = [];
+  for (const d of deals) {
+    if (isExcludedDealName(d.company) || d.company?.trim().toLowerCase() === "test-niki's store") continue;
+    const i = stages.findIndex(s => s.id === d.stage || normalizeStage(s.label) === normalizeStage(d.stage));
+    if (i < start) continue;
+    const lbl = normalizeStage(stages[i].label);
+    if (['closed won', 'closed lost'].includes(lbl) || CLOSED_STAGES.has(d.stage)) continue;
+    rows.push({ deal: d, stageLabel: stages[i].label, amount: money(d.totalFee) });
+  }
+  return rows.sort((a, b) => (b.amount ?? 0) - (a.amount ?? 0));
+}
