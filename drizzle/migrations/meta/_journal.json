@@ -596,6 +596,13 @@
       "when": 1794971476918,
       "tag": "0084_mcp_claap_meeting_deal_link",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795035563445,
+      "tag": "0085_mcp_deal_calendar_items",
+      "breakpoints": true
     }
   ]
 }

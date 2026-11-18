@@ -9757,6 +9757,7 @@ export type Database = {
           date: string
           deal_id: string
           id: string
+          idempotency_key: string | null
           notes: string | null
           time: string | null
           title: string
@@ -9769,6 +9770,7 @@ export type Database = {
           date: string
           deal_id: string
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           time?: string | null
           title: string
@@ -9781,6 +9783,7 @@ export type Database = {
           date?: string
           deal_id?: string
           id?: string
+          idempotency_key?: string | null
           notes?: string | null
           time?: string | null
           title?: string
@@ -31366,6 +31369,15 @@ export type Database = {
           p_mode?: string
           p_patch: Json
           p_source?: string
+        }
+        Returns: Json
+      }
+      mcp_write_deal_calendar_item: {
+        Args: {
+          p_action: string
+          p_deal_id: string
+          p_id: string
+          p_payload: Json
         }
         Returns: Json
       }
