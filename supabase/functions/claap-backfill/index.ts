@@ -449,7 +449,12 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const companyId = body.company_id;
+    let companyId: string | null = body.company_id ?? null;
+    if (!companyId) {
+      // Without a workspace, sync_all_calls is ignored and rows are saved unscoped; use the only active config.
+      const { data: configs } = await supabaseAdmin.from("claap_integration_config").select("company_id").eq("is_active", true).limit(2);
+      if (configs?.length === 1) companyId = configs[0].company_id;
+    }
     let internalDomains = ["5thlinefinancing.com", "5thline.co"];
     let minDurationSeconds = 300;
     let excludedTitlePatterns = ["5th Line Weekly", "Partners Meeting", "Joint Work", "All Hands", "Monthly Insights", "Quarterly Insights"];
