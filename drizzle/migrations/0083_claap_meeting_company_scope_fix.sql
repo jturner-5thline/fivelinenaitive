@@ -1,6 +1,3 @@
--- Claap meetings imported without a workspace (company_id NULL) could not be linked to funding
--- sources. Assign them to the organizer's workspace, import the skipped Josh Corson call, and make
--- the link RPC resolve a missing workspace from the organizer's membership.
 UPDATE public.claap_meetings m SET company_id = cm.company_id
 FROM public.profiles p JOIN public.company_members cm ON cm.user_id = p.user_id
 WHERE m.company_id IS NULL AND lower(p.email) = lower(m.organizer_email)
@@ -38,7 +35,6 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'Meeting not found or not visible to you' USING ERRCODE='42501'; END IF;
  v_company := before_row.company_id;
  IF v_company IS NULL THEN
-   -- Legacy rows without a workspace: adopt the caller's workspace only when the caller organized the meeting.
    SELECT cm.company_id INTO v_company FROM public.profiles p JOIN public.company_members cm ON cm.user_id=p.user_id
    WHERE p.user_id=auth.uid() AND lower(p.email)=lower(before_row.organizer_email) LIMIT 1;
  END IF;
