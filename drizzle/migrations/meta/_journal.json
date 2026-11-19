@@ -631,6 +631,13 @@
       "when": 1795097771915,
       "tag": "0089_mcp_lender_write_log",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1795100565448,
+      "tag": "0090_lender_met_status_claap_calls",
+      "breakpoints": true
     }
   ]
 }
