@@ -1,0 +1,2 @@
+- MCP Deal Calendar writes use the invoker `mcp_write_deal_calendar_item` RPC (deal-scoped lock, per-deal unique idempotency_key, deal_activity row in the same transaction) — why: keep Deal Calendar RLS, avoid retry duplicates and attribute every change to MCP.
+- MCP relationship tools (engagements, outside deals, intro paths, company owners) write caller-scoped and log to own-user `mcp_lender_write_log` (also idempotency keys) — why: no columns may be added to existing tables.
