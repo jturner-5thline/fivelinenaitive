@@ -194,7 +194,7 @@ function PassDetectionBanner({ thread, dealId }: { thread: EmailThread; dealId?:
     latestEmail: thread.latestEmail,
   };
   const { detection, hasPendingPass, committing, confirmPass, dismissPass } =
-    useLenderPassDetection({ dealId, threadData, autoRun: !!dealId });
+    useLenderPassDetection({ dealId, threadData, autoRun: true });
   if (!hasPendingPass || !detection) return null;
   return (
     <LenderPassBanner

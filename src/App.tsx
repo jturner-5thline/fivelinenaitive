@@ -143,6 +143,7 @@ const DealDetail = lazy(lazyRetry(() => import("./lib/lazyDealDetail").then((m) 
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Account = lazy(lazyRetry(() => import("./pages/Account")));
 const Lenders = lazy(lazyRetry(() => import("./pages/Lenders")));
+const LenderPassQueue = lazy(lazyRetry(() => import("./pages/LenderPassQueue")));
 const LenderDatabaseConfig = lazy(lazyRetry(() => import("./pages/LenderDatabaseConfig")));
 const LenderSyncHistory = lazy(lazyRetry(() => import("./pages/LenderSyncHistory")));
 const LenderDealHistory = lazy(lazyRetry(() => import("./pages/LenderDealHistory")));
@@ -452,6 +453,7 @@ const App = () => (
                             <Route path="/settings/:group/:section" element={<div className="flat-tile-skin contents"><Settings /></div>} />
                             <Route path="/account" element={<Account />} />
                             <Route path="/lenders" element={<div className="flat-tile-skin contents"><Lenders /></div>} />
+                            <Route path="/lenders/pass-queue" element={<div className="flat-tile-skin contents"><LenderPassQueue /></div>} />
                             <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
                             <Route path="/lenders/sync-history" element={<LenderSyncHistory />} />
                             <Route path="/lenders/:lenderName/history" element={<div className="flat-tile-skin contents"><LenderDealHistory /></div>} />

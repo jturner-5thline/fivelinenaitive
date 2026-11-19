@@ -49,3 +49,4 @@
 - Lender engagements are logged once in `lender_engagements` (unique source+external_ref per lender, links filled by a BEFORE INSERT trigger on that table only) and read into contact, company and funding-source feeds; pre-Jul-2026 imported emails stay in contact_activities and are deduped at read time — why: user requires strictly additive changes with no rewriting of existing rows.
 - `lender_deal_history` self-fills workspace, dedupe_key and confirm stamps via own trigger; any member may confirm/reject — why: additive-only.
 - `lender_intro_paths` self-fills workspace/dedupe_key via its own trigger; Relationships UI never parses/syncs relationship_owners — why: additive-only.
+- Lender pass detection gates senders in `_shared/lenderPassSender.ts` before any AI call, resolves lender/deal server-side and only inserts (skips known gmail_message_id); pass queue page is read-only — why: additive-only, legacy duplicate rows stay.

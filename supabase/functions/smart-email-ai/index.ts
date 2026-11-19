@@ -1,3 +1,4 @@
+import { senderKind, forwardedLenderCandidates, domainOf, isFreeMailDomain, websiteHost } from "../_shared/lenderPassSender.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -614,6 +615,7 @@ ${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/
     let userPrompt = "";
 
     // ─── Route by action ────────────────────────────────────────
+    let passCtx: { messageId: string; dealId: string; dealLenderId: string | null; lenderName: string } | null = null;
     switch (action) {
       case "suggest_status_update": {
         // Self-contained route: makes its own gateway call and returns early
@@ -1032,15 +1034,58 @@ Parse and extract all term sheet data from this email/thread. Identify any risk 
         const senderName: string = latestEmail?.from_name || "";
         const senderDomain = senderEmail.split("@")[1] || "";
 
-        // Build lender candidate list from the deal so the model can match exactly.
-        let lenderCandidates: Array<{ id: string; name: string }> = [];
-        if (dealId) {
-          const { data: ls } = await supabase
-            .from("deal_lenders")
-            .select("id, name, stage")
-            .eq("deal_id", dealId);
-          lenderCandidates = (ls || []).map((l: any) => ({ id: l.id, name: l.name }));
+        // Lender-side gate (runs before any AI call): only lender contacts /
+        // lender domains, or a 5thline.co forward of a lender's mail. Automated
+        // senders are skipped. lender_name is always master_lenders.name.
+        const skip = (reason: string) => new Response(JSON.stringify({ result: { skipped: true, reason } }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+        const passMessageId: string | undefined = latestEmail?.gmail_message_id || latestEmail?.id;
+        if (!passMessageId) return skip("no_message_id");
+        const kind = senderKind(senderEmail);
+        if (kind === "automated") return skip("automated_sender");
+
+        const resolveLender = async (email: string): Promise<{ id: string; name: string } | null> => {
+          const { data: lcs } = await supabase.from("lender_contacts").select("lender_id").ilike("email", email).limit(10);
+          const ids = [...new Set((lcs || []).map((r: any) => r.lender_id))];
+          if (ids.length === 1) {
+            const { data: ml } = await supabase.from("master_lenders").select("id, name").eq("id", ids[0]).maybeSingle();
+            if (ml) return ml as any;
+          }
+          const domain = domainOf(email);
+          if (!domain || isFreeMailDomain(domain)) return null;
+          const { data: mls } = await supabase.from("master_lenders").select("id, name, email, website")
+            .or(`email.ilike.%@${domain},website.ilike.%${domain}%`).limit(10);
+          const exact = (mls || []).filter((m: any) => domainOf(m.email || "") === domain || websiteHost(m.website) === domain);
+          return exact.length === 1 ? { id: exact[0].id, name: exact[0].name } : null;
+        };
+
+        let passLender: { id: string; name: string } | null = null;
+        if (kind === "external") {
+          passLender = await resolveLender(senderEmail);
+        } else {
+          const threadText = [latestEmail?.subject, latestEmail?.body_preview, latestEmail?.snippet,
+            ...((threadData?.emails || []) as any[]).flatMap((e) => [e?.from_email, e?.body_preview, e?.snippet])]
+            .filter(Boolean).join("\n");
+          for (const cand of forwardedLenderCandidates(threadText)) {
+            passLender = await resolveLender(cand);
+            if (passLender) break;
+          }
         }
+        if (!passLender) return skip(kind === "internal" ? "internal_without_lender" : "not_lender_sender");
+
+        // Skip messages already in the queue (any deal) — checked in code, no constraint.
+        const { data: dupRows } = await supabase.from("lender_pass_detections").select("id").eq("gmail_message_id", passMessageId).limit(1);
+        if (dupRows && dupRows.length) return skip("duplicate_message");
+
+        // Resolve the deal: the caller's deal if given, else the lender's most recent deal link.
+        let dlq = supabase.from("deal_lenders").select("id, deal_id, created_at").eq("master_lender_id", passLender.id);
+        if (dealId) dlq = dlq.eq("deal_id", dealId);
+        const { data: dls } = await dlq.order("created_at", { ascending: false }).limit(1);
+        const passDealId: string | null = dls?.[0]?.deal_id || dealId || null;
+        if (!passDealId) return skip("lender_not_on_a_deal");
+        passCtx = { messageId: passMessageId, dealId: passDealId, dealLenderId: dls?.[0]?.id || null, lenderName: passLender.name };
+        const lenderCandidates: Array<{ id: string; name: string }> = [{ id: passCtx.dealLenderId || passLender.id, name: passLender.name }];
 
         systemPrompt = `You are a careful classifier deciding whether the LAST inbound email from a lender contact is a PASS / DECLINE on a debt deal.
 
@@ -1746,59 +1791,28 @@ Analyze this thread and create a follow-up sequence plan. Consider the deal stag
       }
     }
 
-    // For detect_lender_pass, persist the detection so the UI can read/confirm it later.
-    if (action === "detect_lender_pass" && dealId && typeof parsed === "object" && !parsed.raw) {
+    // For detect_lender_pass, insert one new queue row (never updates existing rows).
+    if (action === "detect_lender_pass" && passCtx && typeof parsed === "object" && !parsed.raw) {
       try {
         const latest = emailData || threadData?.latestEmail || threadData?.emails?.[0];
-        const messageId: string | undefined = latest?.gmail_message_id || latest?.id;
-
-        if (messageId) {
-          const isPass = !!parsed.is_pass;
+        const { data: dup } = await supabase.from("lender_pass_detections").select("id").eq("gmail_message_id", passCtx.messageId).limit(1);
+        if (!dup || dup.length === 0) {
           const confidence = ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "low";
-          const matchedId: string | null = parsed.matched_lender_id && typeof parsed.matched_lender_id === "string" && parsed.matched_lender_id.length > 0
-            ? parsed.matched_lender_id
-            : null;
-          const matchedName: string = parsed.matched_lender_name || "";
-
-          // Upsert by (gmail_message_id, deal_id) — only stamp/refresh if not already confirmed/dismissed.
-          const { data: existing } = await supabase
-            .from("lender_pass_detections")
-            .select("id, status")
-            .eq("gmail_message_id", messageId)
-            .eq("deal_id", dealId)
-            .maybeSingle();
-
-          if (!existing) {
-            await supabase.from("lender_pass_detections").insert({
-              deal_id: dealId,
-              deal_lender_id: matchedId,
-              lender_name: matchedName || latest?.from_name || "Unknown lender",
-              gmail_message_id: messageId,
-              thread_id: latest?.thread_id || threadData?.threadId || null,
-              sender_email: latest?.from_email || null,
-              sender_name: latest?.from_name || null,
-              confidence,
-              is_pass: isPass,
-              reason_summary: parsed.reason_summary || null,
-              source_quote: parsed.source_quote || null,
-              status: "pending",
-              raw_classification: parsed,
-            });
-          } else if (existing.status === "pending") {
-            // Refresh the latest classification but keep status pending.
-            await supabase
-              .from("lender_pass_detections")
-              .update({
-                deal_lender_id: matchedId,
-                lender_name: matchedName || latest?.from_name || "Unknown lender",
-                confidence,
-                is_pass: isPass,
-                reason_summary: parsed.reason_summary || null,
-                source_quote: parsed.source_quote || null,
-                raw_classification: parsed,
-              })
-              .eq("id", existing.id);
-          }
+          await supabase.from("lender_pass_detections").insert({
+            deal_id: passCtx.dealId,
+            deal_lender_id: passCtx.dealLenderId,
+            lender_name: passCtx.lenderName,
+            gmail_message_id: passCtx.messageId,
+            thread_id: latest?.thread_id || threadData?.threadId || null,
+            sender_email: latest?.from_email || null,
+            sender_name: latest?.from_name || null,
+            confidence,
+            is_pass: !!parsed.is_pass,
+            reason_summary: parsed.reason_summary || null,
+            source_quote: parsed.source_quote || null,
+            status: "pending",
+            raw_classification: parsed,
+          });
         }
       } catch (persistErr) {
         console.error("Failed to persist lender pass detection:", persistErr);

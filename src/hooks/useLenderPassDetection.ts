@@ -71,27 +71,30 @@ export function useLenderPassDetection({
 
   // Load any existing detection for this message+deal.
   const loadExisting = useCallback(async () => {
-    if (!dealId || !messageId) return null;
-    const { data } = await supabase
+    if (!messageId) return null;
+    // One message may have older duplicate rows; read the earliest, never rewrite them.
+    const { data: rows } = await supabase
       .from('lender_pass_detections')
       .select('*')
-      .eq('deal_id', dealId)
       .eq('gmail_message_id', messageId)
-      .maybeSingle();
-    if (data) setDetection(data as LenderPassDetection);
-    return data as LenderPassDetection | null;
+      .order('created_at', { ascending: true })
+      .limit(1);
+    const data = (rows?.[0] ?? null) as LenderPassDetection | null;
+    if (data && dealId && data.deal_id !== dealId) return data;
+    if (data) setDetection(data);
+    return data;
   }, [dealId, messageId]);
 
   // Run the classifier (will upsert in the edge function).
   const runClassifier = useCallback(async () => {
-    if (!dealId || !messageId || !threadData || !latestInbound) return;
+    if (!messageId || !threadData || !latestInbound) return;
     if (!(await hasAuthSession())) return;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('smart-email-ai', {
         body: {
           action: 'detect_lender_pass',
-          dealId,
+          dealId: dealId || undefined,
           emailData: {
             gmail_message_id: messageId,
             id: messageId,
@@ -123,11 +126,11 @@ export function useLenderPassDetection({
 
   // On mount / inputs change: load existing, then auto-run if needed.
   useEffect(() => {
-    if (!dealId || !messageId) {
+    if (!messageId) {
       setDetection(null);
       return;
     }
-    const key = `${dealId}::${messageId}`;
+    const key = `${dealId || ''}::${messageId}`;
     (async () => {
       const existing = await loadExisting();
       if (existing) return;

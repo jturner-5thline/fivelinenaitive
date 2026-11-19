@@ -4,7 +4,7 @@ import { FundingSourceTypeSelect } from '@/components/lenders/FundingSourceTypeS
 import { FundingSourceTypeQuickFilters } from '@/components/lenders/FundingSourceTypeQuickFilters';
 import { parseMoney, toList } from '@/lib/lenders/parseLenderForm';
 import { useState, useMemo, useCallback, useRef, useEffect, useDeferredValue } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { createPortal } from 'react-dom';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
@@ -1587,6 +1587,7 @@ export default function Lenders() {
                     : ''}
                 </span>
               </h1>
+              <Link to="/lenders/pass-queue" className="text-xs text-primary hover:underline shrink-0 whitespace-nowrap">Pass queue</Link>
 
               <LenderSearchInput onDebouncedChange={setDebouncedSearchQuery} />
 
