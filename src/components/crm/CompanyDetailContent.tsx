@@ -1,3 +1,4 @@
+import { useEngagementsBy } from '@/hooks/useLenderEngagements';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -79,6 +80,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { data: contacts = [] } = useCrmCompanyContacts(companyId);
   const contactIds = contacts.map((c: any) => c.id);
   const { data: contactActivities = [] } = useCrmCompanyContactActivities(contactIds);
+  const { data: lenderEngagements = [] } = useEngagementsBy('crm_company_id', companyId);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
   const { data: affiliatedDeals = [] } = useCompanyAffiliatedDeals(companyId, contactIds, company?.name);
@@ -228,7 +230,13 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     _source: 'contact' as const,
     subject: `${contactNameById.get(a.contact_id) ?? 'Contact'} · ${a.subject || (a.activity_type === 'call' ? 'Call logged' : 'Meeting logged')}`,
   }));
-  const mergedActivities = [...(activities as any[]), ...contactSourced].sort((a, b) => {
+  const engagementSourced = (lenderEngagements as any[]).map((e) => ({
+    ...e,
+    id: `lender_engagement:${e.id}`,
+    _source: 'lender_engagement' as const,
+    subject: `${e.master_lenders?.name ? e.master_lenders.name + ' · ' : ''}${e.subject || e.activity_type}`,
+  }));
+  const mergedActivities = [...(activities as any[]), ...contactSourced, ...engagementSourced].sort((a, b) => {
     const ta = new Date(a.occurred_at).getTime();
     const tb = new Date(b.occurred_at).getTime();
     return tb - ta;

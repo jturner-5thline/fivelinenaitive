@@ -431,7 +431,27 @@ export function useContactActivities(contactId: string | undefined) {
         });
       }
 
-      const merged = [...activities, ...emailActivities];
+      // Funding source engagements logged against this contact (read-only).
+      const { data: engs } = await supabase
+        .from('lender_engagements')
+        .select('id, activity_type, subject, body, direction, occurred_at, source, external_ref, deal_id, lender_id, master_lenders(name)')
+        .eq('contact_id', contactId)
+        .order('occurred_at', { ascending: false })
+        .limit(500);
+      const engagementActivities = (engs || []).map((e: any) => ({
+        id: `lender_engagement:${e.id}`,
+        contact_id: contactId,
+        activity_type: e.activity_type,
+        subject: `${e.master_lenders?.name ? e.master_lenders.name + ' · ' : ''}${e.subject || e.activity_type}`,
+        body: e.body || '',
+        occurred_at: e.occurred_at,
+        created_at: e.occurred_at,
+        source: 'lender_engagement',
+        metadata: { direction: e.direction, external_ref: e.external_ref, deal_id: e.deal_id, lender_id: e.lender_id },
+        __readOnly: true,
+      }));
+
+      const merged = [...activities, ...emailActivities, ...engagementActivities];
 
       // Claap recordings where this contact's email is tagged as an attendee.
       let claapActivities: any[] = [];
