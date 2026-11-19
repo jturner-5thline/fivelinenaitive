@@ -18304,6 +18304,78 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_engagements: {
+        Row: {
+          activity_type: string
+          body: string | null
+          company_id: string | null
+          contact_id: string | null
+          created_at: string
+          crm_company_id: string | null
+          deal_id: string | null
+          direction: string | null
+          external_ref: string | null
+          id: string
+          lender_id: string
+          logged_by: string | null
+          metadata: Json
+          occurred_at: string
+          source: string
+          subject: string | null
+        }
+        Insert: {
+          activity_type: string
+          body?: string | null
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          crm_company_id?: string | null
+          deal_id?: string | null
+          direction?: string | null
+          external_ref?: string | null
+          id?: string
+          lender_id: string
+          logged_by?: string | null
+          metadata?: Json
+          occurred_at: string
+          source: string
+          subject?: string | null
+        }
+        Update: {
+          activity_type?: string
+          body?: string | null
+          company_id?: string | null
+          contact_id?: string | null
+          created_at?: string
+          crm_company_id?: string | null
+          deal_id?: string | null
+          direction?: string | null
+          external_ref?: string | null
+          id?: string
+          lender_id?: string
+          logged_by?: string | null
+          metadata?: Json
+          occurred_at?: string
+          source?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_engagements_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_engagements_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_fit_attributes: {
         Row: {
           company_id: string | null
@@ -29922,6 +29994,20 @@ export type Database = {
             referencedColumns: ["deal_id"]
           },
         ]
+      }
+      lender_met_status: {
+        Row: {
+          call_meeting_count: number | null
+          first_met_at: string | null
+          is_met: boolean | null
+          last_engagement_at: string | null
+          last_met_at: string | null
+          last_two_way_email_at: string | null
+          lender_id: string | null
+          on_deal_sent_drl_or_later: boolean | null
+          signals: string[] | null
+        }
+        Relationships: []
       }
       lender_outcome_stats: {
         Row: {
