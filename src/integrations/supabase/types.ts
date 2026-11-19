@@ -18170,6 +18170,89 @@ export type Database = {
           },
         ]
       }
+      lender_deal_history: {
+        Row: {
+          amount_text: string | null
+          amount_usd: number | null
+          announced_on: string | null
+          borrower_name: string
+          company_id: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          dedupe_key: string | null
+          evidence_grade: string | null
+          geography: string | null
+          id: string
+          industry: string | null
+          lender_id: string
+          lender_role: string | null
+          product_type: string | null
+          proposed_by: string | null
+          source_ref: string | null
+          source_type: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_text?: string | null
+          amount_usd?: number | null
+          announced_on?: string | null
+          borrower_name: string
+          company_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_key?: string | null
+          evidence_grade?: string | null
+          geography?: string | null
+          id?: string
+          industry?: string | null
+          lender_id: string
+          lender_role?: string | null
+          product_type?: string | null
+          proposed_by?: string | null
+          source_ref?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_text?: string | null
+          amount_usd?: number | null
+          announced_on?: string | null
+          borrower_name?: string
+          company_id?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_key?: string | null
+          evidence_grade?: string | null
+          geography?: string | null
+          id?: string
+          industry?: string | null
+          lender_id?: string
+          lender_role?: string | null
+          product_type?: string | null
+          proposed_by?: string | null
+          source_ref?: string | null
+          source_type?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_deal_history_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_disqualifications: {
         Row: {
           created_at: string

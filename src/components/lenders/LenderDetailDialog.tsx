@@ -112,6 +112,7 @@ const LENDER_TYPE_OPTIONS = [
 
 import { LenderResponsivenessScorecard } from "./LenderResponsivenessScorecard";
 import { LenderActivitySection } from "./LenderActivitySection";
+import { LenderOtherDealsSection } from "./LenderOtherDealsSection";
 
 interface LenderInfo {
   id?: string;
@@ -2277,6 +2278,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </section>
                           <LenderResponsivenessScorecard lenderId={lender.id} />
                           <LenderActivitySection lenderId={lender.id} />
+                          <LenderOtherDealsSection lenderId={lender.id} />
                           <section className="mt-6">
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               Business Info
