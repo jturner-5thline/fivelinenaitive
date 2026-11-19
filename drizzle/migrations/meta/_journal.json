@@ -624,6 +624,13 @@
       "when": 1795097320108,
       "tag": "0088_lender_intro_paths",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1795097771915,
+      "tag": "0089_mcp_lender_write_log",
+      "breakpoints": true
     }
   ]
 }

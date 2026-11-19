@@ -19830,6 +19830,48 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_lender_write_log: {
+        Row: {
+          action: string
+          after: Json | null
+          before: Json | null
+          created_at: string
+          id: string
+          idempotency_key: string | null
+          lender_id: string | null
+          target_id: string | null
+          target_table: string
+          tool: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          lender_id?: string | null
+          target_id?: string | null
+          target_table: string
+          tool: string
+          user_id?: string
+        }
+        Update: {
+          action?: string
+          after?: Json | null
+          before?: Json | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          lender_id?: string | null
+          target_id?: string | null
+          target_table?: string
+          tool?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_claap_resolution: {
         Row: {
           created_at: string

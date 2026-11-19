@@ -17,6 +17,835 @@
     },
     "tools": [
       {
+        "name": "log_lender_engagement",
+        "title": "Log a funding source engagement",
+        "description": "Upsert one row in lender_engagements keyed by (source, external_ref, lender_id); requires lender_id, activity_type, occurred_at, source and external_ref. The workspace and CRM company are filled from the funding source when omitted. Returns the row id and created|updated. Writes only lender_engagements plus an audit entry.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders.id"
+            },
+            "contact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "CRM contacts.id; set it to show the engagement on that contact's page."
+            },
+            "crm_company_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Defaults to the funding source's CRM company."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "activity_type": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "description": "e.g. email, call, meeting, note"
+            },
+            "subject": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "body": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "inbound",
+                "outbound",
+                "internal"
+              ]
+            },
+            "occurred_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "ISO timestamp"
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "description": "e.g. gmail, claap, calendar, manual"
+            },
+            "external_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "Stable id in the source (Gmail message id, Claap id, URL)."
+            },
+            "metadata": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "lender_id",
+            "activity_type",
+            "occurred_at",
+            "source",
+            "external_ref"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_engagements",
+        "title": "List funding source engagements",
+        "description": "Read lender_engagements (newest first) filtered by lender_id, contact_id, crm_company_id, deal_id, activity_type[], since, until; paginated with total_count/next_offset.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "crm_company_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "activity_type": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20
+            },
+            "since": {
+              "type": "string",
+              "description": "ISO date/time, inclusive"
+            },
+            "until": {
+              "type": "string",
+              "description": "ISO date/time, exclusive"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_met_status",
+        "title": "List funding source met status",
+        "description": "Read the lender_met_status summary (first/last meeting, call+meeting count, last two-way email, last engagement, on a deal past Sent DRL, is_met). Filters is_met, last_engagement_before, lender_ids[]; paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "is_met": {
+              "type": "boolean"
+            },
+            "last_engagement_before": {
+              "type": "string",
+              "description": "ISO date; returns lenders whose last engagement is earlier (or none)."
+            },
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maxItems": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lender_deal_history",
+        "title": "Log an outside deal for a funding source",
+        "description": "Insert one lender_deal_history row (a deal the funding source did outside 5LCA). Requires lender_id, borrower_name, source_type, source_ref and evidence_grade. Saved as proposed unless status is given. A duplicate (same lender, borrower and month) returns the existing row with created:false. Writes only lender_deal_history plus an audit entry.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "borrower_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "announced_on": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "YYYY-MM-DD"
+            },
+            "amount_usd": {
+              "type": "number",
+              "minimum": 0
+            },
+            "amount_text": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Ranges like $10-15MM"
+            },
+            "product_type": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "industry": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "geography": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "lender_role": {
+              "type": "string",
+              "enum": [
+                "lead",
+                "participant",
+                "agent",
+                "sole",
+                "unknown"
+              ]
+            },
+            "source_type": {
+              "type": "string",
+              "enum": [
+                "lender_email",
+                "press_release",
+                "lender_site",
+                "news",
+                "other"
+              ]
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000,
+              "description": "Gmail message id or URL"
+            },
+            "evidence_grade": {
+              "type": "string",
+              "enum": [
+                "lender_announced",
+                "third_party",
+                "inferred"
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed"
+              ],
+              "default": "proposed"
+            },
+            "proposed_by": {
+              "type": "string",
+              "maxLength": 100,
+              "default": "mcp"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "lender_id",
+            "borrower_name",
+            "source_type",
+            "source_ref",
+            "evidence_grade"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_deal_history",
+        "title": "Update, confirm or reject an outside deal",
+        "description": "Edit one lender_deal_history row by id. Set status to confirmed or rejected to review a proposed deal (confirmed_by/confirmed_at are stamped automatically). Writes only that row plus an audit entry.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed",
+                "rejected"
+              ]
+            },
+            "borrower_name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "announced_on": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "amount_usd": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "amount_text": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "product_type": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "industry": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "geography": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lender_role": {
+              "type": "string",
+              "enum": [
+                "lead",
+                "participant",
+                "agent",
+                "sole",
+                "unknown"
+              ]
+            },
+            "source_type": {
+              "type": "string",
+              "enum": [
+                "lender_email",
+                "press_release",
+                "lender_site",
+                "news",
+                "other"
+              ]
+            },
+            "source_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "evidence_grade": {
+              "type": "string",
+              "enum": [
+                "lender_announced",
+                "third_party",
+                "inferred"
+              ]
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_deal_history",
+        "title": "List outside deals for funding sources",
+        "description": "Read lender_deal_history rows (newest announced first) filtered by lender_id, status and since (announced_on on/after); paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed",
+                "rejected"
+              ]
+            },
+            "since": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lender_intro_path",
+        "title": "Add an intro path to a funding source",
+        "description": "Insert one lender_intro_paths row: who connected us to the funding source (or one of its lender_contacts). Requires lender_id, path_type, evidence_type, evidence_ref (unless evidence_type is manual) and one of from_contact_id, from_user_id, from_referral_source_id or from_name. Saved as proposed unless status is given; a duplicate returns the existing row with created:false. Writes only lender_intro_paths plus an audit entry.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lender_contact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "lender_contacts.id the intro led to"
+            },
+            "from_contact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "CRM contacts.id of the introducer"
+            },
+            "from_user_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "naitive user id (5LCA teammate)"
+            },
+            "from_referral_source_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "from_name": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Use when no id applies"
+            },
+            "path_type": {
+              "type": "string",
+              "enum": [
+                "introduced_by",
+                "referred_by",
+                "former_colleague",
+                "mutual_connection",
+                "met_at_event",
+                "other"
+              ]
+            },
+            "evidence_type": {
+              "type": "string",
+              "enum": [
+                "intro_email",
+                "calendar",
+                "linkedin",
+                "referral_source",
+                "manual"
+              ]
+            },
+            "evidence_ref": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "occurred_on": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 5000
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed"
+              ],
+              "default": "proposed"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "lender_id",
+            "path_type",
+            "evidence_type"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_lender_intro_path",
+        "title": "Update, confirm or reject an intro path",
+        "description": "Edit one lender_intro_paths row by id (status confirmed/rejected, path_type, evidence, date, notes). The result must still have a from value and evidence. Writes only that row plus an audit entry.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed",
+                "rejected"
+              ]
+            },
+            "path_type": {
+              "type": "string",
+              "enum": [
+                "introduced_by",
+                "referred_by",
+                "former_colleague",
+                "mutual_connection",
+                "met_at_event",
+                "other"
+              ]
+            },
+            "evidence_type": {
+              "type": "string",
+              "enum": [
+                "intro_email",
+                "calendar",
+                "linkedin",
+                "referral_source",
+                "manual"
+              ]
+            },
+            "evidence_ref": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "occurred_on": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "notes": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_intro_paths",
+        "title": "List intro paths for funding sources",
+        "description": "Read lender_intro_paths rows (newest first) filtered by lender_id, lender_contact_id and status; paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lender_contact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "confirmed",
+                "rejected"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_lender_company_owner",
+        "title": "Add an owner to a funding source's company",
+        "description": "Insert one crm_company_team row for the funding source's linked CRM company. Requires lender_id and user_id (a member of the funding source's workspace); role defaults to owner. If that user is already on the team, returns the existing row with created:false. Never writes contacts.owner_user_id or relationship_owners.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "user_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "naitive user id of the owner"
+            },
+            "role": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "default": "owner"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Optional retry key. Repeating a call with the same key returns the first result instead of writing again."
+            }
+          },
+          "required": [
+            "lender_id",
+            "user_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_company_owners",
+        "title": "List a funding source's company owners",
+        "description": "Read crm_company_team rows for the funding source's linked CRM company, with owner names, plus the read-only relationship_owners note; paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "required": [
+            "lender_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_deals",
         "title": "List deals",
         "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: \"*\"` to get EVERY column on each deal (all pipeline-specific fields included — this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
