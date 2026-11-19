@@ -18588,6 +18588,95 @@ export type Database = {
         }
         Relationships: []
       }
+      lender_intro_paths: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          dedupe_key: string | null
+          evidence_ref: string | null
+          evidence_type: string | null
+          from_contact_id: string | null
+          from_name: string | null
+          from_referral_source_id: string | null
+          from_user_id: string | null
+          id: string
+          lender_contact_id: string | null
+          lender_id: string
+          notes: string | null
+          occurred_on: string | null
+          path_type: string
+          status: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_key?: string | null
+          evidence_ref?: string | null
+          evidence_type?: string | null
+          from_contact_id?: string | null
+          from_name?: string | null
+          from_referral_source_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          lender_contact_id?: string | null
+          lender_id: string
+          notes?: string | null
+          occurred_on?: string | null
+          path_type?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dedupe_key?: string | null
+          evidence_ref?: string | null
+          evidence_type?: string | null
+          from_contact_id?: string | null
+          from_name?: string | null
+          from_referral_source_id?: string | null
+          from_user_id?: string | null
+          id?: string
+          lender_contact_id?: string | null
+          lender_id?: string
+          notes?: string | null
+          occurred_on?: string | null
+          path_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_intro_paths_from_contact_id_fkey"
+            columns: ["from_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_intro_paths_from_referral_source_id_fkey"
+            columns: ["from_referral_source_id"]
+            isOneToOne: false
+            referencedRelation: "referral_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_intro_paths_lender_contact_id_fkey"
+            columns: ["lender_contact_id"]
+            isOneToOne: false
+            referencedRelation: "lender_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_intro_paths_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_master_note_history: {
         Row: {
           change_reason: string | null

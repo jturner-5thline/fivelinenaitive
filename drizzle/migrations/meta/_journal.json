@@ -617,6 +617,13 @@
       "when": 1795097096569,
       "tag": "0087_lender_deal_history",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795097320108,
+      "tag": "0088_lender_intro_paths",
+      "breakpoints": true
     }
   ]
 }
