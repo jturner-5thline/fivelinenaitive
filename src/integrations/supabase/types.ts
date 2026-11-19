@@ -10901,6 +10901,48 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_lender_stage_events: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          company_id: string | null
+          deal_id: string | null
+          deal_lender_id: string
+          from_stage: string | null
+          id: string
+          master_lender_id: string | null
+          seed_key: string | null
+          source: string
+          to_stage: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          deal_id?: string | null
+          deal_lender_id: string
+          from_stage?: string | null
+          id?: string
+          master_lender_id?: string | null
+          seed_key?: string | null
+          source: string
+          to_stage?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          company_id?: string | null
+          deal_id?: string | null
+          deal_lender_id?: string
+          from_stage?: string | null
+          id?: string
+          master_lender_id?: string | null
+          seed_key?: string | null
+          source?: string
+          to_stage?: string | null
+        }
+        Relationships: []
+      }
       deal_lenders: {
         Row: {
           approved_at: string | null
@@ -19022,6 +19064,100 @@ export type Database = {
             foreignKeyName: "lender_pass_patterns_master_lender_id_fkey"
             columns: ["master_lender_id"]
             isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_performance_history: {
+        Row: {
+          company_id: string | null
+          computed_at: string
+          dimensions: Json
+          id: string
+          lender_id: string
+          overall_label: string | null
+          version: string | null
+          window_days: number | null
+          written_at: string
+          written_by: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          computed_at: string
+          dimensions: Json
+          id?: string
+          lender_id: string
+          overall_label?: string | null
+          version?: string | null
+          window_days?: number | null
+          written_at?: string
+          written_by?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          computed_at?: string
+          dimensions?: Json
+          id?: string
+          lender_id?: string
+          overall_label?: string | null
+          version?: string | null
+          window_days?: number | null
+          written_at?: string
+          written_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_performance_history_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_performance_scores: {
+        Row: {
+          company_id: string | null
+          computed_at: string
+          dimensions: Json
+          id: string
+          lender_id: string
+          overall_label: string | null
+          updated_at: string
+          updated_by: string | null
+          version: string | null
+          window_days: number | null
+        }
+        Insert: {
+          company_id?: string | null
+          computed_at?: string
+          dimensions?: Json
+          id?: string
+          lender_id: string
+          overall_label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: string | null
+          window_days?: number | null
+        }
+        Update: {
+          company_id?: string | null
+          computed_at?: string
+          dimensions?: Json
+          id?: string
+          lender_id?: string
+          overall_label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: string | null
+          window_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_performance_scores_lender_id_fkey"
+            columns: ["lender_id"]
+            isOneToOne: true
             referencedRelation: "master_lenders"
             referencedColumns: ["id"]
           },
@@ -31820,6 +31956,17 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      upsert_lender_performance: {
+        Args: {
+          _computed_at: string
+          _dimensions: Json
+          _lender_id: string
+          _overall_label: string
+          _version: string
+          _window_days: number
+        }
+        Returns: Json
+      }
       user_has_deal_access: {
         Args: { _deal_id: string; _user_id: string }
         Returns: boolean

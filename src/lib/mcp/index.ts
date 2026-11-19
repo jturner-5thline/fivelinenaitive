@@ -11,6 +11,9 @@ import addLenderCompanyOwner from "./tools/add-lender-company-owner";
 import listLenderCompanyOwners from "./tools/list-lender-company-owners";
 import listWorkspaceUsers from "./tools/list-workspace-users";
 import listAllLenderCompanyOwners from "./tools/list-all-lender-company-owners";
+import listLenderStageEvents from "./tools/list-lender-stage-events";
+import upsertLenderPerformance from "./tools/upsert-lender-performance";
+import listLenderPerformance from "./tools/list-lender-performance";
 import addDealCalendarItem from "./tools/add-deal-calendar-item";
 import updateDealCalendarItem from "./tools/update-deal-calendar-item";
 import deleteDealCalendarItem from "./tools/delete-deal-calendar-item";
@@ -158,7 +161,7 @@ export default defineMcp({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
   }),
-  tools: [ logLenderEngagement, listLenderEngagements, listLenderMetStatus, addLenderDealHistory, updateLenderDealHistory, listLenderDealHistory, addLenderIntroPath, updateLenderIntroPath, listLenderIntroPaths, addLenderCompanyOwner, listLenderCompanyOwners, listWorkspaceUsers, listAllLenderCompanyOwners,
+  tools: [ logLenderEngagement, listLenderEngagements, listLenderMetStatus, addLenderDealHistory, updateLenderDealHistory, listLenderDealHistory, addLenderIntroPath, updateLenderIntroPath, listLenderIntroPaths, addLenderCompanyOwner, listLenderCompanyOwners, listWorkspaceUsers, listAllLenderCompanyOwners, listLenderStageEvents, upsertLenderPerformance, listLenderPerformance,
     listDeals,
     getDashboardTileValues,
     listCalendarMeetings,

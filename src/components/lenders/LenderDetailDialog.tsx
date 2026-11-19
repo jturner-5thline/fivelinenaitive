@@ -114,6 +114,7 @@ import { LenderResponsivenessScorecard } from "./LenderResponsivenessScorecard";
 import { LenderActivitySection } from "./LenderActivitySection";
 import { LenderOtherDealsSection } from "./LenderOtherDealsSection";
 import { LenderRelationshipsSection } from "./LenderRelationshipsSection";
+import { LenderPerformanceSection } from "./LenderPerformanceSection";
 
 interface LenderInfo {
   id?: string;
@@ -2279,6 +2280,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           </section>
                           <LenderResponsivenessScorecard lenderId={lender.id} />
                           <LenderActivitySection lenderId={lender.id} />
+                          <LenderPerformanceSection lenderId={lender.id} />
                           <LenderOtherDealsSection lenderId={lender.id} />
                           <LenderRelationshipsSection lenderId={lender.id} />
                           <section className="mt-6">

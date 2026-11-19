@@ -908,6 +908,201 @@
         "outputSchema": null
       },
       {
+        "name": "list_lender_stage_events",
+        "title": "List funding-source stage history",
+        "description": "Read-only: deal_lender_stage_events (from/to stage, changed_at, changed_by, source = trigger | seed_from_timestamps | seed_from_activity_logs) filtered by lender_id (master lender), deal_id and since; newest first; paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "master_lenders id."
+            },
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "since": {
+              "type": "string",
+              "description": "ISO date/time; events on or after."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_lender_performance",
+        "title": "Save funding-source performance scores",
+        "description": "Writes lender_performance_scores (one current row per lender, replaced) and appends a lender_performance_history row, in one transaction per lender. Pass `scores` with 1-50 items; each needs lender_id, dimensions {name: {score 0-100|null, driver}} and overall_label (strong|mixed|weak).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scores": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lender_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "computed_at": {
+                    "type": "string",
+                    "description": "ISO date-time; defaults to now."
+                  },
+                  "window_days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  },
+                  "dimensions": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "0-100, or null when not enough data."
+                        },
+                        "driver": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Short reason behind the score."
+                        }
+                      },
+                      "required": [
+                        "score"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "propertyNames": {
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "overall_label": {
+                    "type": "string",
+                    "enum": [
+                      "strong",
+                      "mixed",
+                      "weak"
+                    ]
+                  },
+                  "version": {
+                    "type": "string",
+                    "maxLength": 50
+                  }
+                },
+                "required": [
+                  "lender_id",
+                  "dimensions",
+                  "overall_label"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 50
+            }
+          },
+          "required": [
+            "scores"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_lender_performance",
+        "title": "List funding-source performance scores",
+        "description": "Read-only: current lender_performance_scores rows with lender name, filtered by lender_ids and overall_label; most recently computed first; paginated.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "lender_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maxItems": 200
+            },
+            "overall_label": {
+              "type": "string",
+              "enum": [
+                "strong",
+                "mixed",
+                "weak"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Page size (max 200)."
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Rows to skip."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_deals",
         "title": "List deals",
         "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: \"*\"` to get EVERY column on each deal (all pipeline-specific fields included — this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",
