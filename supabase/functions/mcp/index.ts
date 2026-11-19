@@ -647,8 +647,92 @@ var list_lender_company_owners_default = defineTool11({
   }
 });
 
-// src/lib/mcp/tools/add-deal-calendar-item.ts
+// src/lib/mcp/tools/list-workspace-users.ts
 import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var profileName = (p) => p.full_name || p.display_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email || null;
+var list_workspace_users_default = defineTool12({
+  name: "list_workspace_users",
+  title: "List workspace users",
+  description: "Read-only: every member of the caller's workspace (company_members) with user_id, role, full name and email from profiles; paginated.",
+  inputSchema: { ...pagination },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (i, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: me, error: meErr } = await sb.from("company_members").select("company_id").eq("user_id", ctx.getUserId() ?? "").limit(1).maybeSingle();
+    if (meErr) return errorResult(meErr.message);
+    if (!me) return errorResult("Caller is not a member of any workspace.");
+    const { data, error, count } = await sb.from("company_members").select("user_id, role", { count: "exact" }).eq("company_id", me.company_id).order("created_at").range(i.offset, i.offset + i.limit - 1);
+    if (error) return errorResult(error.message);
+    const ids = (data ?? []).map((r) => r.user_id);
+    const { data: profs, error: pErr } = ids.length ? await sb.from("profiles").select("user_id, email, full_name, display_name, first_name, last_name").in("user_id", ids) : { data: [], error: null };
+    if (pErr) return errorResult(pErr.message);
+    const users = (data ?? []).map((r) => {
+      const p = (profs ?? []).find((x) => x.user_id === r.user_id);
+      return { user_id: r.user_id, role: r.role, full_name: p ? profileName(p) : null, email: p?.email ?? null };
+    });
+    return textResult({ company_id: me.company_id, users, ...pageInfo(i.offset, i.limit, users.length, count) }, { count: users.length, total_count: count ?? null });
+  }
+});
+
+// src/lib/mcp/tools/list-all-lender-company-owners.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var list_all_lender_company_owners_default = defineTool13({
+  name: "list_all_lender_company_owners",
+  title: "List company owners for all funding sources",
+  description: "Read-only: crm_company_team owner rows for every funding source in the caller's workspace that has a linked CRM company (lender_id, lender name, user_id, owner name, role); paginated over owner rows.",
+  inputSchema: { ...pagination },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (i, ctx) => {
+    const authErr = requireAuth(ctx);
+    if (authErr) return authErr;
+    const sb = supabaseForUser(ctx);
+    const { data: me, error: meErr } = await sb.from("company_members").select("company_id").eq("user_id", ctx.getUserId() ?? "").limit(1).maybeSingle();
+    if (meErr) return errorResult(meErr.message);
+    if (!me) return errorResult("Caller is not a member of any workspace.");
+    const byCompany = /* @__PURE__ */ new Map();
+    for (let from = 0; ; from += 1e3) {
+      const { data, error } = await sb.from("master_lenders").select("id, name, crm_company_id").eq("company_id", me.company_id).not("crm_company_id", "is", null).order("id").range(from, from + 999);
+      if (error) return errorResult(error.message);
+      for (const l of data ?? []) {
+        const list = byCompany.get(l.crm_company_id) ?? [];
+        list.push({ id: l.id, name: l.name });
+        byCompany.set(l.crm_company_id, list);
+      }
+      if (!data || data.length < 1e3) break;
+    }
+    const team = [];
+    for (let from = 0; ; from += 1e3) {
+      const { data, error } = await sb.from("crm_company_team").select("id, crm_company_id, user_id, role, created_at").order("created_at").order("id").range(from, from + 999);
+      if (error) return errorResult(error.message);
+      team.push(...data ?? []);
+      if (!data || data.length < 1e3) break;
+    }
+    const rows = team.flatMap((t) => (byCompany.get(t.crm_company_id) ?? []).map((l) => ({ t, l })));
+    const page2 = rows.slice(i.offset, i.offset + i.limit);
+    const ids = [...new Set(page2.map((r) => r.t.user_id))];
+    const { data: profs, error: pErr } = ids.length ? await sb.from("profiles").select("user_id, email, full_name, display_name, first_name, last_name").in("user_id", ids) : { data: [], error: null };
+    if (pErr) return errorResult(pErr.message);
+    const owners = page2.map(({ t, l }) => {
+      const p = (profs ?? []).find((x) => x.user_id === t.user_id);
+      return {
+        lender_id: l.id,
+        lender_name: l.name,
+        crm_company_id: t.crm_company_id,
+        team_row_id: t.id,
+        user_id: t.user_id,
+        owner_name: p ? p.full_name || p.display_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || p.email : null,
+        owner_email: p?.email ?? null,
+        role: t.role
+      };
+    });
+    return textResult({ owners, ...pageInfo(i.offset, i.limit, owners.length, rows.length) }, { count: owners.length, total_count: rows.length });
+  }
+});
+
+// src/lib/mcp/tools/add-deal-calendar-item.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z14 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealCalendarFields.ts
@@ -660,7 +744,7 @@ var calendarTitle = z13.string().trim().min(1).max(300);
 var calendarNotes = z13.string().max(2e3);
 
 // src/lib/mcp/tools/add-deal-calendar-item.ts
-var add_deal_calendar_item_default = defineTool12({
+var add_deal_calendar_item_default = defineTool14({
   name: "add_deal_calendar_item",
   title: "Add deal calendar item",
   description: "Add an item to a deal's Deal Calendar as the signed-in user (time is Central). idempotency_key returns the existing item with created:false instead of duplicating. Logs an MCP activity entry.",
@@ -683,9 +767,9 @@ var add_deal_calendar_item_default = defineTool12({
 });
 
 // src/lib/mcp/tools/update-deal-calendar-item.ts
-import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z15 } from "npm:zod@^3.23.0";
-var update_deal_calendar_item_default = defineTool13({
+var update_deal_calendar_item_default = defineTool15({
   name: "update_deal_calendar_item",
   title: "Update deal calendar item",
   description: "Edit a Deal Calendar item by id (title, date, time in Central, type, notes). Pass time or notes as null to clear. Logs an MCP activity entry.",
@@ -709,9 +793,9 @@ var update_deal_calendar_item_default = defineTool13({
 });
 
 // src/lib/mcp/tools/delete-deal-calendar-item.ts
-import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z16 } from "npm:zod@^3.23.0";
-var delete_deal_calendar_item_default = defineTool14({
+var delete_deal_calendar_item_default = defineTool16({
   name: "delete_deal_calendar_item",
   title: "Delete deal calendar item",
   description: "Permanently delete a Deal Calendar item by id. Requires confirm: true. Logs an MCP activity entry with the deleted row.",
@@ -729,9 +813,9 @@ var delete_deal_calendar_item_default = defineTool14({
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@3.0.0";
 
 // src/lib/mcp/tools/list-deals.ts
-import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z17 } from "npm:zod@^3.23.0";
-var list_deals_default = defineTool15({
+var list_deals_default = defineTool17({
   name: "list_deals",
   title: "List deals",
   description: 'List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied \u2014 results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal\'s assigned pipeline \u2014 ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: "*"` to get EVERY column on each deal (all pipeline-specific fields included \u2014 this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` \u2014 keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.',
@@ -809,7 +893,7 @@ var list_deals_default = defineTool15({
 });
 
 // src/lib/mcp/tools/get-finserv-client-metrics.ts
-import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z18 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/insights.ts
@@ -1219,7 +1303,7 @@ function periodEnds(from, to, g) {
   }
   return out;
 }
-var get_finserv_client_metrics_default = defineTool16({
+var get_finserv_client_metrics_default = defineTool18({
   name: "get_finserv_client_metrics",
   title: "Get FinServ active clients and MRR by period",
   description: "Point-in-time FinServ Active Clients and Total MRR at the end of each month/quarter/year, exactly as the FinServ Financial Metrics dashboard and Insights tiles show them. Before May 2026 a client counts if it was in Active Client at period end OR its contract start date was on/before period end and it had not exited Active Client; from May 2026 only the Active Client stage counts. MRR = open (non-churned/lost/in-development) deals plus clients counted active. June 2026 uses the dashboard's manual 7-client correction.",
@@ -1264,7 +1348,7 @@ var get_finserv_client_metrics_default = defineTool16({
 });
 
 // src/lib/mcp/tools/get-dashboard-tile-values.ts
-import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z19 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dashboardPeriods.ts
@@ -3204,7 +3288,7 @@ async function finservMetrics(sb, companyId, p, inc, off, lim) {
     }
   ];
 }
-var get_dashboard_tile_values_default = defineTool17({
+var get_dashboard_tile_values_default = defineTool19({
   name: "get_dashboard_tile_values",
   title: "Get Insights dashboard tile values",
   description: "Read-only. Returns the values shown on Insights dashboard tiles for one or more periods, using the same shared queries the dashboards use: sales-bd-page (Meetings w/ Existing Referral Sources, New Referral Sources Added, Deals & Dollars on the Board, Conversion Rate), sales-dashboard-v2 (Sales Calls, Deals on Board, Proposals Issued, Avg. New Deal on Board, FinServ KPI tiles, and every Sales Model row with forecast/actual/variance; untracked actuals return null with no_data_reason), finserv-financial-metrics (Total Clients, Total MRR, Avg. Revenue / Client, Clients Signed, MRR Signed, Net Revenue Retention, Total Revenue), consolidated-debt-pipeline = Debt Advisory Metrics SALES section (Deals on the Board, Proposals Issued, Debt Deals Signed / Dollars Signed, Terms Issued, Terms Signed, Deals Closed, Average Deal on the Board, Average Deal Signed, Average Revenue per Deal Signed, Average Deal Closed, Average Revenue per Deal Closed, Revenue per Deal Hour; Owner = All / Manager = All). Each tile includes a one-sentence definition and time-zone basis. Stage spellings are matched at read time; stored data is never changed. Set include_rows for paginated drill rows.",
@@ -3261,9 +3345,9 @@ var get_dashboard_tile_values_default = defineTool17({
 });
 
 // src/lib/mcp/tools/list-calendar-meetings.ts
-import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z20 } from "npm:zod@^3.23.0";
-var list_calendar_meetings_default = defineTool18({
+var list_calendar_meetings_default = defineTool20({
   name: "list_calendar_meetings",
   title: "List synced calendar meetings",
   description: "Read-only. Lists the synced team calendar meetings that the Sales & BD and Sales Dashboard tiles read (the same calendar-meetings-all source, scoped to the signed-in user's company and its approved team calendars). Returns id, title, start, end, organizer, attendee emails, matched contact/company ids and whether the meeting was manually removed from the referral-meeting count (referral_meeting_exclusions). Filters: from/to (required), optional contact_id (matched contact or attendee email), optional title substring. Paginated with limit/offset.",
@@ -3333,9 +3417,9 @@ var list_calendar_meetings_default = defineTool18({
 });
 
 // src/lib/mcp/tools/list-pipelines.ts
-import { defineTool as defineTool19 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z21 } from "npm:zod@^3.23.0";
-var list_pipelines_default = defineTool19({
+var list_pipelines_default = defineTool21({
   name: "list_pipelines",
   title: "List pipelines",
   description: "List every deal pipeline the signed-in user can see, with each pipeline's id, name, whether it is the default, and its ordered stages (stage id + human label). With deal counts enabled, each pipeline also reports total/active/on-hold/closed counts and a per-stage breakdown using that pipeline's own stage labels, and an extra `unassigned` bucket reports deals whose pipeline_id is null. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied so counts agree with `get_pipeline_metrics` and the Insights UI.",
@@ -3421,7 +3505,7 @@ var list_pipelines_default = defineTool19({
 });
 
 // src/lib/mcp/tools/get-deal.ts
-import { defineTool as defineTool20 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z22 } from "npm:zod@^3.23.0";
 function contactName(contact) {
   const composed = [contact.first_name, contact.last_name].filter(Boolean).join(" ").trim();
@@ -3485,7 +3569,7 @@ var DEAL_CHILD_TABLES = [
   ["pending_notifications", "pending_deal_notifications"]
 ];
 var CHILD_ROW_LIMIT = 200;
-var get_deal_default = defineTool20({
+var get_deal_default = defineTool22({
   name: "get_deal",
   title: "Get deal",
   description: "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
@@ -3616,7 +3700,7 @@ var get_deal_default = defineTool20({
 });
 
 // src/lib/mcp/tools/update-deal.ts
-import { defineTool as defineTool21 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z23 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/statusNotes.ts
@@ -3663,7 +3747,7 @@ async function writeDealStatusNote(sb, ctx, deal_id, note, mode, source) {
 }
 
 // src/lib/mcp/tools/update-deal.ts
-var update_deal_default = defineTool21({
+var update_deal_default = defineTool23({
   name: "update_deal",
   title: "Update deal",
   description: "Update a deal's stage and/or high-level fields (value, closing_date, deal_owner, manager, narrative, is_flagged, flag_notes, notes = the Status Note box, replaced). Optional crm_company_id links an accessible CRM company in the same workspace, with atomic MCP deal activity and no-op identical retries. Optional pipeline_id requires stage (id or display label) from the accessible target pipeline in the same workspace; pipeline and stage update atomically with history and activity. Only fields you pass are changed; omitted new fields retain existing behavior. Returns the updated deal with crm_company_id, pipeline_id, pipeline_name, stage and stage_label. Requires user approval.",
@@ -3748,7 +3832,7 @@ var update_deal_default = defineTool21({
 });
 
 // src/lib/mcp/tools/link-deal-contact.ts
-import { defineTool as defineTool22 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z25 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealRelationships.ts
@@ -3776,7 +3860,7 @@ async function mutateDealRelationship(action, input, ctx) {
 }
 
 // src/lib/mcp/tools/link-deal-contact.ts
-var link_deal_contact_default = defineTool22({
+var link_deal_contact_default = defineTool24({
   name: "link_deal_contact",
   title: "Link deal contact",
   description: "Link an existing workspace contact to a deal by contact_id or email. Optionally set or update role; omitted role is preserved. Returns the link plus contact name, email and company. Caller-scoped, atomic MCP deal activity; identical retries are no-ops. Never creates a contact. Requires user approval.",
@@ -3786,8 +3870,8 @@ var link_deal_contact_default = defineTool22({
 });
 
 // src/lib/mcp/tools/unlink-deal-contact.ts
-import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var unlink_deal_contact_default = defineTool23({
+import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var unlink_deal_contact_default = defineTool25({
   name: "unlink_deal_contact",
   title: "Unlink deal contact",
   description: "Remove only an existing contact's contact_deals link by deal_id and contact_id or email; never delete the contact. Caller-scoped, atomic MCP deal activity only when changed; already-unlinked retries succeed as no-ops. Requires user approval.",
@@ -3797,8 +3881,8 @@ var unlink_deal_contact_default = defineTool23({
 });
 
 // src/lib/mcp/tools/add-deal-alias.ts
-import { defineTool as defineTool24 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var add_deal_alias_default = defineTool24({
+import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var add_deal_alias_default = defineTool26({
   name: "add_deal_alias",
   title: "Add deal alias",
   description: "Add a deal alias with lowercased, trimmed, collapsed-whitespace alias_normalized. Unique per deal; equivalent retries return the existing alias without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
@@ -3808,8 +3892,8 @@ var add_deal_alias_default = defineTool24({
 });
 
 // src/lib/mcp/tools/remove-deal-alias.ts
-import { defineTool as defineTool25 } from "npm:@lovable.dev/mcp-js@3.0.0";
-var remove_deal_alias_default = defineTool25({
+import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
+var remove_deal_alias_default = defineTool27({
   name: "remove_deal_alias",
   title: "Remove deal alias",
   description: "Remove only the matching alias on this deal, ignoring case and collapsing whitespace. Already-absent retries succeed without duplicate activity. Caller-scoped mutation and MCP deal activity are atomic. Requires user approval.",
@@ -3819,9 +3903,9 @@ var remove_deal_alias_default = defineTool25({
 });
 
 // src/lib/mcp/tools/add-deal-status-note.ts
-import { defineTool as defineTool26 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z26 } from "npm:zod@^3.23.0";
-var add_deal_status_note_default = defineTool26({
+var add_deal_status_note_default = defineTool28({
   name: "add_deal_status_note",
   title: "Add deal status note",
   description: "Add or replace the status note on a deal (the Status Note box on the deal page).",
@@ -3842,9 +3926,9 @@ var add_deal_status_note_default = defineTool26({
 });
 
 // src/lib/mcp/tools/list-tasks.ts
-import { defineTool as defineTool27 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z27 } from "npm:zod@^3.23.0";
-var list_tasks_default = defineTool27({
+var list_tasks_default = defineTool29({
   name: "list_tasks",
   title: "List tasks",
   description: "List tasks the signed-in user can see, optionally filtered by deal, status, or assignee (assigned_to user id). Returns full row records.",
@@ -3875,9 +3959,9 @@ var list_tasks_default = defineTool27({
 });
 
 // src/lib/mcp/tools/create-task.ts
-import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z28 } from "npm:zod@^3.23.0";
-var create_task_default = defineTool28({
+var create_task_default = defineTool30({
   name: "create_task",
   title: "Create task",
   description: "Create a task, optionally tied to a deal, contact, or company. Returns the created row.",
@@ -3911,9 +3995,9 @@ var create_task_default = defineTool28({
 });
 
 // src/lib/mcp/tools/complete-task.ts
-import { defineTool as defineTool29 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z29 } from "npm:zod@^3.23.0";
-var complete_task_default = defineTool29({
+var complete_task_default = defineTool31({
   name: "complete_task",
   title: "Complete task",
   description: "Mark a task as completed.",
@@ -3939,11 +4023,11 @@ function orIlike(value) {
 }
 
 // src/lib/mcp/tools/search-contacts.ts
-import { defineTool as defineTool30 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z30 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS = "id, first_name, last_name, full_name, email, phone_mobile, phone_work, phone_other, website_url, job_title, city, state, country, linkedin_url, contact_type, tags, crm_company_id, last_contact_at, last_contacted_date, last_activity_date, created_at, updated_at";
 var FIELD_RE = /^[a-zA-Z0-9_,\s]+$/;
-var search_contacts_default = defineTool30({
+var search_contacts_default = defineTool32({
   name: "search_contacts",
   title: "Search contacts",
   description: 'Search CRM contacts by name, email, domain, job title, phone or LinkedIn. Returns a paginated result set with total_count/returned/offset/next_offset/has_more \u2014 keep calling with next_offset until has_more is false. By default a summary field set is returned; pass `fields: "*"` for EVERY column on the contact record (all standard and custom fields), or a comma-separated column list. Optional filters narrow by contact type, tag, company, city/state/country, or whether an email exists. Use `get_contact` for one contact\'s full record plus activities, change history, deals, attachments and suggestions; `describe_schema` lists the available column names.',
@@ -4014,7 +4098,7 @@ var search_contacts_default = defineTool30({
 });
 
 // src/lib/mcp/tools/get-contact.ts
-import { defineTool as defineTool31 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z31 } from "npm:zod@^3.23.0";
 var CHILD_TABLES = [
   { table: "contact_activities", column: "contact_id", key: "activities", limit: 300, order: "occurred_at" },
@@ -4037,7 +4121,7 @@ var CHILD_TABLES = [
     limit: 300
   }
 ];
-var get_contact_default = defineTool31({
+var get_contact_default = defineTool33({
   name: "get_contact",
   title: "Get contact detail",
   description: "Return the COMPLETE record for one CRM contact \u2014 every column on `contacts` (all custom and standard fields: names, all phone numbers, email(s), job title, geography/city/state/country, LinkedIn, tags, contact type, source, owner, last-contact timestamps, notes and every custom field) \u2014 plus its related rows: linked CRM company record, company associations, deals the contact is attached to (with deal name/stage/pipeline), logged activities, full field-level change history, AI field suggestions and their audit trail, attachments, and any funding-source or partner links. Look up by `contact_id`, or by `email` or partial `name` (ambiguous name matches return the candidates to choose from).",
@@ -4149,11 +4233,11 @@ var get_contact_default = defineTool31({
 });
 
 // src/lib/mcp/tools/search-companies.ts
-import { defineTool as defineTool32 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z32 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS2 = "id, name, domain, website_url, industry, company_type, status, hq_city, hq_state, hq_country, created_at, updated_at";
 var FIELD_RE2 = /^[a-zA-Z0-9_,\s]+$/;
-var search_companies_default = defineTool32({
+var search_companies_default = defineTool34({
   name: "search_companies",
   title: "Search companies",
   description: 'Search CRM companies by name, domain or website, with optional filters (industry, company_type, status, lifecycle_stage, city, state, country, tag, owner, has_deals). Paginated: returns total_count/returned/offset/next_offset/has_more. Pass `fields: "*"` for every column on the company record, or a comma-separated column list; defaults to a summary set. Omit `query` to browse all companies. Use `get_company` for one company\'s full record plus contacts, deals, activity history and attachments.',
@@ -4220,7 +4304,7 @@ var search_companies_default = defineTool32({
 });
 
 // src/lib/mcp/tools/get-company.ts
-import { defineTool as defineTool33 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z33 } from "npm:zod@^3.23.0";
 var CHILD_TABLES2 = [
   { table: "crm_company_activities", column: "crm_company_id", key: "activities", limit: 500, order: "created_at" },
@@ -4230,7 +4314,7 @@ var CHILD_TABLES2 = [
   { table: "master_lenders", column: "crm_company_id", key: "funding_sources", limit: 200 },
   { table: "tasks", column: "crm_company_id", key: "tasks", limit: 300, order: "created_at" }
 ];
-var get_company_default = defineTool33({
+var get_company_default = defineTool35({
   name: "get_company",
   title: "Get company detail",
   description: "Return the COMPLETE record for one CRM company \u2014 every column on `crm_companies` (name, domains, industry/sub-industry, type, status, lifecycle stage, employee count/range, revenue/ARR/MRR/contract values, contract and renewal dates, HQ address/city/state/country/postal, regions served, key products, description, socials, phone, tags, owner, source system/external ids, custom fields, notes, timestamps) \u2014 plus its related rows: contacts at the company, deals linked to it (with deal name, stage, status, pipeline), full activity history, attachments, team members, contact-to-company match/association history, linked funding sources, tasks, and the parent/child company records. Look up by `company_id`, `domain`, or partial `name` (ambiguous name matches return the candidates to choose from).",
@@ -4320,9 +4404,9 @@ var get_company_default = defineTool33({
 });
 
 // src/lib/mcp/tools/create-contact.ts
-import { defineTool as defineTool34 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z34 } from "npm:zod@^3.23.0";
-var create_contact_default = defineTool34({
+var create_contact_default = defineTool36({
   name: "create_contact",
   title: "Create contact",
   description: "Create a CRM contact. Provide at minimum an email or first_name/last_name.",
@@ -4353,9 +4437,9 @@ var create_contact_default = defineTool34({
 });
 
 // src/lib/mcp/tools/create-company.ts
-import { defineTool as defineTool35 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z35 } from "npm:zod@^3.23.0";
-var create_company_default = defineTool35({
+var create_company_default = defineTool37({
   name: "create_company",
   title: "Create company",
   description: "Create a CRM company record.",
@@ -4381,10 +4465,10 @@ var create_company_default = defineTool35({
 });
 
 // src/lib/mcp/tools/search-lenders.ts
-import { defineTool as defineTool36 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z36 } from "npm:zod@^3.23.0";
 var DEFAULT_FIELDS3 = "id, name, lender_type, tier, active, appetite_status, min_deal, max_deal, sweet_spot_min, sweet_spot_max, loan_types, industries, geographies, website, contact_name, contact_title";
-var search_lenders_default = defineTool36({
+var search_lenders_default = defineTool38({
   name: "search_lenders",
   title: "Search funding sources / lenders",
   description: 'Search the master funding-source (lender) directory. By default returns a summary card per lender; pass fields="*" to get EVERY column on master_lenders (criteria, leverage, revenue/EBITDA minimums, industries to avoid, excluded geographies, referral terms, NDA, sync metadata, address, notes) or a comma-separated column list. Filters: name query, deal_size (min_deal <= size <= max_deal), lender_type, tier, appetite_status, active, industry, geography, loan_type. Results are paginated \u2014 the response returns total_count, returned, offset, next_offset and has_more; keep calling with next_offset to walk the entire directory. Use `get_lender` for one lender\'s full record plus contacts, notes, attachments, change history and linked deals.',
@@ -4454,7 +4538,7 @@ var search_lenders_default = defineTool36({
 });
 
 // src/lib/mcp/tools/get-lender.ts
-import { defineTool as defineTool37 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z37 } from "npm:zod@^3.23.0";
 var CHILD_TABLES3 = [
   { table: "lender_contacts", column: "lender_id", key: "contacts", limit: 200 },
@@ -4468,7 +4552,7 @@ var CHILD_TABLES3 = [
   { table: "lender_sync_requests", column: "existing_lender_id", key: "sync_requests", limit: 100 },
   { table: "lender_notes_history", column: "deal_lender_id", key: "notes_history", limit: 300 }
 ];
-var get_lender_default = defineTool37({
+var get_lender_default = defineTool39({
   name: "get_lender",
   title: "Get funding source / lender detail",
   description: "Return the COMPLETE record for one funding source (lender) from the master directory: every column on master_lenders (criteria, deal size, sweet spot, leverage, revenue/EBITDA minimums, industries and industries to avoid, geographies and exclusions, appetite, referral terms, NDA, sync metadata, address and contact fields, notes), plus its related rows \u2014 contacts, notes and note history, attachments, audit/change history, disqualifications, doc flags, fit attributes, pass detections, sync requests, acquisition plans \u2014 and every deal this funding source is attached to (deal_lenders rows with deal name, stage, tracking status, quote and status timestamps). Also returns `contact_ids` (lender_contacts row ids) and `attachment_ids` (lender_attachments row ids). Look the lender up by `lender_id` or by exact/partial `name`. Use `search_lenders` to find ids first.",
@@ -4549,7 +4633,7 @@ var get_lender_default = defineTool37({
 });
 
 // src/lib/mcp/tools/update-lender.ts
-import { defineTool as defineTool38 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z39 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderWrites.ts
@@ -5047,7 +5131,7 @@ var lenderUpdateItem = z39.object({
   source: z39.string().max(1e3).optional(),
   change_reason: z39.string().max(2e3).optional()
 }).strict();
-var update_lender_default = defineTool38({
+var update_lender_default = defineTool40({
   name: "update_lender",
   title: "Update funding source / lender",
   description: "Edit every master_lenders column except id, user_id, company_id, created_at and server-maintained updated_at. Does NOT edit deal_lenders or lender_contacts. Only supplied fields change; null clears. Long-text mode replace/append/prepend is atomic with blank-line separation and final length validation. Supports updates[1..25] with independent results, expected_updated_at (conflict returns current lender), dry_run (field diffs, no writes), source and change_reason in each audit row. name renames; name_lookup identifies, rejecting ambiguity. criteria_confidence: imported (unverified), verified_call (recorded lender call), verified_email (lender writing), verified_attachment (lender-produced document); null clears. array_mode add/remove edits list fields without resending the whole list (checked against the current row for concurrency). Option-backed fields (lender_type, loan_types, industries, industries_to_avoid, geographies, geographies_excluded, cash_burn, sponsorship, refinancing, sub_debt, appetite_status, tier) are validated against list_field_options; unknown values are rejected with closest matches unless allow_new_options: true. FLEx columns are inert metadata; FLEx stays disconnected.",
@@ -5108,11 +5192,11 @@ var update_lender_default = defineTool38({
 });
 
 // src/lib/mcp/tools/upsert-lender-contact.ts
-import { defineTool as defineTool40 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z42 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderRelatedWrites.ts
-import { defineTool as defineTool39 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z41 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/lenderRelatedFields.ts
@@ -5228,7 +5312,7 @@ async function writeLenderRelated(sb, table, action, lenderId, recordId, patch, 
 }
 function defineLenderRelatedTool(table, action, name) {
   const fields = LENDER_RELATED_FIELDS[table];
-  return defineTool39({
+  return defineTool41({
     name,
     title: `${action} ${table.replace(/_/g, " ")}`,
     description: `${action} a ${table} record, acting as the caller under existing RLS. Writable fields: ${Object.keys(fields).join(", ")}. Does not write identity, company/tenant, author/reviewer, lender ownership, timestamps or computed fields. lender_id scopes the record; server derives ownership and actor. Every changed field is audited transactionally in lender_audit_logs with source/change_reason. Existing author/admin-only restrictions remain; insufficient permissions return errors. Deletes require confirm:true; missing rows never silently succeed. No FLEx calls.`,
@@ -5276,7 +5360,7 @@ function parseCrmLinkConflict(message) {
 }
 
 // src/lib/mcp/tools/upsert-lender-contact.ts
-var upsert_lender_contact_default = defineTool40({
+var upsert_lender_contact_default = defineTool42({
   name: "upsert_lender_contact",
   title: "Add or update a funding source contact",
   description: "Create/update lender_contacts name,title,email,phone,city,state,country,geography,notes,is_primary and CRM contact link. Legacy contact_id targets lender_contacts.id; crm_contact_id writes lender_contacts.contact_id (null unlinks), preserving backward compatibility. Without contact_id, an existing contact on the lender with the same email (case-insensitive) or same normalized name is updated instead of duplicated (matched_existing: true); pass force_create: true to always create. Name, title, phone, location and notes edits never depend on the CRM link; the CRM company check only applies when crm_contact_id is set or changed \u2014 on conflict the error lists the contact, its company and the lender company, and relink_crm_contact_to_lender_company: true fixes the link in the same call. Primary demotion and per-field audits are atomic. Does not edit master_lenders or CRM contact fields; identity, tenancy and timestamps are server controlled.",
@@ -5345,9 +5429,9 @@ var upsert_lender_contact_default = defineTool40({
 });
 
 // src/lib/mcp/tools/create-lender.ts
-import { defineTool as defineTool41 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z43 } from "npm:zod@^3.23.0";
-var create_lender_default = defineTool41({
+var create_lender_default = defineTool43({
   name: "create_lender",
   title: "Create funding source / lender",
   description: "Create a NEW funding source (lender) in the master directory (`master_lenders`). Use only when the lender does not exist yet \u2014 to change an existing one use `update_lender`. Requires `name`; accepts every field `update_lender` accepts. Rejects the request and returns the candidate ids when a lender with the same name (case-insensitive, trimmed) already exists. Applies the same defaults as the app (owner = you, your company, active = true, appetite_status = 'active', sync_source = 'naitive', no tier), writes a 'created' entry per set field to `lender_audit_logs`, and returns the full new record. Option-backed fields are validated against list_field_options (unknown values rejected with closest matches unless allow_new_options: true). Contacts go in `upsert_lender_contact` afterwards.",
@@ -5398,9 +5482,9 @@ var create_lender_default = defineTool41({
 });
 
 // src/lib/mcp/tools/delete-lender-contact.ts
-import { defineTool as defineTool42 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z44 } from "npm:zod@^3.23.0";
-var delete_lender_contact_default = defineTool42({
+var delete_lender_contact_default = defineTool44({
   name: "delete_lender_contact",
   title: "Delete a funding source contact",
   description: "Permanently remove one contact from a funding source's multi-contact list (`lender_contacts`), e.g. a duplicate or wrong entry. Requires `confirm: true`. Logged to `lender_audit_logs`. Deleting the primary contact leaves the lender with no primary; promote another with `upsert_lender_contact` (is_primary: true) \u2014 there is never more than one primary.",
@@ -5430,9 +5514,9 @@ var delete_lender_contact_default = defineTool42({
 });
 
 // src/lib/mcp/tools/add-lender-attachment.ts
-import { defineTool as defineTool43 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z45 } from "npm:zod@^3.23.0";
-var add_lender_attachment_default = defineTool43({
+var add_lender_attachment_default = defineTool45({
   name: "add_lender_attachment",
   title: "Attach a document to a funding source",
   description: "Upload a document (NDA, one-pager, referral agreement, etc.) to a funding source's Attachments, exactly as the app's upload does. Provide the file as `content_base64` OR as a public https `url` to fetch (max 20 MB). Category 'nda' marks the funding source as having an NDA and 'marketing_materials' as having marketing materials in the app. Does not change the legacy `nda` / `referral_agreement` / `lender_one_pager_url` text columns \u2014 use `update_lender` for those. Returns the new attachment row.",
@@ -5506,9 +5590,9 @@ var add_lender_attachment_default = defineTool43({
 });
 
 // src/lib/mcp/tools/list-lender-attachments.ts
-import { defineTool as defineTool44 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z46 } from "npm:zod@^3.23.0";
-var list_lender_attachments_default = defineTool44({
+var list_lender_attachments_default = defineTool46({
   name: "list_lender_attachments",
   title: "List funding source attachments",
   description: "List the documents attached to a funding source (NDAs, one-pagers, referral agreements\u2026) with a signed download URL valid for 1 hour.",
@@ -5536,9 +5620,9 @@ var list_lender_attachments_default = defineTool44({
 });
 
 // src/lib/mcp/tools/delete-lender-attachment.ts
-import { defineTool as defineTool45 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z47 } from "npm:zod@^3.23.0";
-var delete_lender_attachment_default = defineTool45({
+var delete_lender_attachment_default = defineTool47({
   name: "delete_lender_attachment",
   title: "Delete a funding source attachment",
   description: "Permanently delete one funding source attachment (file and record). Requires `confirm: true`. Only the person who uploaded a file can delete it (same rule as the app).",
@@ -5571,9 +5655,9 @@ var delete_lender_attachment_default = defineTool45({
 });
 
 // src/lib/mcp/tools/add-lender-to-deal.ts
-import { defineTool as defineTool46 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z48 } from "npm:zod@^3.23.0";
-var add_lender_to_deal_default = defineTool46({
+var add_lender_to_deal_default = defineTool48({
   name: "add_lender_to_deal",
   title: "Add lender to deal",
   description: "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
@@ -5652,7 +5736,7 @@ var add_lender_to_deal_default = defineTool46({
 });
 
 // src/lib/mcp/tools/update-deal-lender.ts
-import { defineTool as defineTool47 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z49 } from "npm:zod@^3.23.0";
 var fieldSchema = {
   notes: z49.string().max(1e4).nullable().optional(),
@@ -5691,7 +5775,7 @@ function buildUpdates(row, item2) {
   for (const key of EDITABLE) if (item2[key] !== void 0) updates[key] = item2[key];
   return updates;
 }
-var update_deal_lender_default = defineTool47({
+var update_deal_lender_default = defineTool49({
   name: "update_deal_lender",
   title: "Update funding source on deal",
   description: "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
@@ -5770,9 +5854,9 @@ var update_deal_lender_default = defineTool47({
 });
 
 // src/lib/mcp/tools/search-deal-notes.ts
-import { defineTool as defineTool48 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z50 } from "npm:zod@^3.23.0";
-var search_deal_notes_default = defineTool48({
+var search_deal_notes_default = defineTool50({
   name: "search_deal_notes",
   title: "Search deal notes",
   description: "Search notes attached to a specific deal (deal space notes). Optionally filter by a text query against title/content/tags. Returns id, title, content, folder, tags, is_pinned, user_id, updated_at.",
@@ -5806,7 +5890,7 @@ var search_deal_notes_default = defineTool48({
 });
 
 // src/lib/mcp/tools/add-deal-note-entry.ts
-import { defineTool as defineTool49 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z51 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealNoteEntry.ts
@@ -5842,7 +5926,7 @@ function entryToHtml(entry, format) {
 }
 
 // src/lib/mcp/tools/add-deal-note-entry.ts
-var add_deal_note_entry_default = defineTool49({
+var add_deal_note_entry_default = defineTool51({
   name: "add_deal_note_entry",
   title: "Add deal note entry",
   description: "Prepend or append an entry to a deal's Deal Space note (the notes pop-up), matched by title (default 'Q&A Notes'), creating the note if missing. Never replaces existing content; saves a version and logs deal activity. Use idempotency_key (e.g. a Claap recording ID) to avoid duplicate entries.",
@@ -5881,9 +5965,9 @@ var add_deal_note_entry_default = defineTool49({
 });
 
 // src/lib/mcp/tools/get-deal-note.ts
-import { defineTool as defineTool50 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z52 } from "npm:zod@^3.23.0";
-var get_deal_note_default = defineTool50({
+var get_deal_note_default = defineTool52({
   name: "get_deal_note",
   title: "Get deal note",
   description: "Read one Deal Space note's full HTML content, by note_id or by deal_id plus title (case-insensitive). Returns candidates if several notes share the title.",
@@ -5914,9 +5998,9 @@ var get_deal_note_default = defineTool50({
 });
 
 // src/lib/mcp/tools/list-deal-activity.ts
-import { defineTool as defineTool51 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z53 } from "npm:zod@^3.23.0";
-var list_deal_activity_default = defineTool51({
+var list_deal_activity_default = defineTool53({
   name: "list_deal_activity",
   title: "List deal activity",
   description: "List recent activity/timeline events \u2014 stage changes, field updates, emails, calls, notes, and other logged actions. Pass deal_id to scope to one deal, or omit it to return activity across ALL deals and pipelines the caller can see (RLS scoped). Combines activity_logs (rich events including emails) with deal_activity (structured field changes). Ordered most recent first.",
@@ -5965,9 +6049,9 @@ var list_deal_activity_default = defineTool51({
 });
 
 // src/lib/mcp/tools/search-deal-documents.ts
-import { defineTool as defineTool52 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z54 } from "npm:zod@^3.23.0";
-var search_deal_documents_default = defineTool52({
+var search_deal_documents_default = defineTool54({
   name: "search_deal_documents",
   title: "Search deal documents",
   description: "Search files/documents attached to a specific deal (virtual data room). Optionally filter by name, category, or a text query against name/source_subject/extracted_text. Returns id, name, category, size_bytes, content_type, source, source_subject, created_at.",
@@ -6005,9 +6089,9 @@ var search_deal_documents_default = defineTool52({
 });
 
 // src/lib/mcp/tools/get-deal-document.ts
-import { defineTool as defineTool53 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z55 } from "npm:zod@^3.23.0";
-var get_deal_document_default = defineTool53({
+var get_deal_document_default = defineTool55({
   name: "get_deal_document",
   title: "Get deal document",
   description: "Fetch a single deal document/attachment record by id, including extracted_text when available. Use search_deal_documents first to find the id.",
@@ -6029,9 +6113,9 @@ var get_deal_document_default = defineTool53({
 });
 
 // src/lib/mcp/tools/search-deal-emails.ts
-import { defineTool as defineTool54 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z56 } from "npm:zod@^3.23.0";
-var search_deal_emails_default = defineTool54({
+var search_deal_emails_default = defineTool56({
   name: "search_deal_emails",
   title: "Search deal emails",
   description: "Search email/communication history logged against a deal. Queries activity_logs where activity_type = 'email' for the deal, optionally filtered by a text query against subject, body, from, or to addresses. Returns subject, direction, from/to, sent_at, thread_id, and body snippet.",
@@ -6069,9 +6153,9 @@ var search_deal_emails_default = defineTool54({
 });
 
 // src/lib/mcp/tools/search-deal-recordings.ts
-import { defineTool as defineTool55 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z57 } from "npm:zod@^3.23.0";
-var search_deal_recordings_default = defineTool55({
+var search_deal_recordings_default = defineTool57({
   name: "search_deal_recordings",
   title: "Search deal meeting recordings",
   description: "List Claap meeting recordings and transcripts linked to a deal. Returns recording title, duration, recorder, thumbnail/url, and \u2014 when include_transcript is true \u2014 the transcript text and summary from claap_transcripts. Optional query filters recording title/summary/transcript.",
@@ -6116,9 +6200,9 @@ var search_deal_recordings_default = defineTool55({
 });
 
 // src/lib/mcp/tools/list-deal-funding-sources.ts
-import { defineTool as defineTool56 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z58 } from "npm:zod@^3.23.0";
-var list_deal_funding_sources_default = defineTool56({
+var list_deal_funding_sources_default = defineTool58({
   name: "list_deal_funding_sources",
   title: "List deal funding sources / lenders",
   description: "List funding sources (lenders) attached to deals \u2014 the same records shown in a deal's Funding Sources tab. Pass deal_id to scope to one deal, or omit it to return funding sources across ALL deals and ALL pipelines the caller can see (RLS scoped). Optional filters: deal_query (substring of the deal/company name), pipeline_id, tracking_status, stage, lender_name. Each row returns the funding source name, funding_source_type (lender_type from the master directory, e.g. senior debt / sub debt / mezzanine / equity), loan_types, commitment/quote amount, rate and term, stage + tracking bucket (active, on-deck, on-hold, passed, excluded) as status, pass reason, status-change timestamps, and the linked deal_id / deal_name / pipeline_id. Capital-stack position is not tracked as a discrete field; funding_source_type and loan_types are the closest available signal. Results are paginated: the response returns total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false to cover the entire book.",
@@ -6241,7 +6325,7 @@ var list_deal_funding_sources_default = defineTool56({
 });
 
 // src/lib/mcp/tools/get-daily-rundown.ts
-import { defineTool as defineTool57 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z59 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/rundownAccess.ts
@@ -6275,7 +6359,7 @@ async function logRundownAudit(ctx, action, payload = {}, itemId = null, initiat
 }
 
 // src/lib/mcp/tools/get-daily-rundown.ts
-var get_daily_rundown_default = defineTool57({
+var get_daily_rundown_default = defineTool59({
   name: "get_daily_rundown",
   title: "Get daily rundown",
   description: "Read the signed-in user's daily rundown items in display order. Restricted to jturner@5thline.co.",
@@ -6298,9 +6382,9 @@ var get_daily_rundown_default = defineTool57({
 });
 
 // src/lib/mcp/tools/add-daily-rundown-item.ts
-import { defineTool as defineTool58 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z60 } from "npm:zod@^3.23.0";
-var add_daily_rundown_item_default = defineTool58({
+var add_daily_rundown_item_default = defineTool60({
   name: "add_daily_rundown_item",
   title: "Add daily rundown item",
   description: "Append a new item to the signed-in user's daily rundown. Restricted to jturner@5thline.co. sort_order defaults to the end of the list.",
@@ -6338,9 +6422,9 @@ var add_daily_rundown_item_default = defineTool58({
 });
 
 // src/lib/mcp/tools/update-daily-rundown-item.ts
-import { defineTool as defineTool59 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z61 } from "npm:zod@^3.23.0";
-var update_daily_rundown_item_default = defineTool59({
+var update_daily_rundown_item_default = defineTool61({
   name: "update_daily_rundown_item",
   title: "Update daily rundown item",
   description: "Edit an existing rundown item's title, content, sort_order, or source. Restricted to jturner@5thline.co and their own rows.",
@@ -6367,9 +6451,9 @@ var update_daily_rundown_item_default = defineTool59({
 });
 
 // src/lib/mcp/tools/complete-daily-rundown-item.ts
-import { defineTool as defineTool60 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z62 } from "npm:zod@^3.23.0";
-var complete_daily_rundown_item_default = defineTool60({
+var complete_daily_rundown_item_default = defineTool62({
   name: "complete_daily_rundown_item",
   title: "Complete or reopen daily rundown item",
   description: "Mark a rundown item as complete or pending. Restricted to jturner@5thline.co and their own rows.",
@@ -6396,9 +6480,9 @@ var complete_daily_rundown_item_default = defineTool60({
 });
 
 // src/lib/mcp/tools/reorder-daily-rundown-items.ts
-import { defineTool as defineTool61 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z63 } from "npm:zod@^3.23.0";
-var reorder_daily_rundown_items_default = defineTool61({
+var reorder_daily_rundown_items_default = defineTool63({
   name: "reorder_daily_rundown_items",
   title: "Reorder daily rundown items",
   description: "Apply a new display order to rundown items. Accepts an array of {id, sort_order} \u2014 only rows owned by the signed-in user (jturner@5thline.co) are updated.",
@@ -6424,9 +6508,9 @@ var reorder_daily_rundown_items_default = defineTool61({
 });
 
 // src/lib/mcp/tools/list-insights-dashboards.ts
-import { defineTool as defineTool62 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z64 } from "npm:zod@^3.23.0";
-var list_insights_dashboards_default = defineTool62({
+var list_insights_dashboards_default = defineTool64({
   name: "list_insights_dashboards",
   title: "List Insights dashboards and widgets",
   description: "List every dashboard available on the Insights page (id, display name, folder, favorite flag) together with the caller's saved widget layouts and any custom (formula-based) metrics defined for the workspace. Use this to discover which dashboards and widgets exist before pulling their data with get_pipeline_metrics, get_revenue_metrics, get_lender_metrics, get_metric_targets, or query_insights_dataset.",
@@ -6456,9 +6540,9 @@ var list_insights_dashboards_default = defineTool62({
 });
 
 // src/lib/mcp/tools/get-pipeline-metrics.ts
-import { defineTool as defineTool63 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z65 } from "npm:zod@^3.23.0";
-var get_pipeline_metrics_default = defineTool63({
+var get_pipeline_metrics_default = defineTool65({
   name: "get_pipeline_metrics",
   title: "Get pipeline metrics (Insights)",
   description: "Compute the deal-pipeline metrics that power the Insights dashboards: total and average deal value, fee totals (total/retainer/milestone), deal counts, and breakdowns by stage, status, deal type, manager, owner, pipeline, and month. Supports a timeframe window on created_at, updated_at, or closing date, plus optional pipeline/manager/status filters. Global test-deal exclusions (Test-Niki's Store, Example Deal, names starting with 'test ') are applied exactly as in the UI.",
@@ -6556,9 +6640,9 @@ var get_pipeline_metrics_default = defineTool63({
 });
 
 // src/lib/mcp/tools/get-funnel-velocity.ts
-import { defineTool as defineTool64 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z66 } from "npm:zod@^3.23.0";
-var get_funnel_velocity_default = defineTool64({
+var get_funnel_velocity_default = defineTool66({
   name: "get_funnel_velocity",
   title: "Get funnel velocity / stage durations",
   description: "Return stage-conversion and time-in-stage analytics used by the Insights funnel and velocity widgets. Provide an ordered stage_path (stage ids) to get conversion counts and median/average days between those stages; set consecutive_only to require direct stage-to-stage transitions. Optionally pass deal_id instead to get that single deal's per-stage durations.",
@@ -6642,7 +6726,7 @@ var get_funnel_velocity_default = defineTool64({
 });
 
 // src/lib/mcp/tools/get-revenue-metrics.ts
-import { defineTool as defineTool65 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z67 } from "npm:zod@^3.23.0";
 
 // src/lib/qboMonthly.ts
@@ -6692,7 +6776,7 @@ function withPnlRevenue(invoices, snapshots) {
 }
 
 // src/lib/mcp/tools/get-revenue-metrics.ts
-var get_revenue_metrics_default = defineTool65({
+var get_revenue_metrics_default = defineTool67({
   name: "get_revenue_metrics",
   title: "Get revenue metrics (QuickBooks / Insights financial widgets)",
   description: "Return the accounting data behind the Insights financial dashboards: invoiced revenue by month, by customer, and by QuickBooks entity (realm), plus outstanding balances, and the P&L snapshots (income, COGS, gross profit, operating expenses, net operating income) for the requested window. Use from/to to bound the period and realm_id to scope to a single entity.",
@@ -6757,9 +6841,9 @@ var get_revenue_metrics_default = defineTool65({
 });
 
 // src/lib/mcp/tools/get-lender-metrics.ts
-import { defineTool as defineTool66 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z68 } from "npm:zod@^3.23.0";
-var get_lender_metrics_default = defineTool66({
+var get_lender_metrics_default = defineTool68({
   name: "get_lender_metrics",
   title: "Get lender / funding-source metrics (Lender Intelligence dashboard)",
   description: "Return the funding-source analytics behind the Lender Intelligence and funnel widgets: counts and quoted amounts by lender stage, tracking bucket (active / on-deck / on-hold / passed / excluded), and by lender name, plus top pass reasons and submission-to-approval conversion. Timeframe bounds apply to created_at or last_status_change_at; test deals are excluded.",
@@ -6832,9 +6916,9 @@ var get_lender_metrics_default = defineTool66({
 });
 
 // src/lib/mcp/tools/get-metric-targets.ts
-import { defineTool as defineTool67 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z69 } from "npm:zod@^3.23.0";
-var get_metric_targets_default = defineTool67({
+var get_metric_targets_default = defineTool69({
   name: "get_metric_targets",
   title: "Get Insights plan targets and manual metric inputs",
   description: "Return the Master Plan targets (insights_metric_targets: metric key/label, month, target value, notes) and the manually entered metric values (metric_manual_inputs) that the Insights 'Performance to Plan' and 'Variance' widgets compare actuals against. Filter by metric_key and/or a month range (YYYY-MM).",
@@ -6874,7 +6958,7 @@ var get_metric_targets_default = defineTool67({
 });
 
 // src/lib/mcp/tools/query-insights-dataset.ts
-import { defineTool as defineTool68 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z70 } from "npm:zod@^3.23.0";
 var OPERATORS = ["eq", "neq", "gt", "gte", "lt", "lte", "like", "ilike", "is", "in"];
 var COMPACT_COLUMNS = {
@@ -6901,7 +6985,7 @@ function buildOrExpression(conds) {
     return `${c.column}.${c.op}.${quote(c.value)}`;
   }).join(",");
 }
-var query_insights_dataset_default = defineTool68({
+var query_insights_dataset_default = defineTool70({
   name: "query_insights_dataset",
   title: "Query any Insights source dataset",
   description: `Read-only escape hatch: query any platform dataset directly when no purpose-built tool covers the question. Allowed datasets: ${INSIGHTS_DATASETS.join(", ")}. Supply optional column selection (defaults to ALL columns, except wide tables \u2014 contacts, crm_companies, deals, master_lenders \u2014 which default to a compact core set; pass columns="*" for every column), filters (column + operator + value, all ANDed), or_groups (each group is an OR of conditions; groups are ANDed with each other and with filters), ordering, limit and offset. Results are paginated and the response reports total_count, returned, offset, next_offset and has_more \u2014 keep calling with next_offset until has_more is false, otherwise you are looking at a partial set. Use describe_schema to learn the available column names. Everything runs through the signed-in user's row-level security, so results match exactly what that user sees in the UI. Aggregate the returned rows yourself.`,
@@ -6972,7 +7056,7 @@ var query_insights_dataset_default = defineTool68({
 });
 
 // src/lib/mcp/tools/describe-schema.ts
-import { defineTool as defineTool69 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z71 } from "npm:zod@^3.23.0";
 var EXTRA_TABLES = [
   "deal_writeups",
@@ -6992,7 +7076,7 @@ var EXTRA_TABLES = [
   "lender_master_note_history"
 ];
 var DESCRIBABLE = Array.from(/* @__PURE__ */ new Set([...INSIGHTS_DATASETS, ...EXTRA_TABLES])).sort();
-var describe_schema_default = defineTool69({
+var describe_schema_default = defineTool71({
   name: "describe_schema",
   title: "Describe table schema",
   description: `Field discovery: return the column list for one or more platform tables \u2014 column name, data type, nullability, default, and (for enum columns) the complete set of allowed values. Use this before pulling data so you know exactly which fields exist rather than guessing names; pair it with \`list_deals\` (\`fields: "*"\`) or \`query_insights_dataset\` to extract complete records. Omit \`tables\` to get the describable table list. Describable tables: ${DESCRIBABLE.join(", ")}.`,
@@ -7081,9 +7165,9 @@ var describe_schema_default = defineTool69({
 });
 
 // src/lib/mcp/tools/list-referral-partners.ts
-import { defineTool as defineTool70 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool72 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z72 } from "npm:zod@^3.23.0";
-var list_referral_partners_default = defineTool70({
+var list_referral_partners_default = defineTool72({
   name: "list_referral_partners",
   title: "List referral partners",
   description: "Read-only. Lists the contacts currently in the Referral Source pipeline (Sales & BD dashboard) at stages Nurturing, Tier 3, Tier 2 and Tier 1 \u2014 the same classification the app shows \u2014 with real field values for building email lists: contact_id, first_name, last_name, email, title, company_name, company_id, stage, stage_entered_at, updated_at and owner. Scoped to the signed-in user's company. Sources without an email are INCLUDED with `email: null` and `has_email: false` (pass `require_email: true` to skip them, e.g. for email lists); `missing_email` counts them either way. Every response includes `stage_counts` (per stage, including skipped rows). Pagination: `limit` (default 200) and `offset`; response includes total_count, returned, next_offset and has_more. `stage_entered_at` is derived (no stage history is stored): Nurturing = date added to the pipeline; Tier N = date of the most recent referred deal behind that tier.",
@@ -7168,7 +7252,7 @@ var list_referral_partners_default = defineTool70({
 });
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-import { defineTool as defineTool71 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool73 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z73 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/salesCallsWeekly.ts
@@ -7214,7 +7298,7 @@ function bucketSalesCallsByMonth(events, from, to) {
 }
 
 // src/lib/mcp/tools/get-sales-calls-weekly.ts
-var get_sales_calls_weekly_default = defineTool71({
+var get_sales_calls_weekly_default = defineTool73({
   name: "get_sales_calls_weekly",
   title: "Get weekly sales call counts",
   description: `Returns the Sales Calls metric shown on Insights \u2192 Sales Dashboard, bucketed by week (Monday\u2013Sunday, UTC). Debt counts deduped calendar events titled "[Company] <> 5th Line Financing Review"; FinServ counts "5th Line <> [Company] Financial Review" or "[Company] <> 5th Line: Intro". Defaults to the last 12 weeks ending today. Weekly output (default) counts every event the sales-calls service returns; group_by="month" applies the Sales Dashboard tile's exact title rule (FinServ excludes any Debt financing review) and UTC month buckets.`,
@@ -7267,7 +7351,7 @@ var get_sales_calls_weekly_default = defineTool71({
 });
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-import { defineTool as defineTool72 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool74 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z74 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/dealHoursFees.ts
@@ -7314,7 +7398,7 @@ function rollupHoursFees(rows) {
 }
 
 // src/lib/mcp/tools/get-deal-hours-fees.ts
-var get_deal_hours_fees_default = defineTool72({
+var get_deal_hours_fees_default = defineTool74({
   name: "get_deal_hours_fees",
   title: "Get deal hours & fees",
   description: "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
@@ -7395,7 +7479,7 @@ var get_deal_hours_fees_default = defineTool72({
 });
 
 // src/lib/mcp/tools/get-cashflow-metrics.ts
-import { defineTool as defineTool73 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool75 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z75 } from "npm:zod@^3.23.0";
 
 // src/components/cashflow/weeklyHistoricalSeed.ts
@@ -10319,7 +10403,7 @@ function computeCashflowKpis(weekly, weeksFuture, weeksPast, todayISO = (/* @__P
 var DEFAULT_WEEKS_FUTURE = 8;
 var DEFAULT_WEEKS_PAST = 1;
 var num2 = (v) => Math.round(Number(v) || 0);
-var get_cashflow_metrics_default = defineTool73({
+var get_cashflow_metrics_default = defineTool75({
   name: "get_cashflow_metrics",
   title: "Get cash flow metrics (Finance headline widgets)",
   description: "Returns the exact Finance > Cash Flow headline figures: Cash In, Cash Out, Net Change (current week through weeks_future), and Peak Cash / Low Cash with their week-ending dates (weeks_past through weeks_future). Uses the same calculation as the Finance page, including scheduled entries, deal fee projections, manual date/amount moves and weekly overrides. Defaults to the workspace's saved Finance window. Figures match the page with no Year/Quarter/Entity/Category filters applied.",
@@ -10429,7 +10513,7 @@ var get_cashflow_metrics_default = defineTool73({
 });
 
 // src/lib/mcp/tools/get-headcount.ts
-import { defineTool as defineTool74 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool76 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z76 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/workforceMetrics.ts
@@ -10534,7 +10618,7 @@ async function monthlyPnl(sb, realmIds, from, to) {
 }
 
 // src/lib/mcp/tools/get-headcount.ts
-var get_headcount_default = defineTool74({
+var get_headcount_default = defineTool76({
   name: "get_headcount",
   title: "Get monthly headcount by entity",
   description: "Monthly headcount from the Insights Headcount editor for each QuickBooks entity (Debt, FinServ, Tech, Parent) plus the firm-wide total (sum minus 1 for James's Debt/Parent duplicate) and yearly averages. 5th Line workspace only.",
@@ -10571,9 +10655,9 @@ var get_headcount_default = defineTool74({
 });
 
 // src/lib/mcp/tools/get-harvest-metrics.ts
-import { defineTool as defineTool75 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool77 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z77 } from "npm:zod@^3.23.0";
-var get_harvest_metrics_default = defineTool75({
+var get_harvest_metrics_default = defineTool77({
   name: "get_harvest_metrics",
   title: "Get Harvest hours and FinServ revenue/profit per hour",
   description: "Harvest time data from the latest completed sync (Jan 2024 onward) as shown on the FinServ Financial Metrics dashboard: monthly total/billable hours, billable amount, per-person hours and utilization, plus FinServ Revenue per Hour (QuickBooks income \xF7 billable hours of ALL users), Gross Profit per Hour and Profit per Hour (operating profit \xF7 billable hours), monthly and for the whole period. Set include_entries=true for raw time entries.",
@@ -10653,9 +10737,9 @@ var get_harvest_metrics_default = defineTool75({
 });
 
 // src/lib/mcp/tools/get-per-head-metrics.ts
-import { defineTool as defineTool76 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool78 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z78 } from "npm:zod@^3.23.0";
-var get_per_head_metrics_default = defineTool76({
+var get_per_head_metrics_default = defineTool78({
   name: "get_per_head_metrics",
   title: "Get TTM revenue and gross profit per head",
   description: "Rolling trailing-twelve-month Revenue per Head and Gross Profit per Head as shown on Insights: scope 'debt' (5th Line Capital Advisors \xF7 Debt headcount), 'finserv' (5th Line Financial Services \xF7 FinServ headcount) or 'firm' (all entities \xF7 firm headcount minus the James duplicate). Revenue uses QuickBooks invoices, except 5th Line Capital Advisors (Debt Advisory), which uses QBO P&L Total Income (excludes Other Income such as Ramp Loans); gross profit uses monthly P&L. A rate needs all 12 months of headcount.",
@@ -10810,9 +10894,9 @@ var update_lender_history_warning_dismissal_default = defineLenderRelatedTool("l
 var delete_lender_history_warning_dismissal_default = defineLenderRelatedTool("lender_history_warning_dismissals", "delete", "delete_lender_history_warning_dismissal");
 
 // src/lib/mcp/tools/add-lender-note.ts
-import { defineTool as defineTool77 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool79 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z79 } from "npm:zod@^3.23.0";
-var add_lender_note_default = defineTool77({
+var add_lender_note_default = defineTool79({
   name: "add_lender_note",
   title: "Add funding source note",
   description: "Create lender_notes body, tags and is_flag. Server derives author, lender name and company. Writes field-level audit atomically; does not write deal_lenders or deal-note history.",
@@ -10826,9 +10910,9 @@ var add_lender_note_default = defineTool77({
 });
 
 // src/lib/mcp/tools/update-lender-note.ts
-import { defineTool as defineTool78 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool80 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z80 } from "npm:zod@^3.23.0";
-var update_lender_note_default = defineTool78({
+var update_lender_note_default = defineTool80({
   name: "update_lender_note",
   title: "Edit funding source note",
   description: "Update only supplied lender_notes body, tags, is_flag. Author-only RLS remains. Atomically preserves prior record in lender_master_note_history and audits every field. lender_notes_history is deal-specific and is NOT used for directory notes.",
@@ -10845,9 +10929,9 @@ var update_lender_note_default = defineTool78({
 });
 
 // src/lib/mcp/tools/delete-lender-note.ts
-import { defineTool as defineTool79 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool81 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z81 } from "npm:zod@^3.23.0";
-var delete_lender_note_default = defineTool79({
+var delete_lender_note_default = defineTool81({
   name: "delete_lender_note",
   title: "Delete funding source note",
   description: "Delete one lender_notes row with confirm:true, preserving its previous record in lender_master_note_history and field-level lender_audit_logs atomically. Existing author/admin delete permissions apply; no deal-specific notes are touched.",
@@ -10864,9 +10948,9 @@ var delete_lender_note_default = defineTool79({
 });
 
 // src/lib/mcp/tools/update-lender-attachment.ts
-import { defineTool as defineTool80 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool82 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z82 } from "npm:zod@^3.23.0";
-var update_lender_attachment_default = defineTool80({
+var update_lender_attachment_default = defineTool82({
   name: "update_lender_attachment",
   title: "Edit funding source attachment",
   description: "Rename (file_name -> lender_attachments.name) or recategorize an attachment; only supplied fields change. Does not move or replace stored bytes, file_path, size, MIME type or uploader. Existing uploader/company permissions apply; field diffs audited transactionally.",
@@ -10886,9 +10970,9 @@ var update_lender_attachment_default = defineTool80({
 });
 
 // src/lib/mcp/tools/delete-lender.ts
-import { defineTool as defineTool81 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool83 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z83 } from "npm:zod@^3.23.0";
-var delete_lender_default = defineTool81({
+var delete_lender_default = defineTool83({
   name: "delete_lender",
   title: "Archive funding source",
   description: "SOFT DELETE: set master_lenders.active=false, preserving contacts, notes, attachments, deal links and audit history. Requires confirm:true and existing lender deletion permission. Refuses deal-linked lenders unless force:true (still preserves links). Never hard deletes or removes stored files. Field diff audited atomically.",
@@ -10903,9 +10987,9 @@ var delete_lender_default = defineTool81({
 });
 
 // src/lib/mcp/tools/merge-lenders.ts
-import { defineTool as defineTool82 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool84 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z84 } from "npm:zod@^3.23.0";
-var merge_lenders_default = defineTool82({
+var merge_lenders_default = defineTool84({
   name: "merge_lenders",
   title: "Merge funding sources",
   description: "Atomic same-company merge: fill empty master fields, reparent contacts, notes, attachments and deal links, transfer audit/history with provenance, then hard-delete the merged master row. Requires confirm:true and existing lender deletion permission. Preserves stored attachment paths. Refuses duplicate deal links, two primary contacts, unique-key conflicts, inaccessible children or remaining references rather than deleting related data. All operations roll back on any failure. dry_run: true previews the merge (fields filled, children moved, blocking conflicts) by running it in a rolled-back transaction. Does not use the legacy broad merge RPC or reconnect FLEx.",
@@ -10926,9 +11010,9 @@ var merge_lenders_default = defineTool82({
 });
 
 // src/lib/mcp/tools/update-claap-meeting-deal.ts
-import { defineTool as defineTool83 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool85 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z85 } from "npm:zod@^3.23.0";
-var update_claap_meeting_deal_default = defineTool83({
+var update_claap_meeting_deal_default = defineTool85({
   name: "update_claap_meeting_deal",
   title: "Change or clear a Claap meeting's deal link",
   description: "After user approval, set claap_meetings.deal_id to another deal in the meeting's workspace, or pass deal_id null to unlink. Locks the decision against auto-routing, moves the deal recording/transcript links to match, and records an audit entry. Organizer/admin update permissions apply; funding-source match is unchanged.",
@@ -10952,7 +11036,7 @@ var update_claap_meeting_deal_default = defineTool83({
 });
 
 // src/lib/mcp/tools/update-claap-meeting-match.ts
-import { defineTool as defineTool84 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool86 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z86 } from "npm:zod@^3.23.0";
 var item = z86.object({
   meeting_id: z86.string().uuid(),
@@ -10961,7 +11045,7 @@ var item = z86.object({
   reason: z86.string().max(1e4).optional(),
   status: z86.enum(["pending_review", "routed", "excluded", "awaiting_confirmation"]).optional()
 }).strict();
-var update_claap_meeting_match_default = defineTool84({
+var update_claap_meeting_match_default = defineTool86({
   name: "update_claap_meeting_match",
   title: "Update Claap funding-source match",
   description: "Confirm, reassign, or clear Claap meeting funding-source matches after user approval \u2014 one meeting via top-level fields, or up to 25 via `updates` (each applied in its own transaction with an independent result). Locks the manual decision and records an atomic audit entry; preserves transcript, summary, deal and other meeting fields. Existing organizer/admin update permissions and company membership apply. Optionally change review-queue status; this does not run deal routing.",
@@ -11002,9 +11086,9 @@ var update_claap_meeting_match_default = defineTool84({
 });
 
 // src/lib/mcp/tools/list-lender-claap-meetings.ts
-import { defineTool as defineTool85 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool87 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z87 } from "npm:zod@^3.23.0";
-var list_lender_claap_meetings_default = defineTool85({
+var list_lender_claap_meetings_default = defineTool87({
   name: "list_lender_claap_meetings",
   title: "List funding-source Claap meetings",
   description: "Read paginated Claap meetings and participants under the caller's existing RLS. Filter lender IDs, match statuses, or changes after a timestamp using GREATEST(matched_at, updated_at). Includes summaries and call details; transcript is omitted unless explicitly requested. Omitted filters include unmatched meetings for refresh detection. match_status (confirmed/suggested/none) is a shorthand for match_statuses. include_transcript defaults to false.",
@@ -11034,7 +11118,7 @@ var list_lender_claap_meetings_default = defineTool85({
 });
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-import { defineTool as defineTool86 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool88 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z89 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/outstandingItemFields.ts
@@ -11070,7 +11154,7 @@ var outstandingUpdateFields = {
 };
 
 // src/lib/mcp/tools/list-outstanding-items.ts
-var list_outstanding_items_default = defineTool86({
+var list_outstanding_items_default = defineTool88({
   name: "list_outstanding_items",
   title: "List Open Items",
   description: "Read full deal Open Items rows ordered by position. open_only excludes items both Received and Submitted (the current Open Items tab itself includes completed items). Archived rows are excluded by default. lender_id is deal_lenders.id. Use offset/next_offset to page through all results.",
@@ -11094,9 +11178,9 @@ var list_outstanding_items_default = defineTool86({
 });
 
 // src/lib/mcp/tools/create-outstanding-item.ts
-import { defineTool as defineTool87 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool89 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z90 } from "npm:zod@^3.23.0";
-var create_outstanding_item_default = defineTool87({
+var create_outstanding_item_default = defineTool89({
   name: "create_outstanding_item",
   title: "Create Open Item",
   description: "After user approval, create an Open Item on an accessible deal. Defaults to Requested/normal, appends to the active list, validates deal_lenders.id, stores provenance and deduplicates idempotency keys even for archived items. Returns the full item and created flag; logs an MCP-attributed activity atomically. No email is sent.",
@@ -11112,9 +11196,9 @@ var create_outstanding_item_default = defineTool87({
 });
 
 // src/lib/mcp/tools/update-outstanding-item.ts
-import { defineTool as defineTool88 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool90 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z91 } from "npm:zod@^3.23.0";
-var update_outstanding_item_default = defineTool88({
+var update_outstanding_item_default = defineTool90({
   name: "update_outstanding_item",
   title: "Update Open Item",
   description: "After user approval, partially update an existing Open Item under caller RLS. Requested/Received/Submitted translate into the UI JSON state without losing requester/delivery lists. Shallow-merge provenance; append_note preserves notes with a UTC date. notes and append_note are mutually exclusive. Retire with is_archived, never delete. Returns the full row and logs MCP-attributed activity atomically; no email is sent.",
@@ -11132,9 +11216,9 @@ var update_outstanding_item_default = defineTool88({
 });
 
 // src/lib/mcp/tools/batch-create-outstanding-items.ts
-import { defineTool as defineTool89 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool91 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z92 } from "npm:zod@^3.23.0";
-var batch_create_outstanding_items_default = defineTool89({
+var batch_create_outstanding_items_default = defineTool91({
   name: "batch_create_outstanding_items",
   title: "Create Open Items batch",
   description: "After user approval, create up to 25 Open Items on one deal, with per-item idempotency and independent created/existing/error results. Same defaults and permissions as create_outstanding_item. No delete or email actions.",
@@ -11158,7 +11242,7 @@ var batch_create_outstanding_items_default = defineTool89({
 });
 
 // src/lib/mcp/tools/update-contact.ts
-import { defineTool as defineTool90 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool92 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z94 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/crmRecordEdits.ts
@@ -11300,7 +11384,7 @@ var noteInput = {
 };
 
 // src/lib/mcp/tools/update-contact.ts
-var update_contact_default = defineTool90({
+var update_contact_default = defineTool92({
   name: "update_contact",
   title: "Update CRM contact",
   description: "Partial update of a CRM contact (contacts) by id. Only supplied fields change; null clears. Editable: first/last name, email, additional_emails, phone_work/phone_mobile/phone_other, job_title, contact_type, lifecycle_stage, status, lead_source, owner_user_id, linkedin_url, city/state/country, description (mode replace/append/prepend), tags, crm_company_id (same workspace only), referral_agreement_on_file, w9_on_file, referral_fee, lender_referred_pct. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff. Use list_field_options for allowed contact_type/lifecycle_stage/status values.",
@@ -11310,9 +11394,9 @@ var update_contact_default = defineTool90({
 });
 
 // src/lib/mcp/tools/update-company.ts
-import { defineTool as defineTool91 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool93 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z95 } from "npm:zod@^3.23.0";
-var update_company_default = defineTool91({
+var update_company_default = defineTool93({
   name: "update_company",
   title: "Update CRM company",
   description: "Partial update of a CRM company (crm_companies) by id. Only supplied fields change; null clears. Editable: name, domain, additional_domains, website_url, company_type, status, owner_user_id, industry, sub_industry, employee_count/range, annual_revenue, revenue_band, HQ address fields, regions_served, parent_company_id (same workspace), customer_tier, segment, lifecycle_stage, description and notes (mode replace/append/prepend), linkedin/twitter, phone, main_contact_email, tags, year_founded, financing_status, key_products. Supports dry_run and expected_updated_at. Every changed field is audited with source/change_reason; returns the full updated record and a diff.",
@@ -11322,9 +11406,9 @@ var update_company_default = defineTool91({
 });
 
 // src/lib/mcp/tools/add-contact-note.ts
-import { defineTool as defineTool92 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool94 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z96 } from "npm:zod@^3.23.0";
-var add_contact_note_default = defineTool92({
+var add_contact_note_default = defineTool94({
   name: "add_contact_note",
   title: "Add contact note",
   description: "Add a dated note to a CRM contact's activity history (shown on the contact page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
@@ -11334,9 +11418,9 @@ var add_contact_note_default = defineTool92({
 });
 
 // src/lib/mcp/tools/add-company-note.ts
-import { defineTool as defineTool93 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool95 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z97 } from "npm:zod@^3.23.0";
-var add_company_note_default = defineTool93({
+var add_company_note_default = defineTool95({
   name: "add_company_note",
   title: "Add company note",
   description: "Add a dated note to a CRM company's activity history (shown on the company page). Pass idempotency_key so retries return the existing note instead of creating a duplicate.",
@@ -11346,7 +11430,7 @@ var add_company_note_default = defineTool93({
 });
 
 // src/lib/mcp/tools/add-referral-partner.ts
-import { defineTool as defineTool94 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool96 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z98 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/referralPartnerWrites.ts
@@ -11386,7 +11470,7 @@ async function updateContactAudited(sb, id, patch, source, reason) {
 }
 
 // src/lib/mcp/tools/add-referral-partner.ts
-var add_referral_partner_default = defineTool94({
+var add_referral_partner_default = defineTool96({
   name: "add_referral_partner",
   title: "Add contact to Referral Source pipeline",
   description: `Put an existing CRM contact into the Referral Source pipeline (Sales & BD) at Nurturing \u2014 the same as the app's "Add to Nurturing" button: tags the contact type "${REFERRAL_SOURCE_TAG}" (audited) and creates its referral_sources entry. Optional owner, notes and referral agreement/fee fields. ${TIER_STAGE_MESSAGE} Idempotent: an existing entry is returned unchanged apart from supplied fields.`,
@@ -11452,9 +11536,9 @@ var add_referral_partner_default = defineTool94({
 });
 
 // src/lib/mcp/tools/update-referral-partner.ts
-import { defineTool as defineTool95 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool97 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z99 } from "npm:zod@^3.23.0";
-var update_referral_partner_default = defineTool95({
+var update_referral_partner_default = defineTool97({
   name: "update_referral_partner",
   title: "Update Referral Source partner",
   description: `Update a contact that is in the Referral Source pipeline: owner (contact owner and relationship owner), notes on its referral entry (mode replace/append), referral_agreement_on_file, w9_on_file, referral_fee and lender_referred_pct. Contact field changes are audited with source/change_reason. ${TIER_STAGE_MESSAGE} Passing stage "Nurturing" is accepted as a no-op; other stages are rejected.`,
@@ -11509,9 +11593,9 @@ ${input.notes}` : input.notes;
 });
 
 // src/lib/mcp/tools/remove-referral-partner.ts
-import { defineTool as defineTool96 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool98 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z100 } from "npm:zod@^3.23.0";
-var remove_referral_partner_default = defineTool96({
+var remove_referral_partner_default = defineTool98({
   name: "remove_referral_partner",
   title: "Remove contact from Referral Source pipeline",
   description: `Remove a contact from the Referral Source pipeline: deletes its referral_sources entry and removes the "${REFERRAL_SOURCE_TAG}" contact type (audited). The contact itself and its deals are kept. Requires confirm:true. Note: a contact credited as the referrer on Active Pipeline deals still appears in Tier 3/2/1, because tiers are calculated from referred deals.`,
@@ -11548,7 +11632,7 @@ var remove_referral_partner_default = defineTool96({
 });
 
 // src/lib/mcp/tools/list-channel-partners.ts
-import { defineTool as defineTool97 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool99 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z101 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/channelPartners.ts
@@ -11595,7 +11679,7 @@ async function hydratePartners(sb, rows, withHistory) {
 var PARTNER_SELECT = "id, company_id, crm_company_id, stage, owner_user_id, created_by, created_at, updated_at, crm_companies(name, domain, last_activity_date, next_activity_date)";
 
 // src/lib/mcp/tools/list-channel-partners.ts
-var list_channel_partners_default = defineTool97({
+var list_channel_partners_default = defineTool99({
   name: "list_channel_partners",
   title: "List channel partners",
   description: "Read-only. Lists the Channel Partner pipeline on the BD page (separate from Referral Sources): id, linked CRM company, stage (prospect/nurturing/trial/engaged), owner, current status note, last contact (company's last activity) and next activity date. Filter by stage, owner or company name. Paginated.",
@@ -11631,9 +11715,9 @@ var list_channel_partners_default = defineTool97({
 });
 
 // src/lib/mcp/tools/get-channel-partner.ts
-import { defineTool as defineTool98 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool100 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z102 } from "npm:zod@^3.23.0";
-var get_channel_partner_default = defineTool98({
+var get_channel_partner_default = defineTool100({
   name: "get_channel_partner",
   title: "Get channel partner",
   description: "Read one Channel Partner by partner id or CRM company id: stage, owner, current status note plus full status-note history, stage/activity history, last contact and next activity date.",
@@ -11659,9 +11743,9 @@ var get_channel_partner_default = defineTool98({
 });
 
 // src/lib/mcp/tools/create-channel-partner.ts
-import { defineTool as defineTool99 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool101 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z103 } from "npm:zod@^3.23.0";
-var create_channel_partner_default = defineTool99({
+var create_channel_partner_default = defineTool101({
   name: "create_channel_partner",
   title: "Create channel partner",
   description: "Add an existing CRM company to the Channel Partner pipeline (BD page), like the app's Add Partner action. Defaults: stage prospect, owner = you. Optional first status note. Refuses if the company is already a channel partner (returns the existing id). Stage history is recorded automatically. Create the CRM company first with create_company if needed.",
@@ -11703,9 +11787,9 @@ var create_channel_partner_default = defineTool99({
 });
 
 // src/lib/mcp/tools/update-channel-partner.ts
-import { defineTool as defineTool100 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool102 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z104 } from "npm:zod@^3.23.0";
-var update_channel_partner_default = defineTool100({
+var update_channel_partner_default = defineTool102({
   name: "update_channel_partner",
   title: "Update channel partner",
   description: "Update a Channel Partner: stage (prospect/nurturing/trial/engaged; history recorded automatically) and owner, and/or replace the current status note (the previous note stays in visible history, as in the app). Returns the updated partner with a diff. 'Last contact' is the linked company's last activity date \u2014 log contact with add_company_note. There is no separate stored 'next step' field; put next steps in the status note.",
@@ -11760,7 +11844,7 @@ var update_channel_partner_default = defineTool100({
 });
 
 // src/lib/mcp/tools/create-attachment-upload-url.ts
-import { defineTool as defineTool101 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool103 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z106 } from "npm:zod@^3.23.0";
 
 // src/lib/mcp/attachmentTargets.ts
@@ -11874,7 +11958,7 @@ function decodeBase64Bytes(b64) {
 }
 
 // src/lib/mcp/tools/create-attachment-upload-url.ts
-var create_attachment_upload_url_default = defineTool101({
+var create_attachment_upload_url_default = defineTool103({
   name: "create_attachment_upload_url",
   title: "Create attachment upload URL",
   description: "Step 1 of a two-step upload for real files (PDFs, decks, spreadsheets) up to 20 MB, for a funding source (lender), deal, contact or company. Returns a short-lived signed `upload_url` (HTTP PUT the raw file bytes with the given Content-Type, valid ~2 hours) and an `upload_token`. Then call complete_attachment_upload with the token to create the attachment record. If a file with the same name and size is already attached to that record, nothing is created and the existing attachment is returned.",
@@ -11916,9 +12000,9 @@ var create_attachment_upload_url_default = defineTool101({
 });
 
 // src/lib/mcp/tools/complete-attachment-upload.ts
-import { defineTool as defineTool102 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool104 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z107 } from "npm:zod@^3.23.0";
-var complete_attachment_upload_default = defineTool102({
+var complete_attachment_upload_default = defineTool104({
   name: "complete_attachment_upload",
   title: "Complete attachment upload",
   description: "Step 2 of the two-step upload: pass the upload_token from create_attachment_upload_url after PUTting the file. Verifies the file is in storage with the declared size, then creates the attachment record on the lender/deal/contact/company (lender attachments are audited with source/change_reason). Skips if the same name and size is already attached.",
@@ -11961,7 +12045,7 @@ var complete_attachment_upload_default = defineTool102({
 });
 
 // src/lib/mcp/tools/add-attachment-from-gmail.ts
-import { defineTool as defineTool103 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool105 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z108 } from "npm:zod@^3.23.0";
 function collectAttachments(value, out = []) {
   if (!value || typeof value !== "object") return out;
@@ -11975,7 +12059,7 @@ function collectAttachments(value, out = []) {
   }
   return out;
 }
-var add_attachment_from_gmail_default = defineTool103({
+var add_attachment_from_gmail_default = defineTool105({
   name: "add_attachment_from_gmail",
   title: "Attach a file from Gmail",
   description: "Fetch an email attachment server-side through the signed-in user's existing connected mailbox and attach it to a funding source (lender), deal, contact or company. Identify the attachment by attachment_id, or by file_name (looked up on the message). 20 MB limit; skips if the same name and size is already attached to that record.",
@@ -12022,7 +12106,7 @@ var add_attachment_from_gmail_default = defineTool103({
 });
 
 // src/lib/mcp/tools/add-attachment-from-drive.ts
-import { defineTool as defineTool104 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool106 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z109 } from "npm:zod@^3.23.0";
 var EXPORT_EXT = {
   "application/vnd.google-apps.document": "docx",
@@ -12030,7 +12114,7 @@ var EXPORT_EXT = {
   "application/vnd.google-apps.presentation": "pptx",
   "application/vnd.google-apps.drawing": "pdf"
 };
-var add_attachment_from_drive_default = defineTool104({
+var add_attachment_from_drive_default = defineTool106({
   name: "add_attachment_from_drive",
   title: "Attach a file from Google Drive",
   description: "Download a Google Drive file server-side through the workspace's connected Drive (the same connection the Drive data-room import uses; internal 5th Line users only) and attach it to a funding source (lender), deal, contact or company. Native Google Docs/Sheets/Slides need mime_type and are exported to docx/xlsx/pptx. 20 MB limit; skips if the same name and size is already attached.",
@@ -12068,9 +12152,9 @@ var add_attachment_from_drive_default = defineTool104({
 });
 
 // src/lib/mcp/tools/list-lender-contacts.ts
-import { defineTool as defineTool105 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool107 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z110 } from "npm:zod@^3.23.0";
-var list_lender_contacts_default = defineTool105({
+var list_lender_contacts_default = defineTool107({
   name: "list_lender_contacts",
   title: "List funding source contacts",
   description: "Read-only. List every row in a funding source's multi-contact list (lender_contacts) with its row id (use as contact_id in upsert_lender_contact / delete_lender_contact), name, title, email, phone, location, notes, is_primary and linked CRM contact id.",
@@ -12091,9 +12175,9 @@ var list_lender_contacts_default = defineTool105({
 });
 
 // src/lib/mcp/tools/list-field-options.ts
-import { defineTool as defineTool106 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool108 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z111 } from "npm:zod@^3.23.0";
-var list_field_options_default = defineTool106({
+var list_field_options_default = defineTool108({
   name: "list_field_options",
   title: "List allowed field values",
   description: `Read-only. Return the option list the app's dropdowns and filters use for a field, so writes use valid values. Supported table.column keys: ${FIELD_OPTION_KEYS.join(", ")}. Pass one or more as fields, or table + column. create_lender/update_lender reject values outside these lists unless allow_new_options: true.`,
@@ -12121,9 +12205,9 @@ var list_field_options_default = defineTool106({
 });
 
 // src/lib/mcp/tools/list-unmatched-claap-meetings.ts
-import { defineTool as defineTool107 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool109 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z112 } from "npm:zod@^3.23.0";
-var list_unmatched_claap_meetings_default = defineTool107({
+var list_unmatched_claap_meetings_default = defineTool109({
   name: "list_unmatched_claap_meetings",
   title: "List unmatched Claap meetings",
   description: "Read-only. Claap meetings with no confirmed funding-source match (unmatched, or only a suggested match awaiting review). Filter by date range, participant email or email domain, and title text. Returns meeting id, title, date, participants, recording URL and any suggested lender with its reason. Use link_claap_meeting_to_lender or update_claap_meeting_match to resolve.",
@@ -12190,9 +12274,9 @@ var list_unmatched_claap_meetings_default = defineTool107({
 });
 
 // src/lib/mcp/tools/link-claap-meeting-to-lender.ts
-import { defineTool as defineTool108 } from "npm:@lovable.dev/mcp-js@3.0.0";
+import { defineTool as defineTool110 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z113 } from "npm:zod@^3.23.0";
-var link_claap_meeting_to_lender_default = defineTool108({
+var link_claap_meeting_to_lender_default = defineTool110({
   name: "link_claap_meeting_to_lender",
   title: "Link Claap meeting to funding source",
   description: "Manually link any Claap meeting to a funding source, even when no suggestion exists. Identify the meeting by meeting_id (claap_meetings.id) or recording_id (claap_recordings.id). Confirms the match (locked as a manual decision, audited) and optionally sets the matched contact (a CRM contact in the same workspace). Organizer/admin update permissions apply; no deal routing runs.",
@@ -12264,6 +12348,8 @@ var mcp_default = defineMcp({
     list_lender_intro_paths_default,
     add_lender_company_owner_default,
     list_lender_company_owners_default,
+    list_workspace_users_default,
+    list_all_lender_company_owners_default,
     list_deals_default,
     get_dashboard_tile_values_default,
     list_calendar_meetings_default,
