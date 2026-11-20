@@ -62,7 +62,7 @@ const CONTACT_HEADERS: Record<string, { label: string; field?: string }> = {
   email: { label: 'Email', field: 'email' },
   city: { label: 'City', field: 'hs_city' },
   lead_status: { label: 'Lead Status', field: 'hs_contact_status' },
-  contact_type: { label: 'Contact Type', field: 'hs_contact_type' },
+  contact_type: { label: 'Contact Type', field: 'contact_type' },
   created_at: { label: 'Create Date', field: 'created_at' },
   last_contact: { label: 'Last Contact', field: 'last_contact_at' },
   hs_last_contacted: { label: 'HubSpot Last Contacted', field: 'hs_notes_last_contacted' },
