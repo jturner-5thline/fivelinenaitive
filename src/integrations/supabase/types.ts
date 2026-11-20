@@ -19076,6 +19076,7 @@ export type Database = {
           dimensions: Json
           id: string
           lender_id: string
+          merged_from: string | null
           overall_label: string | null
           version: string | null
           window_days: number | null
@@ -19088,6 +19089,7 @@ export type Database = {
           dimensions: Json
           id?: string
           lender_id: string
+          merged_from?: string | null
           overall_label?: string | null
           version?: string | null
           window_days?: number | null
@@ -19100,6 +19102,7 @@ export type Database = {
           dimensions?: Json
           id?: string
           lender_id?: string
+          merged_from?: string | null
           overall_label?: string | null
           version?: string | null
           window_days?: number | null

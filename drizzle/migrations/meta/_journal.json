@@ -652,6 +652,13 @@
       "when": 1795107241453,
       "tag": "0092_lender_stage_events_and_performance",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795186752891,
+      "tag": "0093_merge_lenders_nov2026_tables",
+      "breakpoints": true
     }
   ]
 }
