@@ -121,7 +121,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
 
   if (format === 'csv') {
     // Full-field export using the canonical import template headers (round-trips with no mapping).
-    const mapped = (rows as any[]).map(c => ({ ...c, contact_type: c.contact_type || c.hs_contact_type || '', [CONTACT_COMPANY_NAME]: c.crm_company?.name || c.hs_company_name || '' }));
+    const mapped = (rows as any[]).map(c => ({ ...c, contact_type: (c.contact_type ?? c.hs_contact_type) || '', [CONTACT_COMPANY_NAME]: c.crm_company?.name || c.hs_company_name || '' }));
     downloadBlob(new Blob([exportToCsv(CONTACT_CSV, mapped)], { type: 'text/csv;charset=utf-8;' }), `contacts-${stamp}.csv`);
     return rows.length;
   }
@@ -157,7 +157,7 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
       email: c.email || '',
       city: c.hs_city || '',
       lead_status: c.hs_contact_status || '',
-      contact_type: c.contact_type || c.hs_contact_type || '',
+      contact_type: (c.contact_type ?? c.hs_contact_type) || '',
       create_date: fmtDate(c.created_at),
       last_contacted: fmtDate(c.hs_notes_last_contacted),
       industry: c.hs_industry || '',

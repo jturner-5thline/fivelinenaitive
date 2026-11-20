@@ -93,12 +93,11 @@ export function ActivePipelineKPIRow({ deals, stages = [] }: { deals: Deal[]; st
             <DialogTitle>Total Revenue</DialogTitle>
             <DialogDescription>Click a deal to open it</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
             {[
               ['Total Revenue', values.total_revenue, `${rows.length} deals`],
               ['Pending Revenue', formatUSDFromDollars(pendingTotal), `${pending.length} deals · Agreement Pending onward`],
               ['Largest Status', byStatus[0] ? statusLabel([...byStatus].sort((a, b) => b.value - a.value)[0].status) : '—', revTotal ? `${Math.round(([...byStatus].sort((a, b) => b.value - a.value)[0].value / revTotal) * 100)}% of revenue` : ''],
-              ['Revenue + Pending', formatUSDFromDollars(revTotal + pendingTotal), 'Pending may overlap'],
             ].map(([l, v, sub]) => (
               <div key={l} className="rounded-lg border border-border bg-card px-4 py-3 min-w-0">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground truncate">{l}</p>
