@@ -28,7 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { FinancialsPlanGrid } from './FinancialsPlanGrid';
-import { HeadcountGrid } from '@/components/insights/HeadcountGrid';
+import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -322,6 +322,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // Undo stack: snapshots of `values` captured just before each user edit.
   // Cleared on successful save (each save = new baseline) and on close.
   // Capped so long editing sessions don't grow unbounded.
+  const headcountRef = useRef<HeadcountGridHandle>(null);
   const [undoStack, setUndoStack] = useState<Record<string, string>[]>([]);
   const UNDO_CAP = 100;
   // Wrapper around setValues that snapshots the pre-edit state so Undo can
@@ -637,6 +638,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   }, [open, year, company?.id, periods]);
 
   async function handleSave() {
+    if (activeTab === 'headcount') {
+      const ok = await headcountRef.current?.save();
+      if (ok) onOpenChange(false);
+      return;
+    }
     return handleSaveInternal({ silent: false });
   }
 
@@ -946,7 +952,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         {activeTab === 'financials' ? (
           <FinancialsPlanGrid canEdit />
         ) : activeTab === 'headcount' ? (
-          <HeadcountGrid />
+          <HeadcountGrid ref={headcountRef} />
         ) : loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -1210,9 +1216,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Close
           </Button>
-          <Button onClick={handleSave} disabled={saving || loading || hasErrors}>
+          <Button onClick={handleSave} disabled={activeTab === 'headcount' ? saving : (saving || loading || hasErrors)}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {hasErrors ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
+            {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
           </Button>
         </DialogFooter>
       </DialogContent>

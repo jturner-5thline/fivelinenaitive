@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2, Save } from 'lucide-react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useCompany } from '@/hooks/useCompany';
@@ -11,14 +11,17 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 /** Headcount tab of the Master Plan: 5th Line only, spreadsheet-style. */
-export function HeadcountGrid() {
+export type HeadcountGridHandle = { save: () => Promise<boolean>; isDirty: () => boolean; isInvalid: () => boolean };
+
+/** Saving is driven by the Master Plan dialog's "Save master plan" button through the ref. */
+export const HeadcountGrid = forwardRef<HeadcountGridHandle>(function HeadcountGrid(_, ref) {
   const { company } = useCompany();
   const { canEditMasterPlan } = useCanEditMasterPlan();
   if (company?.id !== HEADCOUNT_COMPANY_ID) return null;
-  return <HeadcountTable companyId={company.id} canEdit={canEditMasterPlan} />;
-}
+  return <HeadcountTable ref={ref} companyId={company.id} canEdit={canEditMasterPlan} />;
+});
 
-function HeadcountTable({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canEdit: boolean }>(function HeadcountTable({ companyId, canEdit }, ref) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [draft, setDraft] = useState<HeadcountDraft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,13 +35,16 @@ function HeadcountTable({ companyId, canEdit }: { companyId: string; canEdit: bo
   const summary = (entries: string[]) => { try { return headcountSummary(entries); } catch { return { total: 0, average: null }; } };
   function request(action: () => void) { if (saving) return; if (dirty) setPending(() => action); else action(); }
   function changeYear(next: number) { request(() => { setDraft(null); setYear(next); }); }
-  async function save() {
-    if (!draft || !query.isSuccess) return;
+  async function save(): Promise<boolean> {
+    if (!canEdit || saving) return false;
+    if (invalid) { toast.error('Fix invalid headcount cells before saving'); return false; }
+    if (!draft || !dirty || !query.isSuccess) { toast.info('No headcount changes to save'); return true; }
     setSaving(true);
-    try { await query.save(draft, baseline); setDraft(null); toast.success('Headcount saved'); }
-    catch { toast.error('Headcount could not be saved. Your changes are still here; please retry.'); }
+    try { await query.save(draft, baseline); setDraft(null); toast.success('Headcount saved'); return true; }
+    catch { toast.error('Headcount could not be saved. Your changes are still here; please retry.'); return false; }
     finally { setSaving(false); }
   }
+  useImperativeHandle(ref, () => ({ save, isDirty: () => dirty, isInvalid: () => invalid }));
   const monthTotal = (i: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => values[headcountKey(u.realmId, i)] ?? '')); } catch { return null; } };
   const th = 'px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted';
   return <div className="space-y-2">
@@ -71,7 +77,7 @@ function HeadcountTable({ companyId, canEdit }: { companyId: string; canEdit: bo
         </table>
       </div>}
     {invalid && <p role="alert" className="text-sm text-destructive">Enter a headcount from 0 to 9,999.99 with up to two decimal places.</p>}
-    {canEdit && <div className="flex justify-end gap-2"><Button size="sm" variant="outline" disabled={!dirty || saving} onClick={() => setDraft(null)}>Discard</Button><Button size="sm" disabled={!dirty || invalid || saving || !query.isSuccess} onClick={save}>{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Changes</Button></div>}
+    {canEdit && <div className="flex justify-end gap-2"><Button size="sm" variant="outline" disabled={!dirty || saving} onClick={() => setDraft(null)}>Discard</Button></div>}
     <AlertDialog open={!!pending} onOpenChange={open => { if (!open) setPending(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved headcount?</AlertDialogTitle><AlertDialogDescription>Your changes have not been saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { pending?.(); setPending(null); }}>Discard changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
-}
+});
