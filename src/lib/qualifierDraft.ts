@@ -3,6 +3,10 @@ export interface Qualifier {
   text: string;
   is_met: boolean;
   position: number;
+  metric?: string | null;
+  operator?: string | null;
+  value?: number | null;
+  unit?: string | null;
 }
 
 export interface DraftQualifier extends Qualifier {
@@ -22,12 +26,13 @@ export function diffQualifiers(saved: Qualifier[], draft: DraftQualifier[]): Qua
   const byId = new Map(saved.map((q) => [q.id, q]));
   const changes: QualifierChanges = { inserts: [], updates: [], deletes: [] };
   kept.forEach((q, i) => {
-    const text = q.text.trim();
+    const text = q.text;
     if (q.isNew || !byId.has(q.id)) {
       changes.inserts.push({ text, is_met: q.is_met, position: i });
       return;
     }
-    const s = byId.get(q.id)!;
+    const s = byId.get(q.id);
+    if (!s) return;
     if (s.text !== text || s.is_met !== q.is_met || s.position !== i) {
       changes.updates.push({ id: q.id, text, is_met: q.is_met, position: i });
     }

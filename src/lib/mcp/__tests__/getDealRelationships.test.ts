@@ -18,7 +18,7 @@ beforeEach(() => {
  fixtures.contacts = [{ id: "contact", first_name: "Jane", last_name: "Doe", email: "jane@example.com", job_title: "CFO" }];
  fixtures.crm_companies = { id: "company", name: "Example", domain: "example.com" };
  fixtures.deal_aliases = [{ alias: "Example alias" }];
- vi.mocked(supabaseForUser).mockReturnValue({ from } as unknown as ReturnType<typeof supabaseForUser>);
+ vi.mocked(supabaseForUser).mockReturnValue({ from, rpc: vi.fn(async () => ({ data: null, error: null })) } as unknown as ReturnType<typeof supabaseForUser>);
 });
 describe("get_deal relationships", () => {
  it("returns contact role, CRM company and aliases without include_related", async () => {
@@ -32,5 +32,10 @@ describe("get_deal relationships", () => {
  it("does not expose relationships for a denied deal", async () => {
   vi.mocked(assertDealAccess).mockResolvedValueOnce({ content: [], structuredContent: { error: "forbidden", reason: "denied", deal_id }, isError: true });
   expect(await invoke()).toHaveProperty("isError", true); expect(from).not.toHaveBeenCalled();
+ });
+ it("includes the qualifier agreement on ordinary deal reads", async () => {
+  const record = { executed_qualifies: false, match_rule: "all", criteria: [{ text: "At least $1.5MM", is_met: true }] };
+  vi.mocked(supabaseForUser).mockReturnValue({ from, rpc: vi.fn(async () => ({ data: record, error: null })) } as unknown as ReturnType<typeof supabaseForUser>);
+  expect(await invoke()).toMatchObject({ data: { deal: { qualifiers: record }, qualifiers: record } });
  });
 });

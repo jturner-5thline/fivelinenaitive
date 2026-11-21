@@ -25,7 +25,7 @@ import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
-import { computeTotalFee } from '@/lib/fees';
+import { agreementTotalFee } from '@/lib/agreementTerms';
 import {
   loadPersistedDealOrigin,
   persistDealOrigin,
@@ -958,6 +958,7 @@ export default function DealDetail() {
           retainerFee: Number(dbDeal.retainer_fee || 0),
           milestoneFee: Number(dbDeal.milestone_fee || 0),
           successFeePercent: Number(dbDeal.success_fee_percent || 0),
+          successFeeMinimum: dbDeal.success_fee_minimum,
           preSigningHours: Number(dbDeal.pre_signing_hours || 0),
           postSigningHours: Number(dbDeal.post_signing_hours || 0),
           notes: dbDeal.notes || undefined,
@@ -1078,6 +1079,7 @@ export default function DealDetail() {
           retainerFee: prev.retainerFee,
           milestoneFee: prev.milestoneFee,
           successFeePercent: prev.successFeePercent,
+          successFeeMinimum: prev.successFeeMinimum,
           totalFee: prev.totalFee,
           // Hours are written through the AddHours dialog which triggers
           // refreshDeals(); always take the DB value so new entries show up
@@ -3164,13 +3166,13 @@ export default function DealDetail() {
       const updated = { ...prev, ...syncedPatch, updatedAt: new Date().toISOString() };
 
       // Total Fee is a Postgres generated column:
-      //   total_fee = value * success_fee_percent / 100
+      //   total_fee = greatest(value * success_fee_percent / 100, success_fee_minimum)
       // Recompute locally via the shared helper so the UI stays in sync
       // until the next refetch.
-      if (field === 'successFeePercent' || field === 'value') {
+      if (field === 'successFeePercent' || field === 'value' || field === 'successFeeMinimum') {
         const dealValue = field === 'value' ? (value as number | undefined) : prev.value;
         const successPercent = field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent;
-        updated.totalFee = computeTotalFee(dealValue, successPercent);
+        updated.totalFee = agreementTotalFee(dealValue, successPercent, updated.successFeeMinimum);
       }
 
       // FinServ deals derive their displayed pipeline-card amount and the
@@ -5203,7 +5205,7 @@ export default function DealDetail() {
                                   <CalendarPanel deal={deal} listOnly />
                                 </div>
                               )}
-                              <div className="flex-1 min-h-[150px] max-h-[55%] overflow-y-auto border-t border-border">
+                              <div className="shrink-0 min-h-[150px] max-h-[420px] overflow-y-auto border-t border-border">
                                 <DealQualifiersPanel dealId={deal.id} />
                               </div>
                             </section>

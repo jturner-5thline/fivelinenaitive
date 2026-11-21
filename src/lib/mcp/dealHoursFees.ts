@@ -1,6 +1,9 @@
+import { agreementTotalFee } from '../agreementTerms';
 /** Pure hours & fees math, mirroring the deal page's Hours & Fees widget. */
 export type FeeDealInput = {
   total_fee: number | null;
+  value?: number | null;
+  success_fee_minimum?: number | null;
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
@@ -11,7 +14,7 @@ export type FeeDealInput = {
 const n = (v: unknown) => Number(v) || 0;
 
 export function computeDealHoursFees(d: FeeDealInput) {
-  const total_fee = n(d.total_fee);
+  const total_fee = d.value === undefined ? Math.max(n(d.total_fee), n(d.success_fee_minimum)) : agreementTotalFee(d.value, d.success_fee_percent, d.success_fee_minimum);
   const retainer_fee = n(d.retainer_fee);
   const milestone_fee = n(d.milestone_fee);
   // Closing fee = amount due at close, less fees already paid (matches UI).
@@ -23,6 +26,7 @@ export function computeDealHoursFees(d: FeeDealInput) {
     retainer_fee,
     milestone_fee,
     success_fee_percent: n(d.success_fee_percent),
+    success_fee_minimum: d.success_fee_minimum ?? null,
     closing_fee,
     total_fee,
     pre_signing_hours: pre,

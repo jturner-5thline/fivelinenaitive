@@ -5,13 +5,15 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddHoursButton } from '@/components/deal/DealHoursEntriesEditor';
-import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
+import { useCompanyFeesVisibility } from '@/hooks/useCompanyFeesVisibility';
 import { supabase } from '@/integrations/supabase/client';
+import type { Deal } from '@/types/deal';
+import { agreementTotalFee } from '@/lib/agreementTerms';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip as RTooltip } from 'recharts';
 
 interface DealHoursFeesCardProps {
-  deal: any;
-  updateDeal: (field: string, value: any) => void;
+  deal: Pick<Deal, 'id' | 'value' | 'totalFee' | 'retainerFee' | 'milestoneFee' | 'successFeePercent' | 'successFeeMinimum' | 'preSigningHours' | 'postSigningHours'>;
+  updateDeal: (field: string, value: number | null) => void;
   onHoursChanged?: () => void;
 }
 
@@ -39,7 +41,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
   const pre = deal.preSigningHours ?? 0;
   const post = deal.postSigningHours ?? 0;
   const totalHours = pre + post;
-  const totalFee = deal.totalFee ?? 0;
+  const totalFee = agreementTotalFee(deal.value, deal.successFeePercent, deal.successFeeMinimum);
   const hasHours = totalHours > 0;
   const hasFees = totalFee > 0 || (deal.retainerFee ?? 0) > 0 || (deal.milestoneFee ?? 0) > 0 || (deal.successFeePercent ?? 0) > 0;
 
@@ -127,7 +129,7 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[720px]" onClick={(e) => e.stopPropagation()}>
+        <DialogContent className="sm:max-w-[720px] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle className="text-sm font-medium flex items-center gap-2">
               <Clock className="h-4 w-4" /> Hours & Fees
@@ -176,10 +178,10 @@ export function DealHoursFeesCard({ deal, updateDeal, onHoursChanged, compact }:
  * deal page and froze typing.
  */
 function DraftNumberInput({ value, onCommit, money, ...rest }: { value: number | null | undefined; onCommit: (n: number) => void; money?: boolean } & Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'>) {
-  const fmt = (n: number | null | undefined) => (n ? (money ? Math.round(n).toLocaleString() : String(n)) : '');
+  const fmt = useCallback((n: number | null | undefined) => (n ? (money ? Math.round(n).toLocaleString() : String(n)) : ''), [money]);
   const [draft, setDraft] = useState(fmt(value));
   const [focused, setFocused] = useState(false);
-  useEffect(() => { if (!focused) setDraft(fmt(value)); }, [value, focused]);
+  useEffect(() => { if (!focused) setDraft(fmt(value)); }, [value, focused, fmt]);
   const commit = () => {
     const raw = draft.replace(/,/g, '').trim();
     const n = raw ? Number(raw) : 0;
@@ -203,7 +205,7 @@ function DraftNumberInput({ value, onCommit, money, ...rest }: { value: number |
   );
 }
 
-function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDeal: (f: string, v: any) => void; onChanged: () => void }) {
+function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: DealHoursFeesCardProps['deal']; updateDeal: DealHoursFeesCardProps['updateDeal']; onChanged: () => void }) {
   const feesVisibility = useCompanyFeesVisibility();
   const refreshDeals = onChanged;
   return (
@@ -250,7 +252,7 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
                 {(() => {
                   const totalHours = (deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0);
                   if (totalHours === 0) return '-';
-                  const revenuePerHour = (deal.totalFee ?? 0) / totalHours;
+                  const revenuePerHour = agreementTotalFee(deal.value, deal.successFeePercent, deal.successFeeMinimum) / totalHours;
                   return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
                 })()}
               </span>
@@ -304,7 +306,7 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
                   <TooltipTrigger asChild>
                      <span className="text-sm text-muted-foreground whitespace-nowrap flex-1 text-right cursor-help">
                       <span className="font-medium text-foreground">{(() => {
-                        const total = deal.totalFee ?? 0;
+                        const total = agreementTotalFee(deal.value, deal.successFeePercent, deal.successFeeMinimum);
                         const milestone = deal.milestoneFee ?? 0;
                         const retainer = deal.retainerFee ?? 0;
                         const closing = Math.max(0, total - milestone - retainer);
@@ -320,29 +322,19 @@ function HoursFeesInputs({ deal, updateDeal, onChanged }: { deal: any; updateDea
                 </Tooltip>
               </div>
             </div>
+            <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
+              <span className="text-muted-foreground text-sm">Minimum Fee</span>
+              <DraftNumberInput money aria-label="Minimum success fee" value={deal.successFeeMinimum} onCommit={(n) => updateDeal('successFeeMinimum', n || null)} placeholder="No minimum" className="h-8 text-sm w-full" />
+            </div>
             <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2" data-testid="fee-total">
               <span className="text-muted-foreground text-sm">Total Fee</span>
               <div className="relative w-full">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                 <Input
                   type="text"
-                  value={
-                    feesVisibility.totalFeeComputedOnly
-                      ? (() => {
-                          const c = formatComputedTotal(
-                            (deal as any).value ?? null,
-                            deal.successFeePercent ?? null,
-                          );
-                          return c === '—' ? '' : c.replace(/^\$/, '');
-                        })()
-                      : (deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : '')
-                  }
+                  value={Math.round(agreementTotalFee(deal.value, deal.successFeePercent, deal.successFeeMinimum)).toLocaleString()}
                   readOnly
-                  title={
-                    feesVisibility.totalFeeComputedOnly
-                      ? 'Computed: deal size × success fee %'
-                      : 'Auto-calculated: Retainer + Milestone + Deal Size × Success Fee %'
-                  }
+                  title="Greater of the percentage fee or minimum success fee"
                   placeholder="0"
                   className="pl-5 h-8 text-sm w-full bg-muted/40 cursor-not-allowed"
                 />

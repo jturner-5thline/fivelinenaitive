@@ -1,0 +1,403 @@
+{
+  "tools": [
+    {
+      "name": "update_deal_fees",
+      "description": "Partially update agreement fees, exclusivity and contract dates. Omitted fields are unchanged; null clears. Total and closing fees are derived and cannot be written. dry_run defaults true; writes require explicit user approval. Stale expected_updated_at returns conflict and current row. Changes and activity are audited atomically.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "retainer_fee": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "milestone_fee": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "success_fee_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "success_fee_minimum": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exclusivity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contract_start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contract_end_date": {
+            "anyOf": [
+              {
+                "$ref": "#/properties/contract_start_date/anyOf/0"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 1000,
+            "default": "mcp"
+          },
+          "change_reason": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "deal_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_deal_qualifiers",
+      "description": "Read the existing deal qualifier rows as one agreement record with numbered verbatim criteria, checkbox states, signed-company rule, all/any rule, source agreement and updated_at; returns null when absent.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "deal_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "upsert_deal_qualifiers",
+      "description": "Atomically replace the entire agreement qualifier record and ordered criteria in the existing widget storage. Keep text verbatim. Include criterion id to preserve checkbox state when editing text; optional is_met checks/unchecks. Omitted agreement metadata clears it. Identical retries do not write or audit. dry_run defaults true; replacement/removal requires explicit approval. Stale expected_updated_at returns current record.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "executed_qualifies": {
+            "type": "boolean"
+          },
+          "match_rule": {
+            "type": "string",
+            "enum": [
+              "all",
+              "any"
+            ]
+          },
+          "criteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                },
+                "is_met": {
+                  "type": "boolean"
+                },
+                "metric": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "total_commitment",
+                        "interest_only_months",
+                        "term_months",
+                        "interest_rate",
+                        "all_in_rate",
+                        "advance_rate",
+                        "min_balance",
+                        "personal_guarantee",
+                        "board_seat",
+                        "lender_equity",
+                        "other"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "operator": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        ">=",
+                        "<=",
+                        "=",
+                        "none"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 50
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                }
+              },
+              "required": [
+                "position",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 200
+          },
+          "source_file_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "source_file_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "agreement_signed_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 1000,
+            "default": "mcp"
+          },
+          "change_reason": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "expected_updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "deal_id",
+          "executed_qualifies",
+          "match_rule",
+          "criteria"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_deal",
+      "description": "Fetch a single deal by id with its full record, client_contacts including deal-specific role, crm_company (id, name, domain) when linked, aliases as strings, tasks, and attached lenders. Set include_related=true to also return everything attached to the deal: milestones, stage history and stage notes, status notes and report drafts, flag notes, ownership, checklist status, attachments, write-ups, memos (with approvals, comments, views, audit), deal-space notes/documents/conversations/messages, financial data, files, insights and computed metrics, drive and data-room folders, emails and email prompts, client requests, meeting history, links, holds, call transcripts and Claap recordings, calendar items, activity, AI settings and snapshots, research cache, fit profiles, KPI links, SaaS/FinServ models, and task detail (comments, attachments, collaborators, followers, time entries, activity). Always report stage_label, not the raw stage id (ids are overloaded per pipeline).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "include_tasks": {
+            "type": "boolean",
+            "default": true
+          },
+          "include_lenders": {
+            "type": "boolean",
+            "default": true
+          },
+          "include_related": {
+            "type": "boolean",
+            "default": false
+          },
+          "include_task_detail": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "deal_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    },
+    {
+      "name": "get_deal_hours_fees",
+      "description": "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, success_fee_minimum, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "deal_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pipeline_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stage": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Raw stage id."
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Substring match on deal/company name."
+          },
+          "only_missing_fees": {
+            "type": "boolean",
+            "default": false
+          },
+          "include_weekly_hours": {
+            "type": "boolean",
+            "default": false
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 500,
+            "description": "Max deals listed (rollups always cover all matches)."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      }
+    }
+  ]
+}

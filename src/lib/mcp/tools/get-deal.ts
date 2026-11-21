@@ -96,7 +96,7 @@ export default defineTool({
     if (error) return errorResult(error.message);
     if (!deal) return errorResult("Deal not found or you do not have access.");
 
-    const [tasksRes, lendersRes, contactLinksRes, companyRes, aliasesRes] = await Promise.all([
+    const [tasksRes, lendersRes, contactLinksRes, companyRes, aliasesRes, qualifiersRes] = await Promise.all([
       include_tasks
         ? sb
             .from("tasks")
@@ -122,7 +122,9 @@ export default defineTool({
         ? sb.from("crm_companies").select("id, name, domain").eq("id", deal.crm_company_id).eq("org_company_id", deal.company_id).maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       sb.from("deal_aliases").select("alias").eq("deal_id", deal_id).order("created_at", { ascending: true }),
+      sb.rpc('get_deal_qualifiers_record', { p_deal_id: deal_id }),
     ]);
+    if (qualifiersRes.error) return errorResult(qualifiersRes.error.message);
     if (contactLinksRes.error) return errorResult(contactLinksRes.error.message);
     if (companyRes.error) return errorResult(companyRes.error.message);
     if (aliasesRes.error) return errorResult(aliasesRes.error.message);
@@ -254,7 +256,8 @@ export default defineTool({
     }
 
     return textResult({
-      deal: dealWithLabels,
+      deal: { ...dealWithLabels, qualifiers: qualifiersRes.data },
+      qualifiers: qualifiersRes.data,
       client_contacts: clientContacts,
       crm_company: companyRes.data ?? null,
       aliases: (aliasesRes.data ?? []).map(({ alias }) => alias),

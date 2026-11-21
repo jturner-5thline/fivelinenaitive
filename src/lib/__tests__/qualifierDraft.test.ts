@@ -19,8 +19,8 @@ describe('diffQualifiers', () => {
     expect(c.deletes.sort()).toEqual(['a', 'b']);
     expect(c.inserts).toEqual([]);
   });
-  it('inserts new rows with trimmed text', () => {
+  it('preserves verbatim agreement text including surrounding whitespace', () => {
     const c = diffQualifiers(saved, [...saved, { id: 'n', text: ' IO 6 months ', is_met: false, position: 2, isNew: true }]);
-    expect(c.inserts).toEqual([{ text: 'IO 6 months', is_met: false, position: 2 }]);
+    expect(c.inserts).toEqual([{ text: ' IO 6 months ', is_met: false, position: 2 }]);
   });
 });

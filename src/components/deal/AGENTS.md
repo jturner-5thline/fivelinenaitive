@@ -1,1 +1,3 @@
 - Deal Qualifiers: `deal_qualifiers` (RLS can_access_deal); panel stages edits, writes only after Save confirmation, discards on outside click — why: user requires confirmed saves.
+- Qualifier agreement settings use deal_qualifier_agreements; the panel saves settings and existing ordered criteria through one invoker RPC, preserving verbatim text and checkbox state — why: app and MCP must share one atomic record without migrating existing rows.
+- Hours & Fees uses agreementTotalFee with whole percentage points and a nullable minimum, matching the generated database total; the minimum input commits on blur — why: derived fee displays must reconcile and typing must remain local.

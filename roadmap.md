@@ -127,3 +127,9 @@
 - [x] Add confirmed soft archive and atomic merge; refuse conflicts and unsupported references.
 - [x] 39 MCP tests, isolated SQL permissions/rollback assertions, focused lint and automatic build passed; signed-in dry-run + 17-table schema discovery checked, 89-tool manifest extracted. Full suite 534 passed/18 existing failures; details and limitations in docs/lender-mcp-editing.md.
 - [ ] Hosted OAuth write/merge acceptance — requires republish plus an isolated hosted test environment or explicit approval for consequential live test writes; no production records changed.
+
+## Agreement terms MCP and app
+- [x] Add minimum success fees, transactional audited fee tool and shared calculation.
+- [x] Extend existing qualifier storage/widget with agreement metadata and atomic read/upsert tools.
+- [x] 198 focused tests, isolated PostgreSQL assertions, focused lint and automatic type/build passed; signed-in desktop/phone checks used intercepted saves. 154-tool catalog extracted; schemas and verification in docs/mcp-agreement-terms.md. Full suite retains 18 unrelated failures and full lint existing errors.
+- [ ] Hosted agreement-tool revision requires republish and Claude connector refresh; real OAuth write acceptance remains unverified.

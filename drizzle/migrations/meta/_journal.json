@@ -680,6 +680,20 @@
       "when": 1795286047941,
       "tag": "0096_mcp_deal_lender_historical_writes",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1795287198975,
+      "tag": "0097_agreement_terms_fees_qualifiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1795287436655,
+      "tag": "0098_harden_agreement_criterion_validation",
+      "breakpoints": true
     }
   ]
 }

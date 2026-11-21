@@ -16,6 +16,7 @@ type Row = {
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
+  success_fee_minimum: number | null;
   pre_signing_hours: number | null;
   post_signing_hours: number | null;
 };
@@ -24,7 +25,7 @@ export default defineTool({
   name: "get_deal_hours_fees",
   title: "Get deal hours & fees",
   description:
-    "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
+    "Hours & Fees for each deal (matches the deal page widget): retainer_fee, milestone_fee, success_fee_percent, success_fee_minimum, closing_fee (total minus retainer and milestone, floored at 0), total_fee, pre/post-signing and total hours, revenue_per_hour, and missing_fee_information. Also returns rollups per pipeline and overall. Filter by deal_id, pipeline_id, stage or company query. Set include_weekly_hours=true for the weekly logged-hours entries (week, phase, hours) behind each deal's totals. Test deals are excluded.",
   inputSchema: {
     deal_id: z.string().uuid().optional(),
     pipeline_id: z.string().uuid().optional(),
@@ -40,7 +41,7 @@ export default defineTool({
     if (authErr) return authErr;
     const sb = supabaseForUser(ctx);
     const select =
-      "id, company, stage, status, pipeline_id, manager, value, total_fee, retainer_fee, milestone_fee, success_fee_percent, pre_signing_hours, post_signing_hours";
+      "id, company, stage, status, pipeline_id, manager, value, total_fee, retainer_fee, milestone_fee, success_fee_percent, success_fee_minimum, pre_signing_hours, post_signing_hours";
 
     const rows: Row[] = [];
     for (let offset = 0; ; offset += 1000) {

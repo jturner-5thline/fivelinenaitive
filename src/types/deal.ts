@@ -107,6 +107,7 @@ export interface Deal {
   retainerFee?: number;
   milestoneFee?: number;
   successFeePercent?: number;
+  successFeeMinimum?: number | null;
   preSigningHours?: number;
   postSigningHours?: number;
   referredBy?: Referrer;

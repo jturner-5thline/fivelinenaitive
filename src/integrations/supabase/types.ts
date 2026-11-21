@@ -11620,6 +11620,69 @@ export type Database = {
           },
         ]
       }
+      deal_qualifier_agreements: {
+        Row: {
+          agreement_signed_date: string | null
+          company_id: string | null
+          created_at: string
+          deal_id: string
+          executed_qualifies: boolean
+          id: string
+          match_rule: string
+          notes: string | null
+          source: string | null
+          source_file_id: string | null
+          source_file_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agreement_signed_date?: string | null
+          company_id?: string | null
+          created_at?: string
+          deal_id: string
+          executed_qualifies?: boolean
+          id?: string
+          match_rule?: string
+          notes?: string | null
+          source?: string | null
+          source_file_id?: string | null
+          source_file_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agreement_signed_date?: string | null
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string
+          executed_qualifies?: boolean
+          id?: string
+          match_rule?: string
+          notes?: string | null
+          source?: string | null
+          source_file_id?: string | null
+          source_file_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_qualifier_agreements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_qualifier_agreements_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+        ]
+      }
       deal_qualifiers: {
         Row: {
           created_at: string
@@ -11627,9 +11690,13 @@ export type Database = {
           deal_id: string
           id: string
           is_met: boolean
+          metric: string | null
+          operator: string | null
           position: number
           text: string
+          unit: string | null
           updated_at: string
+          value: number | null
         }
         Insert: {
           created_at?: string
@@ -11637,9 +11704,13 @@ export type Database = {
           deal_id: string
           id?: string
           is_met?: boolean
+          metric?: string | null
+          operator?: string | null
           position?: number
           text?: string
+          unit?: string | null
           updated_at?: string
+          value?: number | null
         }
         Update: {
           created_at?: string
@@ -11647,9 +11718,13 @@ export type Database = {
           deal_id?: string
           id?: string
           is_met?: boolean
+          metric?: string | null
+          operator?: string | null
           position?: number
           text?: string
+          unit?: string | null
           updated_at?: string
+          value?: number | null
         }
         Relationships: [
           {
@@ -13020,6 +13095,7 @@ export type Database = {
           stage: string
           stage_entered_at: string | null
           status: string | null
+          success_fee_minimum: number | null
           success_fee_percent: number | null
           tags: string[]
           terms_issued_at: string | null
@@ -13119,6 +13195,7 @@ export type Database = {
           stage?: string
           stage_entered_at?: string | null
           status?: string | null
+          success_fee_minimum?: number | null
           success_fee_percent?: number | null
           tags?: string[]
           terms_issued_at?: string | null
@@ -13218,6 +13295,7 @@ export type Database = {
           stage?: string
           stage_entered_at?: string | null
           status?: string | null
+          success_fee_minimum?: number | null
           success_fee_percent?: number | null
           tags?: string[]
           terms_issued_at?: string | null
@@ -31354,6 +31432,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_deal_qualifiers_record: { Args: { p_deal_id: string }; Returns: Json }
       get_deal_stage_durations: {
         Args: { p_deal_id: string }
         Returns: {
@@ -32069,6 +32148,28 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      update_deal_fees: {
+        Args: {
+          p_change_reason?: string
+          p_deal_id: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
+          p_patch: Json
+          p_source?: string
+        }
+        Returns: Json
+      }
+      upsert_deal_qualifiers_record: {
+        Args: {
+          p_change_reason?: string
+          p_deal_id: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
+          p_record: Json
+          p_source?: string
+        }
+        Returns: Json
+      }
       upsert_lender_performance: {
         Args: {
           _computed_at: string

@@ -148,6 +148,7 @@ interface DbDeal {
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
+  success_fee_minimum: number | null;
   migrated_from_personal: boolean;
 }
 
@@ -355,6 +356,7 @@ export function useDealsDatabase() {
       retainerFee: Number(dbDeal.retainer_fee || 0),
       milestoneFee: Number(dbDeal.milestone_fee || 0),
       successFeePercent: Number(dbDeal.success_fee_percent || 0),
+      successFeeMinimum: dbDeal.success_fee_minimum,
       preSigningHours: Number(dbDeal.pre_signing_hours || 0),
       postSigningHours: Number(dbDeal.post_signing_hours || 0),
       notes: dbDeal.notes || undefined,
@@ -668,6 +670,7 @@ export function useDealsDatabase() {
         retainerFee: Number(data.retainer_fee || 0),
         milestoneFee: Number(data.milestone_fee || 0),
         successFeePercent: Number(data.success_fee_percent || 0),
+        successFeeMinimum: data.success_fee_minimum,
         preSigningHours: Number(data.pre_signing_hours || 0),
         postSigningHours: Number(data.post_signing_hours || 0),
         notes: data.notes || undefined,
@@ -892,6 +895,7 @@ export function useDealsDatabase() {
       // total_fee is a generated column in Postgres — never write to it.
       if (updates.retainerFee !== undefined) dbUpdates.retainer_fee = updates.retainerFee;
       if (updates.milestoneFee !== undefined) dbUpdates.milestone_fee = updates.milestoneFee;
+      if (updates.successFeeMinimum !== undefined) dbUpdates.success_fee_minimum = updates.successFeeMinimum;
       if (updates.successFeePercent !== undefined) dbUpdates.success_fee_percent = updates.successFeePercent;
       if (updates.notes !== undefined) {
         dbUpdates.notes = updates.notes;
