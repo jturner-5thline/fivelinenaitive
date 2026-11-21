@@ -27,7 +27,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
   const [focused, setFocused] = useState<string | null>(null);
   const inputs = useRef<Map<string, HTMLInputElement>>(new Map());
 
-  const periods = useMemo(() => financialPeriods(year, mode), [year, mode]);
+  const periods = useMemo(() => (mode === 'quarterly' ? FINANCIAL_YEARS.flatMap((y) => financialPeriods(y, 'quarterly')) : financialPeriods(year, mode)), [year, mode]);
   const rowsFlat = useMemo(() => FINANCIAL_SEGMENTS.flatMap((s) => FINANCIAL_ROWS.map((r) => ({ seg: s.key, row: r }))), []);
 
   const load = useCallback(async () => {
@@ -134,7 +134,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          {FINANCIAL_YEARS.map((y) => (
+          {mode === 'monthly' && FINANCIAL_YEARS.map((y) => (
             <Button key={y} size="sm" variant={y === year ? 'default' : 'ghost'} className={toggle(y === year)} onClick={() => setYear(y)}>{y}</Button>
           ))}
           <span className="mx-2 h-5 w-px bg-border" />
