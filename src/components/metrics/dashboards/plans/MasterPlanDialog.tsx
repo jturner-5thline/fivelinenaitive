@@ -56,6 +56,10 @@ const VISIBLE_ENTRIES: [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[Plann
     .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]))
     .map((k) => [k, PLANNABLE_DASHBOARDS[k]] as const) as any;
 const VISIBLE_DEFS = VISIBLE_ENTRIES.map(([, d]) => d);
+/** Dashboards shown together under one entity-grouped tab (display only; plan keys unchanged). */
+const ENTITY_TAB = 'entity-metrics';
+const ENTITY_TAB_KEYS: string[] = ['finserv-financial-metrics', 'consolidated-debt-pipeline'];
+const ENTITY_TAB_LABELS: Record<string, string> = { 'finserv-financial-metrics': 'FinServ', 'consolidated-debt-pipeline': 'Debt Advisory' };
 
 /**
  * Per-row bulk-fill menu for the Master Plan grid. Lets a user copy a single
@@ -269,6 +273,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
+  // Entity sections on the merged tab start collapsed each time the dialog opens.
+  const [expandedEntities, setExpandedEntities] = useState<Set<string>>(() => new Set());
+  useEffect(() => { if (open) setExpandedEntities(new Set()); }, [open]);
+  const toggleEntity = (k: string) => setExpandedEntities((e) => { const n = new Set(e); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   // Sync the active tab with the caller-provided initialTab whenever the
   // dialog is (re)opened. Falls back to "all" if none supplied.
   useEffect(() => {
@@ -556,7 +564,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     const entries = VISIBLE_ENTRIES
       // When searching, always scan every dashboard so hits aren't hidden
       // by the active tab filter.
-      .filter(([key]) => q !== '' || activeTab === 'all' || key === activeTab);
+      .filter(([key]) => q !== '' || activeTab === 'all' || key === activeTab || (activeTab === ENTITY_TAB && ENTITY_TAB_KEYS.includes(key)));
     return entries
       .map(([key, def]) => {
         const widgets = q
@@ -567,7 +575,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 def.label.toLowerCase().includes(q),
             )
           : def.widgets;
-        return { key, label: def.label, widgets };
+        return { key, label: activeTab === ENTITY_TAB && ENTITY_TAB_LABELS[key] ? ENTITY_TAB_LABELS[key] : def.label, widgets };
       })
       .filter((g) => g.widgets.length > 0);
   }, [search, activeTab]);
@@ -912,7 +920,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             <TabsTrigger value="financials" id="master-plan-tab-financials" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
               Financials
             </TabsTrigger>
-            {VISIBLE_ENTRIES.map(([k, def]) => (
+            <TabsTrigger value={ENTITY_TAB} id={`master-plan-tab-${ENTITY_TAB}`} aria-controls="master-plan-grid" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
+              FinServ &amp; Debt Advisory
+            </TabsTrigger>
+            {VISIBLE_ENTRIES.filter(([k]) => !ENTITY_TAB_KEYS.includes(k)).map(([k, def]) => (
               <TabsTrigger
                 key={k}
                 value={k}
@@ -928,7 +939,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
         {/* Screen-reader announcement of the active tab change. */}
         <div className="sr-only" role="status" aria-live="polite">
-          {`Showing ${activeTab === 'all' ? 'all dashboards' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
+          {`Showing ${activeTab === 'all' ? 'all dashboards' : activeTab === ENTITY_TAB ? 'FinServ and Debt Advisory' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
         </div>
 
         {activeTab === 'financials' ? (
@@ -978,10 +989,16 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                         style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
                         className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-20"
                       >
-                        {group.label}
+                        {activeTab === ENTITY_TAB && !search.trim() ? (
+                          <button type="button" aria-expanded={expandedEntities.has(group.key)} onClick={() => toggleEntity(group.key)} className="inline-flex items-center gap-1.5 uppercase hover:text-foreground">
+                            <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expandedEntities.has(group.key) ? 'rotate-90' : ''}`} />
+                            {group.label}
+                            <span className="normal-case font-normal opacity-60">({group.widgets.length})</span>
+                          </button>
+                        ) : group.label}
                       </td>
                     </tr>
-                    {group.widgets.map((w) => {
+                    {(activeTab !== ENTITY_TAB || search.trim() !== '' || expandedEntities.has(group.key)) && group.widgets.map((w) => {
                       const linked = sharedIndex.get(w.key);
                       const isShared = (linked?.dashboards.length ?? 0) > 1;
                       const linkedLabels = isShared
