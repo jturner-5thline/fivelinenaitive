@@ -966,7 +966,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                   {periods.map((p) => (
                     <th
                       key={p.key}
-                      className="text-right px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground min-w-24"
+                      className="text-right px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground min-w-24 border-l border-border/60"
                     >
                       {p.label}
                     </th>
@@ -998,7 +998,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                         ? linked!.dashboards.map((d) => PLANNABLE_DASHBOARDS[d].label)
                         : [];
                       return (
-                        <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
+                        <tr key={`${group.key}-${w.key}`} className="border-b border-border/60 hover:bg-muted/20">
                           <td
                             style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
                             className="px-2 py-1.5 sticky left-0 z-20 border-r border-border whitespace-nowrap w-auto shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
@@ -1075,7 +1075,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 ? formatCurrencyDisplay(rawVal)
                                 : rawVal;
                             return (
-                              <td key={p.key} className="px-1 py-1">
+                              <td key={p.key} className="p-0 border-l border-border/60 align-top">
                                 <Input
                                   type="text"
                                   inputMode="decimal"
@@ -1085,11 +1085,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   onChange={(e) =>
                                     setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
-                                  className={`h-8 text-right tabular-nums px-2 ${
+                                  className={`h-8 w-full rounded-none border-0 bg-transparent text-right tabular-nums px-2 shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus-visible:ring-offset-0 ${
                                     err
-                                      ? 'ring-1 ring-destructive bg-destructive/5 border-destructive'
+                                      ? 'ring-1 ring-inset ring-destructive bg-destructive/5'
                                       : isDirty
-                                        ? 'ring-1 ring-primary/60 bg-primary/5'
+                                        ? 'bg-primary/10'
                                         : ''
                                   }`}
                                   placeholder="—"
@@ -1102,12 +1102,12 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   }
                                 />
                                 {err && (
-                                  <div className="text-[10px] text-destructive mt-0.5 text-right leading-tight">
+                                  <div className="text-[10px] text-destructive px-2 pb-0.5 text-right leading-tight">
                                     {err}
                                   </div>
                                 )}
                                 {!err && remoteHits > 0 && (
-                                  <div className="text-[10px] text-amber-500 mt-0.5 text-right leading-tight">
+                                  <div className="text-[10px] text-amber-500 px-2 pb-0.5 text-right leading-tight">
                                     Remote update · conflict
                                   </div>
                                 )}

@@ -171,7 +171,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border">
                 <th className="sticky left-0 z-20 bg-card text-left px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground border-r border-border">Line item</th>
-                {periods.map((p) => <th key={p.key} className="text-right px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground min-w-28">{p.label}</th>)}
+                {periods.map((p) => <th key={p.key} className="text-right px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground min-w-28 border-l border-border/60">{p.label}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -188,7 +188,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
                   {expanded.has(seg.key) && FINANCIAL_ROWS.map((row, ri) => {
                     const r = si * FINANCIAL_ROWS.length + ri;
                     return (
-                      <tr key={row.key} className="border-b border-border/50">
+                      <tr key={row.key} className="border-b border-border/60 hover:bg-muted/20">
                         <td className="sticky left-0 z-[5] bg-card px-2 py-1 border-r border-border whitespace-nowrap">
                           <span className={row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
                         </td>
@@ -200,7 +200,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
                           if (focused !== k && raw.trim() && !err) display = formatFinancial(parseFinancialInput(raw)!, row.format);
                           const dirty = (raw.trim()) !== (initial[k] ?? '').trim();
                           return (
-                            <td key={p.key} className="p-0 border-l border-border/40">
+                            <td key={p.key} className="p-0 border-l border-border/60">
                               <input
                                 ref={(el) => { if (el) inputs.current.set(k, el); else inputs.current.delete(k); }}
                                 aria-label={`${seg.label} ${row.label} ${p.label}`}
