@@ -1,0 +1,1 @@
+- Financials tab stores plan:financials:{segment}:{row} per YYYY-MM and YYYY-Qn — why: monthly and quarterly figures are entered separately.
