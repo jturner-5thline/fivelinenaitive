@@ -694,6 +694,13 @@
       "when": 1795287436655,
       "tag": "0098_harden_agreement_criterion_validation",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1795289071301,
+      "tag": "0099_bulk_deal_lender_timestamp_overrides",
+      "breakpoints": true
     }
   ]
 }

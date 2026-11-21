@@ -1145,6 +1145,17 @@ var delete_deal_lender_default = defineTool27({
 // src/lib/mcp/tools/bulk-upsert-deal-lenders.ts
 import { defineTool as defineTool28 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z29 } from "npm:zod@^3.23.0";
+var timestamp = z29.string().date().or(z29.string().datetime({ offset: true })).nullable().optional();
+var timestampsSchema = z29.object({
+  submitted_at: timestamp,
+  approved_at: timestamp,
+  passed_at: timestamp,
+  declined_at: timestamp,
+  excluded_at: timestamp,
+  on_hold_at: timestamp,
+  on_deck_at: timestamp,
+  last_status_change_at: timestamp
+}).strict();
 var rowSchema = z29.object({
   deal_id: z29.string().uuid(),
   lender_id: z29.string().uuid().describe("Master lender id."),
@@ -1153,7 +1164,8 @@ var rowSchema = z29.object({
   notes: z29.string().max(1e4).nullable().optional(),
   pass_reason: z29.string().max(2e3).nullable().optional(),
   status_date: z29.string().date().or(z29.string().datetime({ offset: true })).nullable().optional(),
-  selected_contact_id: z29.string().uuid().nullable().optional()
+  selected_contact_id: z29.string().uuid().nullable().optional(),
+  timestamps: timestampsSchema.optional().describe("Explicit ISO timestamp overrides; null clears a column. Supplied columns override status_date and update existing rows even at the same stage. Omitted columns are unchanged.")
 });
 function summarize(results) {
   const count = (o) => results.filter((r) => r.outcome === o).length;
@@ -1170,7 +1182,7 @@ function summarize(results) {
 var bulk_upsert_deal_lenders_default = defineTool28({
   name: "bulk_upsert_deal_lenders",
   title: "Bulk load funding sources on deals",
-  description: "Historical/backlog load of up to 500 deal funding-source rows across deals. mode insert_only skips existing links; upsert updates stage/status/pass_reason/contact and appends new notes. Rows already at the same stage are skipped. status_date (ISO) sets last_status_change_at and the matching stage timestamp; it never defaults to now(). dry_run:true (default) returns would-insert / would-update / skipped / error counts without writing. Writes require explicit user approval. response_mode compact = per-row lender_id, deal_lender_id, outcome, stage; summary = counts plus errors only.",
+  description: "Historical/backlog load of up to 500 deal funding-source rows across deals. mode insert_only skips existing links; upsert updates stage/status/pass_reason/contact and appends new notes. Same-stage rows with explicit timestamps are updated and counted as updated; otherwise unchanged rows are skipped. timestamps supplies per-column ISO dates or null clears, preserving omitted columns and overriding status_date. status_date sets last_status_change_at and the matching stage timestamp; it never defaults to now(). dry_run:true (default) returns would-insert / would-update / skipped / error counts without writing. Writes require explicit user approval. response_mode compact = per-row lender_id, deal_lender_id, outcome, stage; summary = counts plus errors only.",
   inputSchema: {
     rows: z29.array(rowSchema).min(1).max(500),
     mode: z29.enum(["insert_only", "upsert"]).default("upsert"),
@@ -5059,7 +5071,7 @@ import { z as z51 } from "npm:zod@^3.23.0";
 var str = (max = 2e3) => z51.string().max(max).nullable().optional();
 var arr = () => z51.array(z51.string().trim().min(1).max(200)).nullable().optional();
 var num = () => z51.number().finite().nullable().optional();
-var timestamp = () => z51.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
+var timestamp2 = () => z51.string().refine((v) => !Number.isNaN(Date.parse(v)), "Must be an ISO date or timestamp").nullable().optional();
 var CRITERIA_CONFIDENCE_MEANINGS = {
   imported: "Imported criteria; not independently verified.",
   verified_call: "Confirmed by the lender on a recorded call.",
@@ -5123,20 +5135,20 @@ var LENDER_FIELD_SCHEMA = {
   gift_address: str(1e3),
   sync_source: str(200).describe("Inert historical metadata; does not reconnect FLEx."),
   flex_lender_id: str(500),
-  last_synced_from_flex: timestamp(),
+  last_synced_from_flex: timestamp2(),
   external_created_by: str(500),
-  external_last_modified: timestamp(),
+  external_last_modified: timestamp2(),
   resp_emails_sent: z51.number().int().nonnegative().nullable().optional(),
   resp_replies_received: z51.number().int().nonnegative().nullable().optional(),
   resp_reply_rate: num(),
   resp_median_hours_to_reply: num(),
   resp_reply_rate_excl_mass: num(),
-  resp_last_reply_date: timestamp(),
+  resp_last_reply_date: timestamp2(),
   resp_rating: str(200),
   resp_emails_sent_l12m: z51.number().int().nonnegative().nullable().optional(),
   resp_reply_rate_l12m: num(),
   resp_window_label: str(500),
-  resp_updated_at: timestamp()
+  resp_updated_at: timestamp2()
 };
 var LENDER_FIELD_NAMES = Object.keys(LENDER_FIELD_SCHEMA);
 async function validateLenderPatch(sb, patch) {
