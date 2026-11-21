@@ -1,3 +1,4 @@
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
@@ -954,7 +955,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             tabIndex={0}
             className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
-            <table className="w-full text-sm border-collapse">
+            <table className={SHEET_TABLE}>
               <thead className="sticky top-0 z-10" style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
                 <tr className="border-b border-border">
                   <th
@@ -974,7 +975,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => (
+                {(() => { let rowIdx = -1; return groups.map((group) => (
                   <Fragment key={group.key}>
                     <tr style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
                       <td
@@ -997,6 +998,8 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                       const linkedLabels = isShared
                         ? linked!.dashboards.map((d) => PLANNABLE_DASHBOARDS[d].label)
                         : [];
+                      rowIdx += 1;
+                      const ri = rowIdx;
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/60 hover:bg-muted/20">
                           <td
@@ -1063,7 +1066,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                               </div>
                             </div>
                           </td>
-                          {periods.map((p) => {
+                          {periods.map((p, ci) => {
                             const k = `${w.key}|${p.key}`;
                             const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
                             const err = cellErrors[k];
@@ -1080,19 +1083,27 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   type="text"
                                   inputMode="decimal"
                                   value={displayVal}
-                                  onFocus={() => setFocusedCell(k)}
+                                  data-row={ri}
+                                  data-col={ci}
+                                  onDoubleClick={sheetDoubleClick}
+                                  onFocus={(e) => { setFocusedCell(k); sheetFocus(e); }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Escape') { e.stopPropagation(); setValuesWithUndo((v) => ({ ...v, [k]: initialValues[k] ?? '' })); return; }
+                                    if ((e.key === 'Delete' || e.key === 'Backspace') && e.currentTarget.dataset.editing !== '1') { e.preventDefault(); setValuesWithUndo((v) => ({ ...v, [k]: '' })); return; }
+                                    sheetKeyDown(e);
+                                  }}
                                   onBlur={() => setFocusedCell((cur) => (cur === k ? null : cur))}
                                   onChange={(e) =>
                                     setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
-                                  className={`h-8 w-full rounded-none border-0 bg-transparent text-right tabular-nums px-2 shadow-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary focus-visible:ring-offset-0 ${
+                                  className={`${SHEET_INPUT} ${
                                     err
-                                      ? 'ring-1 ring-inset ring-destructive bg-destructive/5'
+                                      ? 'outline outline-1 -outline-offset-1 outline-destructive bg-destructive/5'
                                       : isDirty
                                         ? 'bg-primary/10'
                                         : ''
                                   }`}
-                                  placeholder="—"
+                                  placeholder=""
                                   aria-invalid={!!err}
                                   title={
                                     err ??
@@ -1118,7 +1129,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                       );
                     })}
                   </Fragment>
-                ))}
+                )); })()}
                 {groups.length === 0 && (
                   <tr>
                     <td colSpan={1 + periods.length} className="py-10 text-center text-muted-foreground">

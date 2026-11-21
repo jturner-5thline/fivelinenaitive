@@ -1,3 +1,4 @@
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ChevronRight } from 'lucide-react';
@@ -100,21 +101,6 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
     } finally { setSaving(false); }
   }
 
-  function move(r: number, c: number) {
-    const target = rowsFlat[r];
-    const p = periods[c];
-    if (!target || !p) return;
-    inputs.current.get(cellId(target.seg, target.row.key, p.key))?.focus();
-  }
-
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>, r: number, c: number) {
-    const el = e.currentTarget;
-    if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); move(e.shiftKey && e.key === 'Enter' ? r - 1 : r + 1, c); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); move(r - 1, c); }
-    else if (e.key === 'ArrowRight' && el.selectionStart === el.value.length) { e.preventDefault(); move(r, c + 1); }
-    else if (e.key === 'ArrowLeft' && el.selectionStart === 0) { e.preventDefault(); move(r, c - 1); }
-  }
-
   /** Paste a block copied from Excel (tabs/newlines) starting at this cell. */
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>, r: number, c: number) {
     const text = e.clipboardData.getData('text');
@@ -167,7 +153,7 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
         <div className="py-10 flex justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
         <div className="max-h-[60vh] overflow-auto border border-border rounded-md">
-          <table className="w-full text-sm border-collapse">
+          <table className={SHEET_TABLE}>
             <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border">
                 <th className="sticky left-0 z-20 bg-card text-left px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground border-r border-border">Line item</th>
@@ -209,16 +195,19 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
                                 inputMode="decimal"
                                 placeholder=""
                                 title={err}
-                                onFocus={(e) => { setFocused(k); requestAnimationFrame(() => e.target.select()); }}
+                                data-row={r}
+                                data-col={c}
+                                onDoubleClick={sheetDoubleClick}
+                                onFocus={(e) => { setFocused(k); sheetFocus(e); }}
                                 onBlur={() => setFocused((f) => (f === k ? null : f))}
                                 onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-                                onKeyDown={(e) => onKeyDown(e, r, c)}
+                                onKeyDown={(e) => { if (e.key === 'Escape') { setValues((v) => ({ ...v, [k]: initial[k] ?? '' })); return; } if ((e.key === 'Delete' || e.key === 'Backspace') && e.currentTarget.dataset.editing !== '1') { e.preventDefault(); setValues((v) => ({ ...v, [k]: '' })); return; } sheetKeyDown(e); }}
                                 onPaste={(e) => onPaste(e, r, c)}
                                 className={cn(
-                                  'w-full h-8 bg-transparent px-2 text-right tabular-nums outline-none focus:ring-2 focus:ring-inset focus:ring-primary',
+                                  SHEET_INPUT,
                                   display.startsWith('-') && 'text-destructive',
                                   dirty && 'bg-primary/10',
-                                  err && 'ring-1 ring-inset ring-destructive',
+                                  err && 'outline outline-1 -outline-offset-1 outline-destructive',
                                 )}
                               />
                             </td>
