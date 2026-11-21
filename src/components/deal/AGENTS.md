@@ -1,0 +1,1 @@
+- Deal Qualifiers: `deal_qualifiers` (RLS can_access_deal); panel stages edits, writes only after Save confirmation, discards on outside click — why: user requires confirmed saves.
