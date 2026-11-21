@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -25,6 +25,9 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  // Entity sections start collapsed every time the Master Plan opens.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleSeg = (k: string) => setExpanded((e) => { const n = new Set(e); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const inputs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const periods = useMemo(() => (mode === 'quarterly' ? FINANCIAL_YEARS.flatMap((y) => financialPeriods(y, 'quarterly')) : financialPeriods(year, mode)), [year, mode]);
@@ -145,6 +148,8 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
           ))}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
           <span>Monthly and quarterly figures are entered separately. Paste from Excel works.</span>
           {canEdit && (
             <Button size="sm" className="h-8" disabled={saving || dirtyKeys.length === 0} onClick={save}>
@@ -172,10 +177,15 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
             <tbody>
               {FINANCIAL_SEGMENTS.map((seg, si) => (
                 <Fragment key={seg.key}>
-                  <tr className="bg-muted/30">
-                    <td colSpan={1 + periods.length} className="sticky left-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">{seg.label}</td>
+                  <tr className="bg-muted/30 cursor-pointer hover:bg-muted/50" onClick={() => toggleSeg(seg.key)}>
+                    <td colSpan={1 + periods.length} className="sticky left-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                      <button type="button" aria-expanded={expanded.has(seg.key)} className="inline-flex items-center gap-1.5 uppercase">
+                        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', expanded.has(seg.key) && 'rotate-90')} />
+                        {seg.label}
+                      </button>
+                    </td>
                   </tr>
-                  {FINANCIAL_ROWS.map((row, ri) => {
+                  {expanded.has(seg.key) && FINANCIAL_ROWS.map((row, ri) => {
                     const r = si * FINANCIAL_ROWS.length + ri;
                     return (
                       <tr key={row.key} className="border-b border-border/50">
