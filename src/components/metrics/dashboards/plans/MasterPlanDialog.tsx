@@ -51,9 +51,11 @@ function pad(n: number) { return String(n).padStart(2, '0'); }
  * All internal loops use this instead of iterating the full registry so
  * legacy/orphan dashboards don't appear as ghost tabs.
  */
+/** Dashboards intentionally left out of the Master Plan pop-up (still shown in Insights). */
+const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review']);
 const VISIBLE_ENTRIES: [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][] =
   MASTER_PLAN_TAB_ORDER
-    .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]))
+    .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]) && !HIDDEN_MASTER_PLAN_TABS.has(k))
     .map((k) => [k, PLANNABLE_DASHBOARDS[k]] as const) as any;
 const VISIBLE_DEFS = VISIBLE_ENTRIES.map(([, d]) => d);
 /** Dashboards shown together under one entity-grouped tab (display only; plan keys unchanged). */
