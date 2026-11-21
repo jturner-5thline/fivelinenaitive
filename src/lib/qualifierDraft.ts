@@ -7,6 +7,7 @@ export interface Qualifier {
   operator?: string | null;
   value?: number | null;
   unit?: string | null;
+  group?: string | null;
 }
 
 export interface DraftQualifier extends Qualifier {
@@ -33,7 +34,7 @@ export function diffQualifiers(saved: Qualifier[], draft: DraftQualifier[]): Qua
     }
     const s = byId.get(q.id);
     if (!s) return;
-    if (s.text !== text || s.is_met !== q.is_met || s.position !== i) {
+    if (s.text !== text || s.is_met !== q.is_met || s.position !== i || (s.group ?? null) !== (q.group ?? null)) {
       changes.updates.push({ id: q.id, text, is_met: q.is_met, position: i });
     }
   });

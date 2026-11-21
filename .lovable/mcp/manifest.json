@@ -139,7 +139,7 @@
       {
         "name": "get_deal_qualifiers",
         "title": "Get deal agreement qualifiers",
-        "description": "Read the existing deal qualifier rows as one agreement record with numbered verbatim criteria, checkbox states, signed-company rule, all/any rule, source agreement and updated_at; returns null when absent.",
+        "description": "Read the existing deal qualifier rows as one agreement record with numbered verbatim criteria, checkbox states, signed-company rule, all/any rule, min_required, groups, groups_logic, criterion group keys, source agreement and updated_at; returns null when absent.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -188,6 +188,102 @@
                 "any"
               ]
             },
+            "min_required": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "groups": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "match_rule": {
+                        "type": "string",
+                        "enum": [
+                          "all",
+                          "any"
+                        ]
+                      },
+                      "min_required": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "fee": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "notes": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "label",
+                      "match_rule"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxItems": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "groups_logic": {
+              "type": "string",
+              "enum": [
+                "all_groups",
+                "each_group_separately"
+              ],
+              "default": "all_groups"
+            },
             "criteria": {
               "type": "array",
               "items": {
@@ -208,6 +304,19 @@
                   },
                   "is_met": {
                     "type": "boolean"
+                  },
+                  "group": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
                   },
                   "metric": {
                     "anyOf": [

@@ -11627,8 +11627,11 @@ export type Database = {
           created_at: string
           deal_id: string
           executed_qualifies: boolean
+          groups: Json | null
+          groups_logic: string
           id: string
           match_rule: string
+          min_required: number | null
           notes: string | null
           source: string | null
           source_file_id: string | null
@@ -11642,8 +11645,11 @@ export type Database = {
           created_at?: string
           deal_id: string
           executed_qualifies?: boolean
+          groups?: Json | null
+          groups_logic?: string
           id?: string
           match_rule?: string
+          min_required?: number | null
           notes?: string | null
           source?: string | null
           source_file_id?: string | null
@@ -11657,8 +11663,11 @@ export type Database = {
           created_at?: string
           deal_id?: string
           executed_qualifies?: boolean
+          groups?: Json | null
+          groups_logic?: string
           id?: string
           match_rule?: string
+          min_required?: number | null
           notes?: string | null
           source?: string | null
           source_file_id?: string | null
@@ -11688,6 +11697,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           deal_id: string
+          group: string | null
           id: string
           is_met: boolean
           metric: string | null
@@ -11702,6 +11712,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deal_id: string
+          group?: string | null
           id?: string
           is_met?: boolean
           metric?: string | null
@@ -11716,6 +11727,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deal_id?: string
+          group?: string | null
           id?: string
           is_met?: boolean
           metric?: string | null
@@ -32184,6 +32196,10 @@ export type Database = {
       user_has_deal_access: {
         Args: { _deal_id: string; _user_id: string }
         Returns: boolean
+      }
+      validate_qualifier_groups: {
+        Args: { p_record: Json }
+        Returns: undefined
       }
       vdr_search_chunks: {
         Args: {

@@ -133,3 +133,8 @@
 - [x] Extend existing qualifier storage/widget with agreement metadata and atomic read/upsert tools.
 - [x] 198 focused tests, isolated PostgreSQL assertions, focused lint and automatic type/build passed; signed-in desktop/phone checks used intercepted saves. 154-tool catalog extracted; schemas and verification in docs/mcp-agreement-terms.md. Full suite retains 18 unrelated failures and full lint existing errors.
 - [ ] Hosted agreement-tool revision requires republish and Claude connector refresh; real OAuth write acceptance remains unverified.
+
+## Qualifier counts and groups
+- [x] Add validated counts/groups, preserve atomic saves and fix empty-before audit.
+- [x] Extend widget/MCP; 206 tests, isolated PostgreSQL rollback checks, focused lint and automatic build passed; signed-in desktop/mobile saves intercepted.
+- [ ] Republish, then set Lango count to 3; Censys/iunu unchanged.

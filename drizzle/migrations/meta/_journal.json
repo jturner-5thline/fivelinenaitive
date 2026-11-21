@@ -701,6 +701,20 @@
       "when": 1795289071301,
       "tag": "0099_bulk_deal_lender_timestamp_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1795291798754,
+      "tag": "0100_qualifier_counts_and_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795291921307,
+      "tag": "0101_enforce_qualifier_group_consistency",
+      "breakpoints": true
     }
   ]
 }

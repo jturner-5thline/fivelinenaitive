@@ -96,3 +96,25 @@ describe('qualifier agreement confirmation', () => {
     expect(text).toHaveValue('Keep my draft');
   });
 });
+describe('qualifier counts and groups editing', () => {
+  it('stages a 3-of-4 threshold and discards it outside the widget', async () => {
+    rpc.mockResolvedValue({ data: { ...saved, criteria: Array.from({ length: 4 }, (_, position) => ({ ...saved.criteria[0], id: `11111111-1111-4111-8111-11111111111${position}`, position })) }, error: null });
+    render(<DealQualifiersPanel dealId="11111111-1111-4111-8111-111111111111" />);
+    const input = await screen.findByLabelText('Minimum qualifiers required');
+    fireEvent.change(input, { target: { value: '3' } });
+    expect(rpc).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith('upsert_deal_qualifiers_record', expect.objectContaining({ p_record: expect.objectContaining({ min_required: 3 }) })));
+  });
+  it('keeps group changes local and returns removed group criteria to the record rule', async () => {
+    rpc.mockResolvedValue({ data: { ...saved, groups: [{ key: 'core', label: 'Core', match_rule: 'all', min_required: null, fee: 10000, notes: null }], criteria: [{ ...saved.criteria[0], group: 'core' }] }, error: null });
+    render(<DealQualifiersPanel dealId="11111111-1111-4111-8111-111111111111" />);
+    fireEvent.change(await screen.findByLabelText('Group core fee'), { target: { value: '5000' } });
+    fireEvent.click(screen.getByLabelText('Delete group Core'));
+    expect(screen.queryByLabelText('Group core fee')).not.toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledTimes(1);
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByLabelText('Group core fee')).toHaveValue(10000);
+  });
+});

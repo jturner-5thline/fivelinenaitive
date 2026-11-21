@@ -11,11 +11,11 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { agreementSchema, type QualifierAgreement } from '@/lib/agreementTerms';
+import { agreementSchema, qualifierRuleText, type QualifierAgreement } from '@/lib/agreementTerms';
 import { diffQualifiers, hasChanges, type DraftQualifier, type Qualifier } from '@/lib/qualifierDraft';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 
-const emptyAgreement = { executed_qualifies: false, match_rule: 'all' as const, criteria: [], source_file_id: null, source_file_url: null, agreement_signed_date: null, notes: null };
+const emptyAgreement = { executed_qualifies: false, match_rule: 'all' as const, min_required: null, groups: null, groups_logic: 'all_groups' as const, criteria: [], source_file_id: null, source_file_url: null, agreement_signed_date: null, notes: null };
 
 /**
  * Qualifiers: agreement requirements that trigger the milestone fee.
@@ -80,6 +80,7 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
   useEffect(() => {
     if (!dirty || confirmOpen) return;
     const onDown = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest('[data-radix-popper-content-wrapper]')) return;
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) discard();
     };
     document.addEventListener('pointerdown', onDown, true);
@@ -92,7 +93,7 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
   const addRow = (afterIndex?: number) => {
     const id = `new-${crypto.randomUUID()}`;
     setDraft((d) => {
-      const row: DraftQualifier = { id, text: '', is_met: false, position: d.length, isNew: true };
+      const row: DraftQualifier = { id, text: '', is_met: false, position: d.length, isNew: true, group: afterIndex === undefined ? null : d[afterIndex]?.group ?? null };
       const at = afterIndex === undefined ? d.length : afterIndex + 1;
       return [...d.slice(0, at), row, ...d.slice(at)];
     });
@@ -117,6 +118,10 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
     }
   };
 
+  const groupList = agreement.groups ?? [];
+  const patchGroup = (key: string, values: Partial<NonNullable<QualifierAgreement['groups']>[number]>) =>
+    setAgreement((a) => ({ ...a, groups: (a.groups ?? []).map((g) => g.key === key ? { ...g, ...values } : g) }));
+  const orderedDraft = [null, ...groupList.map((g) => g.key)].flatMap((key) => draft.filter((q) => (q.group ?? null) === key));
   const metCount = draft.filter((q) => q.text.trim() && q.is_met).length;
   const total = draft.filter((q) => q.text.trim()).length;
 
@@ -146,6 +151,22 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
           <SelectTrigger aria-label="Qualifier match rule" className="h-7 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent><SelectItem value="all">All criteria required</SelectItem><SelectItem value="any">Any criterion required</SelectItem></SelectContent>
         </Select>
+        <label className="flex items-center justify-between gap-2">Minimum required
+          <Input aria-label="Minimum qualifiers required" type="number" min={1} max={draft.filter((q) => !q.group && q.text.trim()).length} placeholder="Default" value={agreement.min_required ?? ''} onChange={(e) => setAgreement((a) => ({ ...a, min_required: e.target.value === '' ? null : Number(e.target.value) }))} className="h-7 w-24 text-xs" />
+        </label>
+        {groupList.length > 0 && <Select value={agreement.groups_logic} onValueChange={(v) => setAgreement((a) => ({ ...a, groups_logic: v === 'each_group_separately' ? v : 'all_groups' }))}>
+          <SelectTrigger aria-label="Qualifier groups logic" className="h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="all_groups">Every group must pass</SelectItem><SelectItem value="each_group_separately">Each group earns its own fee</SelectItem></SelectContent>
+        </Select>}
+        {groupList.map((g) => <div key={g.key} className="space-y-2 border-l border-border pl-2">
+          <div className="flex gap-2"><Input aria-label={`Group ${g.key} label`} value={g.label} onChange={(e) => patchGroup(g.key, { label: e.target.value })} className="h-7 min-w-0 text-xs" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label={`Delete group ${g.label}`} onClick={() => { setAgreement((a) => ({ ...a, groups: (a.groups ?? []).filter((x) => x.key !== g.key) })); setDraft((d) => d.map((q) => q.group === g.key ? { ...q, group: null } : q)); }}><Trash2 className="h-3 w-3" /></Button></div>
+          <Select value={g.match_rule} onValueChange={(v) => patchGroup(g.key, { match_rule: v === 'any' ? 'any' : 'all' })}><SelectTrigger aria-label={`Group ${g.key} match rule`} className="h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All of</SelectItem><SelectItem value="any">Any 1 of</SelectItem></SelectContent></Select>
+          <div className="grid grid-cols-2 gap-2"><label>Minimum<Input aria-label={`Group ${g.key} minimum required`} type="number" min={1} placeholder="Default" value={g.min_required ?? ''} onChange={(e) => patchGroup(g.key, { min_required: e.target.value === '' ? null : Number(e.target.value) })} className="h-7 text-xs" /></label>
+            <label>Fee<Input aria-label={`Group ${g.key} fee`} type="number" min={0} value={g.fee ?? ''} onChange={(e) => patchGroup(g.key, { fee: e.target.value === '' ? null : Number(e.target.value) })} className="h-7 text-xs" /></label></div>
+          <Input aria-label={`Group ${g.key} notes`} placeholder="Notes" value={g.notes ?? ''} onChange={(e) => patchGroup(g.key, { notes: e.target.value || null })} className="h-7 text-xs" />
+        </div>)}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAgreement((a) => ({ ...a, groups: [...(a.groups ?? []), { key: crypto.randomUUID(), label: `Group ${(a.groups ?? []).length + 1}`, match_rule: 'all', min_required: null, fee: null, notes: null }] }))}><Plus className="mr-1 h-3 w-3" />Add group</Button>
         {agreement.source_file_url?.startsWith('https://') && <a className="inline-flex items-center gap-1 text-primary" href={agreement.source_file_url} target="_blank" rel="noopener noreferrer">Source agreement <ExternalLink className="h-3 w-3" /></a>}
         <details className="space-y-2">
           <summary className="cursor-pointer text-muted-foreground">Agreement details</summary>
@@ -166,8 +187,14 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
               </Button>
             </li>
           )}
-          {draft.map((q, i) => (
-            <li key={q.id} className="group flex items-start gap-2 py-1 border-b border-border/40 last:border-b-0">
+          {orderedDraft.map((q, displayIndex) => {
+            const i = draft.findIndex((row) => row.id === q.id);
+            const group = groupList.find((g) => g.key === q.group);
+            const firstInGroup = displayIndex === 0 || orderedDraft[displayIndex - 1]?.group !== q.group;
+            return <li key={q.id}>
+            {firstInGroup && group && <div className="mt-3 mb-1 text-xs font-semibold break-words">{group.label}: {group.min_required !== null ? `At least ${group.min_required} of:` : group.match_rule === 'all' ? 'All of:' : 'At least 1 of:'}{group.fee !== null && ` · ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(group.fee)}`}</div>}
+            <div className="group flex items-start gap-2 py-1 border-b border-border/40">
+
               <span className="mt-1 text-xs text-muted-foreground tabular-nums">{i + 1}.</span>
               <Checkbox
                 checked={q.is_met}
@@ -175,6 +202,7 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
                 aria-label={q.is_met ? 'Mark qualifier not met' : 'Mark qualifier met'}
                 className="mt-1"
               />
+              <div className="flex-1 min-w-0">
               <textarea
                 rows={1}
                 value={q.text}
@@ -188,10 +216,12 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
                   if (e.key === 'Escape') { e.preventDefault(); discard(); }
                 }}
                 className={cn(
-                  'flex-1 min-w-0 resize-none bg-transparent text-sm leading-5 py-0.5 rounded-sm outline-none focus:bg-muted/30 px-1',
+                  'w-full min-w-0 resize-none bg-transparent text-sm leading-5 py-0.5 rounded-sm outline-none focus:bg-muted/30 px-1',
                   q.is_met && 'text-muted-foreground line-through',
                 )}
               />
+              {groupList.length > 0 && <Select value={q.group ?? '__none__'} onValueChange={(v) => patch(q.id, { group: v === '__none__' ? null : v })}><SelectTrigger aria-label={`Qualifier ${i + 1} group`} className="h-6 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__none__">Record-level rule</SelectItem>{groupList.map((g) => <SelectItem key={g.key} value={g.key}>{g.label || g.key}</SelectItem>)}</SelectContent></Select>}
+              </div>
               <Button variant="ghost" size="icon"
                 type="button"
                 onClick={() => setDraft((d) => d.filter((x) => x.id !== q.id))}
@@ -200,11 +230,12 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
-            </li>
-          ))}
+            </div></li>;
+          })}
         </ul>
       )}
 
+      {!loading && <div className="mt-2 text-xs text-muted-foreground break-words">Signed by company counts: {agreement.executed_qualifies ? 'Yes' : 'No'} · {qualifierRuleText(agreement.match_rule, agreement.min_required, draft.filter((q) => !q.group && q.text.trim()).length)}{groupList.length > 0 && ` · ${agreement.groups_logic === 'all_groups' ? 'Every group must pass' : 'Each group earns its own fee'}`}</div>}
       {dirty && (
         <div className="mt-2 flex items-center justify-end gap-2">
           <span className="mr-auto text-[11px] text-muted-foreground">Unsaved changes</span>

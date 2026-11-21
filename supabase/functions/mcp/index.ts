@@ -14,19 +14,43 @@ var criterionSchema = z.object({
   position: z.number().int().nonnegative(),
   text: z.string().min(1).max(2e4).refine((s2) => s2.trim().length > 0),
   is_met: z.boolean().optional(),
+  group: z.string().min(1).max(100).nullable().default(null),
   metric: z.enum(["total_commitment", "interest_only_months", "term_months", "interest_rate", "all_in_rate", "advance_rate", "min_balance", "personal_guarantee", "board_seat", "lender_equity", "other"]).nullable().default(null),
   operator: z.enum([">=", "<=", "=", "none"]).nullable().default(null),
   value: z.number().finite().nullable().default(null),
   unit: z.string().max(50).nullable().default(null)
 });
-var agreementSchema = z.object({
+var qualifierGroupSchema = z.object({
+  key: z.string().min(1).max(100),
+  label: z.string().min(1).max(200),
+  match_rule: z.enum(["all", "any"]),
+  min_required: z.number().int().min(1).nullable().default(null),
+  fee: z.number().finite().nonnegative().nullable().default(null),
+  notes: z.string().max(2e4).nullable().default(null)
+});
+var agreementFields = z.object({
   executed_qualifies: z.boolean(),
   match_rule: z.enum(["all", "any"]),
+  min_required: z.number().int().min(1).nullable().default(null),
+  groups: z.array(qualifierGroupSchema).max(200).nullable().default(null),
+  groups_logic: z.enum(["all_groups", "each_group_separately"]).default("all_groups"),
   criteria: z.array(criterionSchema).max(200).refine((rows) => new Set(rows.map((r) => r.position)).size === rows.length, "Positions must be unique"),
   source_file_id: z.string().max(1e3).nullable().default(null),
   source_file_url: z.string().url().refine((s2) => new URL(s2).protocol === "https:", "Use an HTTPS agreement link").nullable().default(null),
   agreement_signed_date: agreementDate.nullable().default(null),
   notes: z.string().max(2e4).nullable().default(null)
+});
+var agreementSchema = agreementFields.superRefine((record, ctx) => {
+  const groups = record.groups ?? [];
+  const keys = new Set(groups.map((g) => g.key));
+  if (keys.size !== groups.length) ctx.addIssue({ code: "custom", path: ["groups"], message: "Group keys must be unique" });
+  record.criteria.forEach((c, i) => {
+    if (c.group && !keys.has(c.group)) ctx.addIssue({ code: "custom", path: ["criteria", i, "group"], message: "Choose an existing group" });
+  });
+  if (record.min_required !== null && record.min_required > record.criteria.filter((c) => !c.group).length) ctx.addIssue({ code: "custom", path: ["min_required"], message: "Required count must not exceed ungrouped criteria" });
+  groups.forEach((g, i) => {
+    if (g.min_required !== null && g.min_required > record.criteria.filter((c) => c.group === g.key).length) ctx.addIssue({ code: "custom", path: ["groups", i, "min_required"], message: "Required count must not exceed criteria in this group" });
+  });
 });
 var feeFields = {
   retainer_fee: z.number().finite().nonnegative().nullable().optional(),
@@ -221,7 +245,7 @@ import { z as z3 } from "npm:zod@^3.23.0";
 var get_deal_qualifiers_default = defineTool2({
   name: "get_deal_qualifiers",
   title: "Get deal agreement qualifiers",
-  description: "Read the existing deal qualifier rows as one agreement record with numbered verbatim criteria, checkbox states, signed-company rule, all/any rule, source agreement and updated_at; returns null when absent.",
+  description: "Read the existing deal qualifier rows as one agreement record with numbered verbatim criteria, checkbox states, signed-company rule, all/any rule, min_required, groups, groups_logic, criterion group keys, source agreement and updated_at; returns null when absent.",
   inputSchema: { deal_id: z3.string().uuid() },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id }, ctx) => {
@@ -239,7 +263,7 @@ var upsert_deal_qualifiers_default = defineTool3({
   name: "upsert_deal_qualifiers",
   title: "Replace deal agreement qualifiers",
   description: "Atomically replace the entire agreement qualifier record and ordered criteria in the existing widget storage. Keep text verbatim. Include criterion id to preserve checkbox state when editing text; optional is_met checks/unchecks. Omitted agreement metadata clears it. Identical retries do not write or audit. dry_run defaults true; replacement/removal requires explicit approval. Stale expected_updated_at returns current record.",
-  inputSchema: { deal_id: z4.string().uuid(), ...agreementSchema.shape, source: z4.string().max(1e3).default("mcp"), change_reason: z4.string().max(2e3).optional(), expected_updated_at: z4.string().datetime({ offset: true }).optional(), dry_run: z4.boolean().default(true) },
+  inputSchema: { deal_id: z4.string().uuid(), ...agreementFields.shape, source: z4.string().max(1e3).default("mcp"), change_reason: z4.string().max(2e3).optional(), expected_updated_at: z4.string().datetime({ offset: true }).optional(), dry_run: z4.boolean().default(true) },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, source, change_reason, expected_updated_at, dry_run, ...record }, ctx) => {
     const denied = requireAuth(ctx);
@@ -1015,7 +1039,7 @@ var delete_deal_calendar_item_default = defineTool22({
 // src/lib/mcp/tools/list-deal-qualifiers.ts
 import { defineTool as defineTool23 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z24 } from "npm:zod@^3.23.0";
-var COLS = "id, deal_id, text, is_met, position, created_at, updated_at";
+var COLS = "id, deal_id, text, is_met, position, created_at, updated_at, group";
 var list_deal_qualifiers_default = defineTool23({
   name: "list_deal_qualifiers",
   title: "List deal qualifiers",
@@ -1028,7 +1052,9 @@ var list_deal_qualifiers_default = defineTool23({
     const { data, error } = await supabaseForUser(ctx).from("deal_qualifiers").select(COLS).eq("deal_id", deal_id).order("position").order("created_at");
     if (error) return errorResult(error.message);
     const rows = data ?? [];
-    return textResult({ deal_id, total: rows.length, met: rows.filter((r) => r.is_met).length, qualifiers: rows });
+    const { data: agreement, error: agreementError } = await supabaseForUser(ctx).rpc("get_deal_qualifiers_record", { p_deal_id: deal_id });
+    if (agreementError) return errorResult(agreementError.message);
+    return textResult({ agreement, deal_id, total: rows.length, met: rows.filter((r) => r.is_met).length, qualifiers: rows });
   }
 });
 

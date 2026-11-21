@@ -7,7 +7,7 @@ import upsertTool from '../tools/upsert-deal-qualifiers';
 import { requireAuth, supabaseForUser } from '../supabase';
 const rpc = vi.fn();
 const feeDefaults = { retainer_fee: undefined, milestone_fee: undefined, success_fee_percent: undefined, success_fee_minimum: undefined, exclusivity: undefined, contract_start_date: undefined, contract_end_date: undefined, change_reason: undefined, expected_updated_at: undefined };
-const qualifierDefaults = { source_file_id: null, source_file_url: null, agreement_signed_date: null, notes: null, change_reason: undefined, expected_updated_at: undefined };
+const qualifierDefaults = { min_required: null, groups: null, groups_logic: 'all_groups' as const, source_file_id: null, source_file_url: null, agreement_signed_date: null, notes: null, change_reason: undefined, expected_updated_at: undefined };
 const id = '11111111-1111-4111-8111-111111111111';
 beforeEach(() => { vi.clearAllMocks(); rpc.mockResolvedValue({ data: { changed: true }, error: null }); vi.mocked(supabaseForUser).mockReturnValue({ rpc } as unknown as ReturnType<typeof supabaseForUser>); });
 describe('agreement tools', () => {
@@ -29,7 +29,7 @@ describe('agreement tools', () => {
     expect(await getTool.handler({ deal_id: id }, {} as Parameters<typeof getTool.handler>[1])).toBeNull();
   });
   it('replaces the full record through one atomic call', async () => {
-    await upsertTool.handler({ ...qualifierDefaults, deal_id: id, executed_qualifies: false, match_rule: 'any', criteria: [{ id: undefined, position: 0, text: ' Verbatim ', is_met: true, metric: null, operator: null, value: null, unit: null }], source: 'mcp', dry_run: false }, {} as Parameters<typeof upsertTool.handler>[1]);
+    await upsertTool.handler({ ...qualifierDefaults, deal_id: id, executed_qualifies: false, match_rule: 'any', criteria: [{ id: undefined, group: null, position: 0, text: ' Verbatim ', is_met: true, metric: null, operator: null, value: null, unit: null }], source: 'mcp', dry_run: false }, {} as Parameters<typeof upsertTool.handler>[1]);
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(rpc.mock.calls[0][1]).toMatchObject({ p_deal_id: id, p_dry_run: false, p_record: { executed_qualifies: false, match_rule: 'any', criteria: [{ text: ' Verbatim ', is_met: true }], source_file_url: null } });
   });

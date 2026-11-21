@@ -1,0 +1,335 @@
+[
+  {
+    "name": "get_deal_qualifiers",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deal_id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "deal_id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "upsert_deal_qualifiers",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deal_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "executed_qualifies": {
+          "type": "boolean"
+        },
+        "match_rule": {
+          "type": "string",
+          "enum": [
+            "all",
+            "any"
+          ]
+        },
+        "min_required": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "groups": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "match_rule": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "any"
+                    ]
+                  },
+                  "min_required": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "fee": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "key",
+                  "label",
+                  "match_rule"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 200
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "groups_logic": {
+          "type": "string",
+          "enum": [
+            "all_groups",
+            "each_group_separately"
+          ],
+          "default": "all_groups"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "is_met": {
+                "type": "boolean"
+              },
+              "group": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "metric": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "total_commitment",
+                      "interest_only_months",
+                      "term_months",
+                      "interest_rate",
+                      "all_in_rate",
+                      "advance_rate",
+                      "min_balance",
+                      "personal_guarantee",
+                      "board_seat",
+                      "lender_equity",
+                      "other"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "operator": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      ">=",
+                      "<=",
+                      "=",
+                      "none"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 50
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              }
+            },
+            "required": [
+              "position",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 200
+        },
+        "source_file_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source_file_url": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uri"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "agreement_signed_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 20000
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 1000,
+          "default": "mcp"
+        },
+        "change_reason": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "expected_updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": [
+        "deal_id",
+        "executed_qualifies",
+        "match_rule",
+        "criteria"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  },
+  {
+    "name": "list_deal_qualifiers",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "deal_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Deal id."
+        }
+      },
+      "required": [
+        "deal_id"
+      ],
+      "additionalProperties": false,
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+]

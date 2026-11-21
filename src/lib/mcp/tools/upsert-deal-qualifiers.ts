@@ -1,11 +1,11 @@
 import { defineTool } from '@lovable.dev/mcp-js';
 import { z } from 'zod';
-import { agreementSchema } from '../../agreementTerms';
+import { agreementSchema, agreementFields } from '../../agreementTerms';
 import { requireAuth, supabaseForUser, textResult, errorResult } from '../supabase';
 export default defineTool({
   name: 'upsert_deal_qualifiers', title: 'Replace deal agreement qualifiers',
   description: 'Atomically replace the entire agreement qualifier record and ordered criteria in the existing widget storage. Keep text verbatim. Include criterion id to preserve checkbox state when editing text; optional is_met checks/unchecks. Omitted agreement metadata clears it. Identical retries do not write or audit. dry_run defaults true; replacement/removal requires explicit approval. Stale expected_updated_at returns current record.',
-  inputSchema: { deal_id: z.string().uuid(), ...agreementSchema.shape, source: z.string().max(1000).default('mcp'), change_reason: z.string().max(2000).optional(), expected_updated_at: z.string().datetime({ offset: true }).optional(), dry_run: z.boolean().default(true) },
+  inputSchema: { deal_id: z.string().uuid(), ...agreementFields.shape, source: z.string().max(1000).default('mcp'), change_reason: z.string().max(2000).optional(), expected_updated_at: z.string().datetime({ offset: true }).optional(), dry_run: z.boolean().default(true) },
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ deal_id, source, change_reason, expected_updated_at, dry_run, ...record }, ctx) => {
     const denied = requireAuth(ctx); if (denied) return denied;
