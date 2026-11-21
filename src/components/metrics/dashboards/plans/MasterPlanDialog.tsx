@@ -52,7 +52,7 @@ function pad(n: number) { return String(n).padStart(2, '0'); }
  * legacy/orphan dashboards don't appear as ghost tabs.
  */
 /** Dashboards intentionally left out of the Master Plan pop-up (still shown in Insights). */
-const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review']);
+const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review', 'revenue-customers']);
 const VISIBLE_ENTRIES: [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][] =
   MASTER_PLAN_TAB_ORDER
     .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]) && !HIDDEN_MASTER_PLAN_TABS.has(k))
