@@ -26,6 +26,7 @@ import { Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { FinancialsPlanGrid } from './FinancialsPlanGrid';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -908,6 +909,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             >
               All
             </TabsTrigger>
+            <TabsTrigger value="financials" id="master-plan-tab-financials" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
+              Financials
+            </TabsTrigger>
             {VISIBLE_ENTRIES.map(([k, def]) => (
               <TabsTrigger
                 key={k}
@@ -927,7 +931,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           {`Showing ${activeTab === 'all' ? 'all dashboards' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
         </div>
 
-        {loading ? (
+        {activeTab === 'financials' ? (
+          <FinancialsPlanGrid canEdit />
+        ) : loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
