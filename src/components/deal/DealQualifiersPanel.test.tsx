@@ -42,6 +42,28 @@ describe('5th Line account availability', () => {
   });
 });
 describe('qualifier agreement confirmation', () => {
+  it('allows editing the final requirement and adding/deleting rows without saving until confirmation', async () => {
+    const criteria = Array.from({ length: 7 }, (_, position) => ({
+      id: `11111111-1111-4111-8111-11111111111${position}`,
+      position, text: `Requirement ${position + 1}`, is_met: false,
+    }));
+    rpc.mockResolvedValue({ data: { ...saved, criteria }, error: null });
+    render(<DealQualifiersPanel dealId="11111111-1111-4111-8111-111111111111" />);
+    await screen.findByDisplayValue('Requirement 7');
+    fireEvent.change(screen.getByDisplayValue('Requirement 7'), { target: { value: 'Edited final requirement' } });
+    fireEvent.click(screen.getAllByLabelText('Mark qualifier met')[6]);
+    fireEvent.click(screen.getByLabelText('Add qualifier'));
+    expect(screen.getAllByLabelText('Qualifier text')).toHaveLength(8);
+    fireEvent.click(screen.getAllByLabelText('Delete qualifier')[7]);
+    expect(screen.getAllByLabelText('Qualifier text')).toHaveLength(7);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    expect(rpc).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByDisplayValue('Requirement 7')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Mark qualifier met')).toHaveLength(7);
+  });
   it('stages text and signed-company edits, then discards on outside click', async () => {
     render(<DealQualifiersPanel dealId="11111111-1111-4111-8111-111111111111" />);
     const text = await screen.findByLabelText('Qualifier text');

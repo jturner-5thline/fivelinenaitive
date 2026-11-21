@@ -5279,7 +5279,7 @@ export default function DealDetail() {
                                 )}
                                 {milestonesCalendarWidget && (
                                   <div className="relative min-w-0 min-h-[240px] lg:min-h-0 lg:order-4">
-                                    <div className="lg:absolute lg:inset-0 [&>*]:!h-full [&>*]:!min-h-0 overflow-hidden">{milestonesCalendarWidget}</div>
+                                    <div>{milestonesCalendarWidget}</div>
                                   </div>
                                 )}
                                 {finservWidget && <div className="min-w-0">{finservWidget}</div>}

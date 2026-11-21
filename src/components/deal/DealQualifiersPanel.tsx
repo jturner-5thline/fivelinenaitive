@@ -54,6 +54,23 @@ function DealQualifiersEditor({ dealId }: { dealId: string }) {
 
   useEffect(() => { setLoading(true); void load(); }, [load]);
 
+  // Fit saved text as well as typed text, including after the rail changes width.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const resizeText = () => {
+      root.querySelectorAll('textarea').forEach((textarea) => {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      });
+    };
+    resizeText();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(resizeText);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [draft]);
+
   const changes = useMemo(() => diffQualifiers(saved, draft), [saved, draft]);
   const dirty = hasChanges(changes) || draft.some((q) => q.isNew) || JSON.stringify(agreement) !== JSON.stringify(savedAgreement);
 
