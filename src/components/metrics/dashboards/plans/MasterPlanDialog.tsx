@@ -921,7 +921,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               Financials
             </TabsTrigger>
             <TabsTrigger value={ENTITY_TAB} id={`master-plan-tab-${ENTITY_TAB}`} aria-controls="master-plan-grid" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
-              FinServ &amp; Debt Advisory
+              KPIs &amp; Metrics
             </TabsTrigger>
             {VISIBLE_ENTRIES.filter(([k]) => !ENTITY_TAB_KEYS.includes(k)).map(([k, def]) => (
               <TabsTrigger
@@ -939,7 +939,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
         {/* Screen-reader announcement of the active tab change. */}
         <div className="sr-only" role="status" aria-live="polite">
-          {`Showing ${activeTab === 'all' ? 'all dashboards' : activeTab === ENTITY_TAB ? 'FinServ and Debt Advisory' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
+          {`Showing ${activeTab === 'all' ? 'all dashboards' : activeTab === ENTITY_TAB ? 'KPIs and Metrics' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
         </div>
 
         {activeTab === 'financials' ? (
