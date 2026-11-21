@@ -798,16 +798,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       <DialogContent className="max-w-[92vw] w-[92vw]">
         <DialogHeader>
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
-          <DialogDescription>
-            Enter monthly plan/target values for every widget across every
-            Insights dashboard. Powers the upcoming variance-to-plan
-            comparisons. Leave blank to clear. Shorthand supported:{' '}
-            <span className="font-mono">1.2M</span>,{' '}
-            <span className="font-mono">500k</span>.
-            <span className="block mt-1 text-xs">
-              Widgets marked <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[9px] uppercase tracking-wider">Linked</span> appear on multiple dashboards — a single edit syncs across every tab and saves to all linked dashboards at once. Untouched fields are never overwritten.
-            </span>
-          </DialogDescription>
+          <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center justify-between gap-3">
