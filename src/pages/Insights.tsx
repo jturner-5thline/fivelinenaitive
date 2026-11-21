@@ -45,7 +45,6 @@ import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeB
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { RevenueCustomersDashboard } from "@/components/insights/revenue-customers/RevenueCustomersDashboard";
 import { MasterPlanButton } from "@/components/metrics/dashboards/plans/MasterPlanButton";
-import { HeadcountButton } from "@/components/insights/HeadcountButton";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { useUserGridLayout } from "@/hooks/useUserGridLayout";
@@ -2569,7 +2568,6 @@ function MetricsInner() {
                 <InsightsTimeframePicker className="min-w-0 shrink [&>button]:min-w-0 [&>button]:truncate" />
               )}
               {selectedDashboard !== 'management-review' && <div className="shrink-0"><MasterPlanButton /></div>}
-              <div className="shrink-0"><HeadcountButton /></div>
               <div className="shrink-0"><SyncStatusBar /></div>
             </div>
             <div className="flex items-center justify-end gap-2 w-0 min-w-full empty:hidden">

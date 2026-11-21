@@ -1,0 +1,77 @@
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Loader2, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
+import { useCompany } from '@/hooks/useCompany';
+import { useCanEditMasterPlan } from '@/hooks/useCanEditMasterPlan';
+import { useMonthlyHeadcount } from '@/hooks/useMonthlyHeadcount';
+import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, HEADCOUNT_MONTHS, headcountKey, headcountSummary, headcountMonthlyTotal, HEADCOUNT_DUPLICATE_NOTE, parseHeadcount, type HeadcountDraft } from '@/lib/monthlyHeadcount';
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+/** Headcount tab of the Master Plan: 5th Line only, spreadsheet-style. */
+export function HeadcountGrid() {
+  const { company } = useCompany();
+  const { canEditMasterPlan } = useCanEditMasterPlan();
+  if (company?.id !== HEADCOUNT_COMPANY_ID) return null;
+  return <HeadcountTable companyId={company.id} canEdit={canEditMasterPlan} />;
+}
+
+function HeadcountTable({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [draft, setDraft] = useState<HeadcountDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [pending, setPending] = useState<(() => void) | null>(null);
+  const query = useMonthlyHeadcount(companyId, year, true);
+  const baseline = query.data ?? {};
+  const values = draft ?? baseline;
+  const dirty = draft !== null && Object.keys({ ...baseline, ...draft }).some(key => (draft[key] ?? '') !== (baseline[key] ?? ''));
+  const invalid = Object.values(values).some(value => { try { parseHeadcount(value); return false; } catch { return true; } });
+  const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const summary = (entries: string[]) => { try { return headcountSummary(entries); } catch { return { total: 0, average: null }; } };
+  function request(action: () => void) { if (saving) return; if (dirty) setPending(() => action); else action(); }
+  function changeYear(next: number) { request(() => { setDraft(null); setYear(next); }); }
+  async function save() {
+    if (!draft || !query.isSuccess) return;
+    setSaving(true);
+    try { await query.save(draft, baseline); setDraft(null); toast.success('Headcount saved'); }
+    catch { toast.error('Headcount could not be saved. Your changes are still here; please retry.'); }
+    finally { setSaving(false); }
+  }
+  const monthTotal = (i: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => values[headcountKey(u.realmId, i)] ?? '')); } catch { return null; } };
+  const th = 'px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted';
+  return <div className="space-y-2">
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs text-muted-foreground">FTE by unit · {dirty ? 'Unsaved changes' : 'Saved'}</span>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" aria-label="Previous year" disabled={saving || year <= 1900} onClick={() => changeYear(year - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+        <span className="w-12 text-center font-medium tabular-nums">{year}</span>
+        <Button variant="ghost" size="icon" aria-label="Next year" disabled={saving || year >= 2200} onClick={() => changeYear(year + 1)}><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    </div>
+    {query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
+      <div className="max-h-[60vh] overflow-auto border border-border">
+        <table className={cn(SHEET_TABLE, 'min-w-[1000px]')}>
+          <thead className="sticky top-0 z-10"><tr><th className={cn(th, 'sticky left-0 z-20 text-left w-32')}>Unit</th>{HEADCOUNT_MONTHS.map(m => <th key={m} className={cn(th, 'text-right min-w-16')}>{m}</th>)}<th className={cn(th, 'text-right whitespace-nowrap')} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
+          <tbody>{HEADCOUNT_UNITS.map((unit, row) => <tr key={unit.realmId}>
+            <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium" title={unit.name}>{unit.label}</th>
+            {HEADCOUNT_MONTHS.map((month, index) => { const key = headcountKey(unit.realmId, index); const value = values[key] ?? ''; let valid = true; try { parseHeadcount(value); } catch { valid = false; }
+              return <td key={month} className={cn('p-0', value !== (baseline[key] ?? '') && 'bg-primary/10', !valid && 'bg-destructive/15')}>
+                <input aria-label={`${unit.label} ${month} ${year}`} aria-invalid={!valid} inputMode="decimal" value={value} disabled={!canEdit || saving}
+                  data-row={row} data-col={index} className={cn(SHEET_INPUT, 'font-mono', !valid && 'text-destructive')}
+                  onChange={e => setDraft({ ...values, [key]: e.target.value })}
+                  onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDraft({ ...values, [key]: baseline[key] ?? '' }); return; } if ((e.key === 'Delete' || e.key === 'Backspace') && e.currentTarget.dataset.editing !== '1') { e.preventDefault(); setDraft({ ...values, [key]: '' }); return; } sheetKeyDown(e); }}
+                  onFocus={sheetFocus} onDoubleClick={sheetDoubleClick} /></td>; })}
+            <td className="px-2 text-right font-mono tabular-nums bg-muted/40">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => values[headcountKey(unit.realmId, i)] ?? '')).average)}</td>
+          </tr>)}</tbody>
+          <tfoot><tr className="font-medium bg-muted/40"><th className="sticky left-0 z-10 bg-muted px-2 py-1 text-left"><span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">Total</span></th>
+            {HEADCOUNT_MONTHS.map((m, i) => <td key={m} title={HEADCOUNT_DUPLICATE_NOTE} className="px-2 text-right font-mono tabular-nums">{fmt(monthTotal(i))}</td>)}
+            <td title={HEADCOUNT_DUPLICATE_NOTE} className="px-2 text-right font-mono tabular-nums">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => { const t = monthTotal(i); return t === null ? '' : String(Math.round(t * 100) / 100); })).average)}</td></tr></tfoot>
+        </table>
+      </div>}
+    {invalid && <p role="alert" className="text-sm text-destructive">Enter a headcount from 0 to 9,999.99 with up to two decimal places.</p>}
+    {canEdit && <div className="flex justify-end gap-2"><Button size="sm" variant="outline" disabled={!dirty || saving} onClick={() => setDraft(null)}>Discard</Button><Button size="sm" disabled={!dirty || invalid || saving || !query.isSuccess} onClick={save}>{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}Save Changes</Button></div>}
+    <AlertDialog open={!!pending} onOpenChange={open => { if (!open) setPending(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved headcount?</AlertDialogTitle><AlertDialogDescription>Your changes have not been saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { pending?.(); setPending(null); }}>Discard changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </div>;
+}

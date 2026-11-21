@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
-import { HeadcountButton } from './HeadcountButton';
+import { HeadcountGrid } from './HeadcountGrid';
 const mocks = vi.hoisted(() => ({ save: vi.fn(), companyId: '44556c46-9127-4b12-b14e-d6fee784afcf', canEdit: true }));
 vi.mock('@/hooks/useCompany', () => ({ useCompany: () => ({ company: { id: mocks.companyId } }) }));
 vi.mock('@/hooks/useCanEditMasterPlan', () => ({ useCanEditMasterPlan: () => ({ canEditMasterPlan: mocks.canEdit }) }));
 vi.mock('@/hooks/useMonthlyHeadcount', () => ({ useMonthlyHeadcount: () => ({ data: {}, isSuccess: true, save: mocks.save }) }));
 afterEach(cleanup);
 beforeEach(() => { mocks.companyId = HEADCOUNT_COMPANY_ID; mocks.canEdit = true; mocks.save.mockReset().mockResolvedValue(undefined); });
-function open() { render(<HeadcountButton />); fireEvent.click(screen.getByRole('button', { name: 'Headcount' })); }
+function open() { render(<HeadcountGrid />); }
 describe('headcount editor', () => {
   it('keeps edits local until save and submits fractional input', async () => {
     open();
@@ -38,6 +38,6 @@ describe('headcount editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     expect(screen.getByLabelText(/Debt Jan/)).toHaveValue('1');
   });
-  it('does not expose the tool in another workspace', () => { mocks.companyId = 'another'; render(<HeadcountButton />); expect(screen.queryByRole('button', { name: 'Headcount' })).toBeNull(); });
+  it('does not expose the tool in another workspace', () => { mocks.companyId = 'another'; const { container } = render(<HeadcountGrid />); expect(container).toBeEmptyDOMElement(); });
   it('makes the table read-only for non-editors', () => { mocks.canEdit = false; open(); expect(screen.getByLabelText(/Debt Jan/)).toBeDisabled(); expect(screen.queryByRole('button', { name: 'Save Changes' })).toBeNull(); });
 });
