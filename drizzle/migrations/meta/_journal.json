@@ -666,6 +666,13 @@
       "when": 1795187371267,
       "tag": "0094_contact_type_respect_clear",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1795284760818,
+      "tag": "0095_create_deal_qualifiers",
+      "breakpoints": true
     }
   ]
 }

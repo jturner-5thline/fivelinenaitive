@@ -50,3 +50,4 @@
 - `lender_deal_history` self-fills workspace, dedupe_key and confirm stamps via own trigger; any member may confirm/reject — why: additive-only.
 - `lender_intro_paths` self-fills workspace/dedupe_key via its own trigger; Relationships UI never parses/syncs relationship_owners — why: additive-only.
 - Lender pass detection gates senders in `_shared/lenderPassSender.ts` before any AI call, resolves lender/deal server-side and only inserts (skips known gmail_message_id); pass queue page is read-only — why: additive-only, legacy duplicate rows stay.
+- Deal Qualifiers live in `deal_qualifiers` (RLS via can_access_deal); DealQualifiersPanel stages all edits locally and writes only after a Save confirmation, discarding on outside click — why: user requires explicit save confirmation for milestone-fee requirements.

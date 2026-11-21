@@ -102,6 +102,7 @@ import { ReferralSourceContactInput } from '@/components/ui/referral-source-cont
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from '@/components/deals/CreateTaskForMentionDialog';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
+import { DealQualifiersPanel } from '@/components/deal/DealQualifiersPanel';
 import { FinServProjectsCard } from '@/components/deal/FinServProjectsCard';
 import { useFinservProjects } from '@/hooks/useFinservProjects';
 import { FinServMrrField } from '@/components/deal/FinServMrrField';
@@ -5198,10 +5199,13 @@ export default function DealDetail() {
                                 <div className="shrink-0 [&_.deal-milestones-widget]:!border-0 [&_.deal-milestones-widget]:!shadow-none [&_.deal-milestones-widget]:!bg-transparent [&_.deal-milestones-widget]:!rounded-none">{milestonesWidget}</div>
                               )}
                               {showCombinedCalendar && (
-                                <div className={cn("flex-1 min-h-[160px] flex flex-col", milestonesWidget && "border-t border-[#1E2C46]")}>
+                                <div className={cn("flex-1 min-h-[100px] flex flex-col", milestonesWidget && "border-t border-[#1E2C46]")}>
                                   <CalendarPanel deal={deal} listOnly />
                                 </div>
                               )}
+                              <div className="flex-1 min-h-[150px] max-h-[55%] overflow-y-auto border-t border-border">
+                                <DealQualifiersPanel dealId={deal.id} />
+                              </div>
                             </section>
                           ) : null;
                           const hasLeftTop = !!(milestonesCalendarWidget || fundingMixWidget);

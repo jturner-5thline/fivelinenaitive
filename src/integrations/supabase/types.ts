@@ -11620,6 +11620,54 @@ export type Database = {
           },
         ]
       }
+      deal_qualifiers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          id: string
+          is_met: boolean
+          position: number
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          id?: string
+          is_met?: boolean
+          position?: number
+          text?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          id?: string
+          is_met?: boolean
+          position?: number
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_qualifiers_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_qualifiers_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+        ]
+      }
       deal_related_parties: {
         Row: {
           contact_id: string | null
