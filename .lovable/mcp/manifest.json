@@ -11433,6 +11433,149 @@
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
         "outputSchema": null
+      },
+      {
+        "name": "list_deal_qualifiers",
+        "title": "List deal qualifiers",
+        "description": "List a deal's Qualifiers (agreement requirements that trigger the milestone fee) in display order, with is_met showing whether each has been met in the term sheet.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Deal id."
+            }
+          },
+          "required": [
+            "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_deal_qualifier",
+        "title": "Add deal qualifier",
+        "description": "Add one Qualifier to a deal (appended to the end unless position is given). Requires explicit user approval before calling.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Deal id."
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000,
+              "description": "Qualifier free text."
+            },
+            "is_met": {
+              "type": "boolean",
+              "description": "Whether it is already met in the term sheet (default false)."
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Sort position; defaults to last."
+            }
+          },
+          "required": [
+            "deal_id",
+            "text"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_deal_qualifier",
+        "title": "Update deal qualifier",
+        "description": "Edit a Qualifier's text, check/uncheck it (is_met), or move it (position). Only supplied fields change. Requires explicit user approval before calling.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Qualifier id from list_deal_qualifiers."
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 5000,
+              "description": "New text."
+            },
+            "is_met": {
+              "type": "boolean",
+              "description": "true = met in the term sheet (checked), false = unchecked."
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "New sort position."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_deal_qualifier",
+        "title": "Delete deal qualifier",
+        "description": "Permanently delete one Qualifier by id. Requires confirm: true and explicit user approval.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Qualifier id."
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
       }
     ]
   }
