@@ -5205,9 +5205,11 @@ export default function DealDetail() {
                                   <CalendarPanel deal={deal} listOnly />
                                 </div>
                               )}
-                              <div className="shrink-0 min-h-[150px] max-h-[420px] overflow-y-auto border-t border-border">
-                                <DealQualifiersPanel dealId={deal.id} />
-                              </div>
+                              {hasNaitivePipelineAccess && (
+                                <div className="shrink-0 min-h-[150px] max-h-[420px] overflow-y-auto border-t border-border">
+                                  <DealQualifiersPanel dealId={deal.id} />
+                                </div>
+                              )}
                             </section>
                           ) : null;
                           const hasLeftTop = !!(milestonesCalendarWidget || fundingMixWidget);

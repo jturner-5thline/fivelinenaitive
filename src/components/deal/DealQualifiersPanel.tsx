@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { agreementSchema, type QualifierAgreement } from '@/lib/agreementTerms';
 import { diffQualifiers, hasChanges, type DraftQualifier, type Qualifier } from '@/lib/qualifierDraft';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 
 const emptyAgreement = { executed_qualifies: false, match_rule: 'all' as const, criteria: [], source_file_id: null, source_file_url: null, agreement_signed_date: null, notes: null };
 
@@ -22,6 +23,12 @@ const emptyAgreement = { executed_qualifies: false, match_rule: 'all' as const, 
  * outside the widget with unsaved edits discards them.
  */
 export function DealQualifiersPanel({ dealId }: { dealId: string }) {
+  const { hasAccess, isLoading } = useNaitivePipelineAccess();
+  if (isLoading || !hasAccess) return null;
+  return <DealQualifiersEditor key={dealId} dealId={dealId} />;
+}
+
+function DealQualifiersEditor({ dealId }: { dealId: string }) {
   const [savedAgreement, setSavedAgreement] = useState<QualifierAgreement>(emptyAgreement);
   const [agreement, setAgreement] = useState<QualifierAgreement>(emptyAgreement);
   const [saved, setSaved] = useState<Qualifier[]>([]);
