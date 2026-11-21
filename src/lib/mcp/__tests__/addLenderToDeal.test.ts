@@ -109,9 +109,9 @@ describe("add_lender_to_deal", () => {
     }
     expect(calls).toHaveLength(0);
   });
-  it("accepts 25 IDs but rejects 26, empty arrays, invalid UUIDs and invalid tracking status", () => {
-    expect(tool.inputSchema.lender_ids.safeParse(Array(25).fill(saas)).success).toBe(true);
-    for (const value of [Array(26).fill(saas), [], ["bad-id"]]) {
+  it("accepts 100 IDs but rejects 101, empty arrays, invalid UUIDs and invalid tracking status", () => {
+    expect(tool.inputSchema.lender_ids.safeParse(Array(100).fill(saas)).success).toBe(true);
+    for (const value of [Array(101).fill(saas), [], ["bad-id"]]) {
       expect(tool.inputSchema.lender_ids.safeParse(value).success).toBe(false);
     }
     expect(tool.inputSchema.status.safeParse("invalid").success).toBe(false);

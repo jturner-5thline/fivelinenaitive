@@ -31739,8 +31739,27 @@ export type Database = {
         }
         Returns: Json
       }
+      mcp_bulk_upsert_deal_lenders: {
+        Args: {
+          p_dry_run?: boolean
+          p_mode?: string
+          p_rows: Json
+          p_source?: string
+        }
+        Returns: Json
+      }
       mcp_create_lender: {
         Args: { p_change_reason?: string; p_patch: Json; p_source?: string }
+        Returns: Json
+      }
+      mcp_delete_deal_lender: {
+        Args: {
+          p_deal_id: string
+          p_deal_lender_id: string
+          p_master_lender_id: string
+          p_reason: string
+          p_source?: string
+        }
         Returns: Json
       }
       mcp_describe_tables: {
@@ -31756,6 +31775,7 @@ export type Database = {
           udt_name: string
         }[]
       }
+      mcp_dl_stamp_column: { Args: { _bucket: string }; Returns: string }
       mcp_lender_audit: {
         Args: {
           p_after: Json
@@ -31842,6 +31862,48 @@ export type Database = {
           p_pipeline_id: string
         }
         Returns: Json
+      }
+      mcp_update_deal_lender_row: {
+        Args: {
+          p_changes: Json
+          p_deal_id: string
+          p_id: string
+          p_raw?: boolean
+        }
+        Returns: {
+          approved_at: string | null
+          created_at: string
+          deal_id: string
+          declined_at: string | null
+          excluded_at: string | null
+          id: string
+          last_contact_at: string | null
+          last_status_change_at: string | null
+          master_lender_id: string | null
+          name: string
+          notes: string | null
+          on_deck_at: string | null
+          on_hold_at: string | null
+          pass_reason: string | null
+          passed_at: string | null
+          quote_amount: number | null
+          quote_rate: number | null
+          quote_term: string | null
+          score: number | null
+          selected_contact_id: string | null
+          stage: string
+          submitted_at: string | null
+          substage: string | null
+          tags: string[]
+          tracking_status: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deal_lenders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       mcp_update_deal_pipeline: {
         Args: { p_deal_id: string; p_patch: Json; p_pipeline_id: string }

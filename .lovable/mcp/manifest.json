@@ -4491,7 +4491,7 @@
       {
         "name": "add_lender_to_deal",
         "title": "Add lender to deal",
-        "description": "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
+        "description": "Attach funding sources to a deal. Either lender_id / lender_ids (up to 100, all with the same stage/status, stamped now) or `lenders` (up to 100 per-lender objects with stage, tracking_status, notes, pass_reason, status_date). With `lenders`, status_date (ISO) sets last_status_change_at and the matching stage timestamp; a null status_date leaves those timestamps empty (no now()). Existing links are returned unchanged. response_mode compact returns only lender_id, deal_lender_id, outcome, stage.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -4516,7 +4516,89 @@
                 "format": "uuid"
               },
               "minItems": 1,
-              "maxItems": 25
+              "maxItems": 100
+            },
+            "lenders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lender_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "stage": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "tracking_status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "on-hold",
+                      "on-deck",
+                      "passed",
+                      "excluded"
+                    ]
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 10000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pass_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status_date": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "lender_id"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 100
+            },
+            "response_mode": {
+              "type": "string",
+              "enum": [
+                "full",
+                "compact"
+              ],
+              "default": "full"
             },
             "stage": {
               "type": "string",
@@ -4547,7 +4629,7 @@
       {
         "name": "update_deal_lender",
         "title": "Update funding source on deal",
-        "description": "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
+        "description": "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason, status timestamps submitted_at/approved_at/passed_at/declined_at/excluded_at/on_hold_at/on_deck_at/last_status_change_at as ISO or null to clear, selected_contact_id = a lender_contacts id of that lender or null) without touching the master lender directory. preserve_timestamps:true stops a stage change from stamping now(). Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 100). response_mode compact returns only lender_id, deal_lender_id, outcome, stage. Never creates rows.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -4650,6 +4732,108 @@
                 }
               ]
             },
+            "submitted_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "approved_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "passed_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "declined_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "excluded_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "on_hold_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "on_deck_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "last_status_change_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "selected_contact_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "preserve_timestamps": {
+              "type": "boolean"
+            },
             "updates": {
               "type": "array",
               "items": {
@@ -4689,12 +4873,50 @@
                   },
                   "pass_reason": {
                     "$ref": "#/properties/pass_reason"
+                  },
+                  "submitted_at": {
+                    "$ref": "#/properties/submitted_at"
+                  },
+                  "approved_at": {
+                    "$ref": "#/properties/approved_at"
+                  },
+                  "passed_at": {
+                    "$ref": "#/properties/passed_at"
+                  },
+                  "declined_at": {
+                    "$ref": "#/properties/declined_at"
+                  },
+                  "excluded_at": {
+                    "$ref": "#/properties/excluded_at"
+                  },
+                  "on_hold_at": {
+                    "$ref": "#/properties/on_hold_at"
+                  },
+                  "on_deck_at": {
+                    "$ref": "#/properties/on_deck_at"
+                  },
+                  "last_status_change_at": {
+                    "$ref": "#/properties/last_status_change_at"
+                  },
+                  "selected_contact_id": {
+                    "$ref": "#/properties/selected_contact_id"
+                  },
+                  "preserve_timestamps": {
+                    "$ref": "#/properties/preserve_timestamps"
                   }
                 },
                 "additionalProperties": false
               },
               "minItems": 1,
-              "maxItems": 25
+              "maxItems": 100
+            },
+            "response_mode": {
+              "type": "string",
+              "enum": [
+                "full",
+                "compact"
+              ],
+              "default": "full"
             }
           },
           "required": [
@@ -11571,6 +11793,180 @@
           "required": [
             "id",
             "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_deal_lender",
+        "title": "Remove funding source from deal",
+        "description": "Permanently remove one funding source from a deal (the deal_lenders row only; the master directory entry is untouched). Target by deal_lender_id or lender_id (master lender id). Requires confirm: true and explicit user approval. Logged to the deal audit log and the lender audit log with source and reason.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "deal_lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "lender_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "description": "Why it is being removed (stored in the audit logs)."
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "deal_id",
+            "reason",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "bulk_upsert_deal_lenders",
+        "title": "Bulk load funding sources on deals",
+        "description": "Historical/backlog load of up to 500 deal funding-source rows across deals. mode insert_only skips existing links; upsert updates stage/status/pass_reason/contact and appends new notes. Rows already at the same stage are skipped. status_date (ISO) sets last_status_change_at and the matching stage timestamp; it never defaults to now(). dry_run:true (default) returns would-insert / would-update / skipped / error counts without writing. Writes require explicit user approval. response_mode compact = per-row lender_id, deal_lender_id, outcome, stage; summary = counts plus errors only.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "deal_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "lender_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Master lender id."
+                  },
+                  "stage": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "tracking_status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 10000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pass_reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status_date": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "selected_contact_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "deal_id",
+                  "lender_id"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 500
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "insert_only",
+                "upsert"
+              ],
+              "default": "upsert"
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true
+            },
+            "response_mode": {
+              "type": "string",
+              "enum": [
+                "compact",
+                "summary"
+              ],
+              "default": "summary"
+            }
+          },
+          "required": [
+            "rows"
           ],
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"

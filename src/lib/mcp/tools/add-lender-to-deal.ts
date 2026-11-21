@@ -6,22 +6,43 @@ export default defineTool({
   name: "add_lender_to_deal",
   title: "Add lender to deal",
   description:
-    "Attach one funding source or a shortlist of up to 25 to a deal. Defaults to on-deck/active; existing links are returned unchanged. Each lender has an independent added/already_on_deal/error result. status sets tracking_status.",
+    "Attach funding sources to a deal. Either lender_id / lender_ids (up to 100, all with the same stage/status, stamped now) or `lenders` (up to 100 per-lender objects with stage, tracking_status, notes, pass_reason, status_date). With `lenders`, status_date (ISO) sets last_status_change_at and the matching stage timestamp; a null status_date leaves those timestamps empty (no now()). Existing links are returned unchanged. response_mode compact returns only lender_id, deal_lender_id, outcome, stage.",
   inputSchema: {
     deal_id: z.string().uuid(),
     lender_id: z.string().uuid().optional(),
-    lender_ids: z.array(z.string().uuid()).min(1).max(25).optional(),
+    lender_ids: z.array(z.string().uuid()).min(1).max(100).optional(),
+    lenders: z.array(z.object({
+      lender_id: z.string().uuid(),
+      stage: z.string().trim().min(1).max(100).optional(),
+      tracking_status: z.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).optional(),
+      notes: z.string().max(10_000).nullable().optional(),
+      pass_reason: z.string().max(2000).nullable().optional(),
+      status_date: z.string().date().or(z.string().datetime({ offset: true })).nullable().optional(),
+    })).min(1).max(100).optional(),
+    response_mode: z.enum(["full", "compact"]).default("full"),
     stage: z.string().trim().min(1).max(100).default("on-deck"),
     status: z.enum(["active", "on-hold", "on-deck", "passed", "excluded"]).default("active"),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-  handler: async ({ deal_id, lender_id, lender_ids, stage, status }, ctx) => {
+  handler: async ({ deal_id, lender_id, lender_ids, lenders, stage, status, response_mode }, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    if (Boolean(lender_id) === Boolean(lender_ids)) {
-      return errorResult("Provide exactly one of lender_id or lender_ids (up to 25).");
+    if ([lender_id, lender_ids, lenders].filter(Boolean).length !== 1) {
+      return errorResult("Provide exactly one of lender_id, lender_ids or lenders (up to 100).");
     }
     const sb = supabaseForUser(ctx);
+    if (lenders) {
+      const rows = lenders.map((l) => ({ deal_id, lender_id: l.lender_id, stage: l.stage ?? stage, tracking_status: l.tracking_status ?? status, notes: l.notes ?? null, pass_reason: l.pass_reason ?? null, status_date: l.status_date ?? null }));
+      const { data, error } = await sb.rpc("mcp_bulk_upsert_deal_lenders", { p_rows: rows as never, p_mode: "insert_only", p_dry_run: false, p_source: "mcp" });
+      if (error) return errorResult(error.message);
+      const list = (data ?? []) as Record<string, unknown>[];
+      const mapped = list.map((r) => ({
+        lender_id: r.lender_id, deal_lender_id: r.deal_lender_id ?? null, stage: r.stage ?? null,
+        outcome: r.outcome === "inserted" ? "added" : r.outcome === "skipped_existing" ? "already_on_deal" : r.outcome,
+        ...(response_mode === "full" && r.reason ? { reason: r.reason } : {}),
+      }));
+      return textResult({ results: mapped }, { results: mapped });
+    }
     const { data: deal, error: dealError } = await sb.from("deals")
       .select("id, company_id").eq("id", deal_id).maybeSingle();
     if (dealError || !deal?.company_id) {
@@ -78,6 +99,13 @@ export default defineTool({
       } catch (error) {
         results.push({ lender_id: id, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
       }
+    }
+    if (response_mode === "compact") {
+      const compact = results.map((r) => {
+        const row = (r as { deal_lender?: { id?: string; stage?: string } }).deal_lender;
+        return { lender_id: r.lender_id, deal_lender_id: row?.id ?? null, outcome: r.outcome, stage: row?.stage ?? null };
+      });
+      return textResult({ results: compact }, { results: compact });
     }
     const single = lender_id ? results[0] : undefined;
     return textResult({ results }, { results, ...(single?.deal_lender ? { deal_lender_id: single.deal_lender.id } : {}) });

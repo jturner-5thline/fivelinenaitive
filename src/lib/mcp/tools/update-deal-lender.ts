@@ -4,9 +4,9 @@ import { supabaseForUser, requireAuth, textResult, errorResult } from "../supaba
 
 /**
  * Edits one funding source's row on a deal (deal_lenders) — never the
- * master_lenders directory. Status timestamps (last_status_change_at,
- * on_deck_at, passed_at, …) are set by the deal_lenders status trigger,
- * exactly as for UI edits.
+ * master_lenders directory. Status timestamps are set by the deal_lenders
+ * status trigger like UI edits, unless explicit timestamps or
+ * preserve_timestamps request verbatim writes.
  */
 const fieldSchema = {
   notes: z.string().max(10_000).nullable().optional(),
@@ -18,6 +18,16 @@ const fieldSchema = {
   quote_rate: z.number().finite().nullable().optional(),
   quote_term: z.string().max(200).nullable().optional(),
   pass_reason: z.string().max(2000).nullable().optional(),
+  submitted_at: z.string().datetime({ offset: true }).nullable().optional(),
+  approved_at: z.string().datetime({ offset: true }).nullable().optional(),
+  passed_at: z.string().datetime({ offset: true }).nullable().optional(),
+  declined_at: z.string().datetime({ offset: true }).nullable().optional(),
+  excluded_at: z.string().datetime({ offset: true }).nullable().optional(),
+  on_hold_at: z.string().datetime({ offset: true }).nullable().optional(),
+  on_deck_at: z.string().datetime({ offset: true }).nullable().optional(),
+  last_status_change_at: z.string().datetime({ offset: true }).nullable().optional(),
+  selected_contact_id: z.string().uuid().nullable().optional(),
+  preserve_timestamps: z.boolean().optional(),
 };
 const itemSchema = z.object({
   lender_id: z.string().uuid().optional(),
@@ -25,7 +35,13 @@ const itemSchema = z.object({
   ...fieldSchema,
 });
 type Item = z.infer<typeof itemSchema>;
-const EDITABLE = ["stage", "tracking_status", "tags", "quote_amount", "quote_rate", "quote_term", "pass_reason"] as const;
+export const TIMESTAMP_FIELDS = ["submitted_at", "approved_at", "passed_at", "declined_at", "excluded_at", "on_hold_at", "on_deck_at", "last_status_change_at"] as const;
+const EDITABLE = ["stage", "tracking_status", "tags", "quote_amount", "quote_rate", "quote_term", "pass_reason", ...TIMESTAMP_FIELDS, "selected_contact_id"] as const;
+
+/** Timestamps are written verbatim (no now() stamping) when preserve_timestamps is set or any timestamp is supplied. */
+export function useRawTimestamps(item: Item): boolean {
+  return item.preserve_timestamps === true || TIMESTAMP_FIELDS.some((k) => item[k] !== undefined);
+}
 
 export function combineNotes(existing: string | null | undefined, next: string | null, mode: Item["mode"]): string | null {
   if (mode === "replace" || next === null) return next;
@@ -49,19 +65,20 @@ export default defineTool({
   name: "update_deal_lender",
   title: "Update funding source on deal",
   description:
-    "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason) without touching the master lender directory. Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 25) for per-item results. Never creates rows.",
+    "Edit one funding source's deal-specific row (notes, stage, tracking_status, tags, quote fields, pass_reason, status timestamps submitted_at/approved_at/passed_at/declined_at/excluded_at/on_hold_at/on_deck_at/last_status_change_at as ISO or null to clear, selected_contact_id = a lender_contacts id of that lender or null) without touching the master lender directory. preserve_timestamps:true stops a stage change from stamping now(). Target by deal_id + lender_id (master lender id) or deal_lender_id; or pass `updates` (up to 100). response_mode compact returns only lender_id, deal_lender_id, outcome, stage. Never creates rows.",
   inputSchema: {
     deal_id: z.string().uuid(),
     lender_id: z.string().uuid().optional(),
     deal_lender_id: z.string().uuid().optional(),
     ...fieldSchema,
-    updates: z.array(itemSchema).min(1).max(25).optional(),
+    updates: z.array(itemSchema).min(1).max(100).optional(),
+    response_mode: z.enum(["full", "compact"]).default("full"),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (args, ctx) => {
     const authErr = requireAuth(ctx);
     if (authErr) return authErr;
-    const { deal_id, updates: bulk, ...single } = args;
+    const { deal_id, updates: bulk, response_mode, ...single } = args;
     if (bulk && (single.lender_id || single.deal_lender_id)) {
       return errorResult("Provide either `updates` or a single lender_id/deal_lender_id, not both.");
     }
@@ -96,9 +113,9 @@ export default defineTool({
           if (h.error) warnings.push(`notes history failed: ${h.error.message}`);
         }
 
-        const { data: updated, error: updateError } = await sb.from("deal_lenders")
-          .update({ ...changes, updated_at: new Date().toISOString() })
-          .eq("id", row.id).eq("deal_id", deal_id).select("*").maybeSingle();
+        const { data: updated, error: updateError } = await sb.rpc("mcp_update_deal_lender_row", {
+          p_deal_id: deal_id, p_id: row.id, p_changes: changes as never, p_raw: useRawTimestamps(item),
+        });
         if (updateError) throw new Error(updateError.message);
         if (!updated) throw new Error("Update was blocked (no permission to edit this funding source).");
 
@@ -119,14 +136,16 @@ export default defineTool({
             warnings.push(`${table} logging failed: ${e instanceof Error ? e.message : "Unknown error"}`);
           }
         }
-        results.push({ target, outcome: "updated", deal_lender: updated, ...(warnings.length ? { warnings } : {}) });
+        results.push(response_mode === "compact"
+          ? { lender_id: row.master_lender_id, deal_lender_id: row.id, outcome: "updated", stage: updated.stage }
+          : { target, outcome: "updated", deal_lender: updated, ...(warnings.length ? { warnings } : {}) });
       } catch (error) {
-        results.push({ target, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" });
+        results.push({ target, outcome: "error", reason: error instanceof Error ? error.message : "Unknown error" } as Record<string, unknown>);
       }
     }
     if (!bulk) {
       const r = results[0];
-      if (r.outcome === "error") return errorResult(r.reason ?? "Update failed");
+      if (r.outcome === "error") return errorResult(String(r.reason ?? "Update failed"));
       return textResult(r, { result: r });
     }
     return textResult({ results }, { results });

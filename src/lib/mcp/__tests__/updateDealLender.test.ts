@@ -23,3 +23,15 @@ describe("update_deal_lender fields", () => {
     expect(() => buildUpdates({ notes: "a".repeat(9_999) }, { mode: "append", notes: "bb" } as Parameters<typeof buildUpdates>[1])).toThrow();
   });
 });
+
+import { useRawTimestamps } from "../tools/update-deal-lender";
+type ItemArg = Parameters<typeof useRawTimestamps>[0];
+describe("update_deal_lender timestamps", () => {
+  it("lets the status trigger stamp dates for a plain stage change", () => expect(useRawTimestamps({ mode: "replace", stage: "passed" } as ItemArg)).toBe(false));
+  it("preserve_timestamps writes dates verbatim", () => expect(useRawTimestamps({ mode: "replace", stage: "passed", preserve_timestamps: true } as ItemArg)).toBe(true));
+  it("an explicit timestamp (even null to clear) writes verbatim", () => expect(useRawTimestamps({ mode: "replace", passed_at: null } as ItemArg)).toBe(true));
+  it("accepts selected_contact_id and timestamp fields as editable", () => {
+    const u = buildUpdates({}, { mode: "replace", passed_at: "2025-03-01T00:00:00Z", selected_contact_id: null } as ItemArg);
+    expect(u).toEqual({ passed_at: "2025-03-01T00:00:00Z", selected_contact_id: null });
+  });
+});
