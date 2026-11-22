@@ -1003,7 +1003,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                             {group.label}
                             <span className="normal-case font-normal opacity-60">({group.widgets.length})</span>
                           </button>
-                        ) : group.label}
+                        ) : <span className="inline-block">{group.label}</span>}
                       </td>
                     </tr>
                     {(activeTab !== ENTITY_TAB || search.trim() !== '' || expandedEntities.has(group.key)) && group.widgets.map((w) => {
