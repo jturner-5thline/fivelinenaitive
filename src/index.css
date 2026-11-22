@@ -5474,9 +5474,12 @@ html body.ceo-theme .deal-detail-surface .deal-fs-tab-layout .fs-tab-widget:hove
 .deal-info-widget aside[aria-label="Deal info"] > div:first-child button.deal-rail-control { height: 2.25rem !important; }
 
 /* Master Plan sheet grids: frozen headers/title column must be opaque so scrolled cells never show through. */
-html body table .sheet-opaque,
-html body table thead.sheet-opaque th {
-  background-color: hsl(var(--card)) !important;
+html body table .sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque,
+html body table thead.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque th {
+  background-color: var(--bg-card, hsl(var(--card))) !important;
   background-image: none !important;
   opacity: 1 !important;
+}
+html body table td.sheet-group.sheet-group.sheet-group.sheet-group.sheet-group > * {
+  background-color: var(--bg-card, hsl(var(--card))) !important;
 }
