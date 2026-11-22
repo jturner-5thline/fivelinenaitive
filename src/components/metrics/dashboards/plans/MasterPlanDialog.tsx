@@ -826,8 +826,8 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={guardedOpenChange}>
-      <DialogContent className="max-w-[92vw] w-[92vw] px-2.5 grid-cols-[minmax(0,1fr)] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] px-2.5 flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
           <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
         </DialogHeader>
@@ -960,11 +960,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         </div>
 
         {activeTab === 'financials' ? (
-          <FinancialsPlanGrid ref={financialsRef} canEdit year={year} mode={mode} />
+          <div className="flex-1 min-h-0 flex flex-col"><FinancialsPlanGrid ref={financialsRef} canEdit year={year} mode={mode} /></div>
         ) : activeTab === 'headcount' ? (
-          <HeadcountGrid ref={headcountRef} year={year} mode={mode} />
+          <div className="flex-1 min-h-0 flex flex-col"><HeadcountGrid ref={headcountRef} year={year} mode={mode} /></div>
         ) : loading ? (
-          <div className="py-10 flex items-center justify-center text-muted-foreground">
+          <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : (
@@ -1214,7 +1214,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => guardedOpenChange(false)} disabled={saving}>
             Close
           </Button>

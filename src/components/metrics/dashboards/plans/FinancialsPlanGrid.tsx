@@ -125,7 +125,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   const toggle = (active: boolean) => cn('h-8 px-3 text-xs', active ? '' : 'text-muted-foreground');
 
   return (
-    <div className="space-y-3 min-w-0 max-w-full">
+    <div className="flex-1 min-h-0 flex flex-col gap-3 min-w-0 max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
@@ -144,7 +144,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
       </div>
 
       {loading ? (
-        <div className="py-10 flex justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        <div className="flex-1 min-h-0 flex items-center justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
         <div className={SHEET_WRAP}>
           <table className={SHEET_TABLE}>

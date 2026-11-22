@@ -48,7 +48,7 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
   }
   useImperativeHandle(ref, () => ({ save, isDirty: () => dirty, isInvalid: () => invalid }));
   const monthTotal = (i: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => values[headcountKey(u.realmId, i)] ?? '')); } catch { return null; } };
-  return <div className="space-y-2 min-w-0 max-w-full">
+  return <div className="flex-1 min-h-0 flex flex-col gap-2 min-w-0 max-w-full">
     <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground">FTE by unit · {dirty ? 'Unsaved changes' : 'Saved'}</span>
     </div>

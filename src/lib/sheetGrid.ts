@@ -32,7 +32,7 @@ export const sheetDoubleClick = (e: React.MouseEvent<HTMLInputElement>) => { e.c
 
 export const SHEET_TABLE = 'w-full text-sm border-collapse border-spacing-0 [&_td]:border [&_th]:border [&_td]:border-border [&_th]:border-border';
 /** Shared look for every Master Plan grid. */
-export const SHEET_WRAP = 'w-full min-w-0 max-w-full max-h-[62vh] overflow-auto border border-border rounded-md bg-card';
+export const SHEET_WRAP = 'w-full min-w-0 max-w-full flex-1 min-h-0 overflow-auto border border-border rounded-md bg-card';
 export const SHEET_HEAD = 'sheet-opaque sticky top-0 z-40 bg-card';
 export const SHEET_TH = 'sheet-opaque px-2 py-2 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground bg-card whitespace-nowrap';
 export const SHEET_TITLE_TH = 'sheet-opaque sticky left-0 z-50 px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground bg-card whitespace-nowrap shadow-[2px_0_4px_-2px_hsl(var(--background))]';
