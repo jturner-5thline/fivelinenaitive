@@ -21,6 +21,12 @@ export const FINANCIAL_ROWS: { key: string; label: string; format: FinancialForm
   { key: 'margin-pct', label: 'Margin %', format: 'percent' },
 ];
 
+/** Master Plan month header label, MMM-YY (e.g. Jan-27). */
+export function monthHeaderLabel(year: number, monthIndex: number) {
+  const m = new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'short' });
+  return `${m}-${String(year % 100).padStart(2, '0')}`;
+}
+
 export const FINANCIAL_YEARS = [2027, 2028];
 
 export function financialMetricKey(segment: string, row: string) {
@@ -31,7 +37,7 @@ export function financialPeriods(year: number, mode: 'monthly' | 'quarterly') {
   if (mode === 'quarterly') return [1, 2, 3, 4].map((q) => ({ key: `${year}-Q${q}`, label: `Q${q} ${year}` }));
   return Array.from({ length: 12 }, (_, i) => ({
     key: `${year}-${String(i + 1).padStart(2, '0')}`,
-    label: new Date(year, i, 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    label: monthHeaderLabel(year, i),
   }));
 }
 

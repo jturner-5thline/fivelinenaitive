@@ -1,3 +1,4 @@
+import { monthHeaderLabel } from '@/components/metrics/dashboards/plans/financialsPlan';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
     {query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
       <div className={SHEET_WRAP}>
         <table className={SHEET_TABLE}>
-          <thead className={SHEET_HEAD}><tr><th className={SHEET_TITLE_TH}>Unit</th>{HEADCOUNT_MONTHS.map(m => <th key={m} className={cn(SHEET_TH, 'min-w-24')}>{m}</th>)}<th className={SHEET_TH} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
+          <thead className={SHEET_HEAD}><tr><th className={SHEET_TITLE_TH}>Unit</th>{HEADCOUNT_MONTHS.map((m, i) => <th key={m} className={cn(SHEET_TH, 'min-w-24')}>{monthHeaderLabel(year, i)}</th>)}<th className={SHEET_TH} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
           <tbody>{HEADCOUNT_UNITS.map((unit, row) => <tr key={unit.realmId} className="hover:bg-muted/20">
             <th scope="row" className={cn(SHEET_TITLE_TD, 'font-medium')} title={unit.name}>{unit.label}</th>
             {HEADCOUNT_MONTHS.map((month, index) => { const key = headcountKey(unit.realmId, index); const value = values[key] ?? ''; let valid = true; try { parseHeadcount(value); } catch { valid = false; }

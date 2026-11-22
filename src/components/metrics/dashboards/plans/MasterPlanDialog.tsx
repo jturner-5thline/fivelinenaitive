@@ -27,6 +27,7 @@ import { Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { monthHeaderLabel } from './financialsPlan';
 import { FinancialsPlanGrid, type FinancialsPlanGridHandle } from './FinancialsPlanGrid';
 import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
@@ -197,10 +198,9 @@ function RowBulkMenu({
 
 function monthPeriodKeys(year: number): { key: string; label: string }[] {
   return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(year, i, 1);
     return {
       key: `${year}-${pad(i + 1)}`,
-      label: d.toLocaleDateString('en-US', { month: 'short' }),
+      label: monthHeaderLabel(year, i),
     };
   });
 }
