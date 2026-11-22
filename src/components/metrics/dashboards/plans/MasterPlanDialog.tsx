@@ -32,11 +32,11 @@ import { PlanPeriodToggles } from './PlanPeriodToggles';
 import { FinancialsPlanGrid, type FinancialsPlanGridHandle } from './FinancialsPlanGrid';
 import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
+import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS } from './masterPlanTabs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   PLANNABLE_DASHBOARDS,
-  MASTER_PLAN_TAB_ORDER,
   buildPlanMetricKey,
   type PlannableDashboardKey,
 } from './plannableWidgetsRegistry';
@@ -56,17 +56,7 @@ function pad(n: number) { return String(n).padStart(2, '0'); }
  * All internal loops use this instead of iterating the full registry so
  * legacy/orphan dashboards don't appear as ghost tabs.
  */
-/** Dashboards intentionally left out of the Master Plan pop-up (still shown in Insights). */
-const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review', 'revenue-customers']);
-const VISIBLE_ENTRIES: [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][] =
-  MASTER_PLAN_TAB_ORDER
-    .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]) && !HIDDEN_MASTER_PLAN_TABS.has(k))
-    .map((k) => [k, PLANNABLE_DASHBOARDS[k]] as const) as any;
 const VISIBLE_DEFS = VISIBLE_ENTRIES.map(([, d]) => d);
-/** Dashboards shown together under one entity-grouped tab (display only; plan keys unchanged). */
-const ENTITY_TAB = 'entity-metrics';
-const ENTITY_TAB_KEYS: string[] = ['finserv-financial-metrics', 'consolidated-debt-pipeline'];
-const ENTITY_TAB_LABELS: Record<string, string> = { 'finserv-financial-metrics': 'FinServ', 'consolidated-debt-pipeline': 'Debt Advisory' };
 
 /**
  * Per-row bulk-fill menu for the Master Plan grid. Lets a user copy a single

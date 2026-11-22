@@ -1555,6 +1555,190 @@
         "outputSchema": null
       },
       {
+        "name": "get_master_plan",
+        "title": "Read the complete Master Plan spreadsheet",
+        "description": "Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tab": {
+              "type": "string",
+              "maxLength": 80,
+              "description": "Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi."
+            },
+            "year": {
+              "type": "number",
+              "enum": [
+                2027,
+                2028
+              ]
+            },
+            "period_type": {
+              "type": "string",
+              "enum": [
+                "monthly",
+                "quarterly",
+                "both"
+              ],
+              "default": "both"
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_master_plan_targets",
+        "title": "Update Master Plan Financials and metric cells",
+        "description": "Preview or save up to 500 Financials/KPI monthly or quarterly cells. Discover exact metric_key values with get_master_plan. Linked KPI rows update together as in the UI; null clears a cell. Percent values are percentage points (82 = 82%). Dry run defaults true; saving requires confirm=true after explicit approval. Persistent per-cell audit, atomic batch, 5th Line editors only. Does not rename rows or write derived Headcount.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "metric_key": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "period": {
+                    "type": "string",
+                    "pattern": "^202[78]-(0[1-9]|1[0-2]|Q[1-4])$"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "metric_key",
+                  "period",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 500
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true
+            },
+            "confirm": {
+              "type": "boolean",
+              "default": false
+            },
+            "change_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "updates"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "upsert_headcount",
+        "title": "Update Master Plan monthly headcount",
+        "description": "Preview or save monthly FTE values for Debt, FinServ, Tech and Parent using realm_id from get_master_plan. Null clears; fractional headcount supports two decimal places. Quarterly and annual averages and firm totals are calculated from monthly values and cannot be edited. Dry run defaults true; confirm=true requires explicit approval. Atomic, audited, 5th Line editors only.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "realm_id": {
+                    "type": "string",
+                    "enum": [
+                      "193514877331929",
+                      "9341451968897660",
+                      "9130350272677286",
+                      "123146077561874"
+                    ]
+                  },
+                  "month": {
+                    "type": "string",
+                    "pattern": "^202[78]-(0[1-9]|1[0-2])$"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 9999.99
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "realm_id",
+                  "month",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 96
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true
+            },
+            "confirm": {
+              "type": "boolean",
+              "default": false
+            },
+            "change_reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "updates"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_deals",
         "title": "List deals",
         "description": "List EVERY deal the signed-in user can see, across ALL pipelines. No implicit pipeline, owner, stage, or status filter is applied — results are only narrowed by the filters you pass explicitly. By default returns a summary column set: id, company, stage (raw pipeline-scoped stage id), stage_label (the human stage name from the deal's assigned pipeline — ALWAYS report this, never the raw id, because stage ids are overloaded across pipelines), pipeline_id, pipeline_name, value, closing_date, created_at, deal_owner, manager, status, updated_at. Pass `fields: \"*\"` to get EVERY column on each deal (all pipeline-specific fields included — this is how you extract complete deal records in bulk), or a comma-separated column list to choose your own set; use `describe_schema` with table `deals` to see the available column names. Pagination: pass `limit` and `offset`; the response includes `total_count` (matching rows regardless of limit), `returned`, `next_offset`, and `has_more` — keep calling with `next_offset` until `has_more` is false to walk the entire set across all pipelines. The response also includes `pipeline_breakdown` (distinct pipelines present in this page) so you can confirm coverage.",

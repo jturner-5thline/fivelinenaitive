@@ -20077,6 +20077,45 @@ export type Database = {
           },
         ]
       }
+      master_plan_mcp_audit: {
+        Row: {
+          after_value: number | null
+          before_value: number | null
+          cell_key: string
+          change_reason: string | null
+          company_id: string
+          created_at: string
+          id: string
+          kind: string
+          period: string
+          user_id: string
+        }
+        Insert: {
+          after_value?: number | null
+          before_value?: number | null
+          cell_key: string
+          change_reason?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          period: string
+          user_id: string
+        }
+        Update: {
+          after_value?: number | null
+          before_value?: number | null
+          cell_key?: string
+          change_reason?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          period?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mat_view_refresh_log: {
         Row: {
           duration_ms: number | null
@@ -32032,6 +32071,16 @@ export type Database = {
           p_relink_crm_contact?: boolean
           p_source?: string
           p_table: string
+        }
+        Returns: Json
+      }
+      mcp_write_master_plan: {
+        Args: {
+          p_confirm?: boolean
+          p_dry_run?: boolean
+          p_kind: string
+          p_reason?: string
+          p_updates: Json
         }
         Returns: Json
       }

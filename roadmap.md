@@ -1,5 +1,11 @@
 # Roadmap
 
+## Master Plan Claude MCP
+- [x] Share visible tab/row metadata with the dialog; expose all monthly/quarterly cells and derived Headcount values.
+- [x] Add caller-scoped, audited batch target/headcount writes with dry-run defaults and null clears.
+- [x] 223 tests passed; isolated real saves, audit, atomicity and permissions verified; signed-in local reads and backend dry run, preview tabs at 1280×1800/390×844, new-file lint, automatic type/build checks and 157-tool manifest passed. No live figures changed; existing mobile year-control clipping remains. Details in docs/master-plan-mcp.md.
+- [ ] Hosted Claude revision requires republish and connector refresh; no production test writes.
+
 ## MCP extension (CRM edits, partners, uploads, lender contacts, options, Claap, fixes)
 - [x] 19 new tools and 9 updated tools; 125-tool manifest extracted. New audit table and RPCs; lender-contact CRM check only on link changes.
 - [x] 23 new/updated unit tests (148 MCP tests pass); rolled-back SQL run as James verified contact/company edits, lender-contact edit/delete/relink and merge preview. Claap matcher functions deployed.

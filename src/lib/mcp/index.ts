@@ -86,6 +86,9 @@ import getSalesCallsWeekly from "./tools/get-sales-calls-weekly";
 import getDealHoursFees from "./tools/get-deal-hours-fees";
 import getCashflowMetrics from "./tools/get-cashflow-metrics";
 import getHeadcount from "./tools/get-headcount";
+import getMasterPlan from "./tools/get-master-plan";
+import upsertMasterPlanTargets from "./tools/upsert-master-plan-targets";
+import upsertHeadcount from "./tools/upsert-headcount";
 import getHarvestMetrics from "./tools/get-harvest-metrics";
 import getPerHeadMetrics from "./tools/get-per-head-metrics";
 import createLenderFitAttribute from "./tools/create-lender-fit-attribute";
@@ -171,6 +174,9 @@ export default defineMcp({
     acceptedAudiences: "authenticated",
   }),
   tools: [ updateDealFees, getDealQualifiers, upsertDealQualifiers, logLenderEngagement, listLenderEngagements, listLenderMetStatus, addLenderDealHistory, updateLenderDealHistory, listLenderDealHistory, addLenderIntroPath, updateLenderIntroPath, listLenderIntroPaths, addLenderCompanyOwner, listLenderCompanyOwners, listWorkspaceUsers, listAllLenderCompanyOwners, listLenderStageEvents, upsertLenderPerformance, listLenderPerformance,
+    getMasterPlan,
+    upsertMasterPlanTargets,
+    upsertHeadcount,
     listDeals,
     getDashboardTileValues,
     listCalendarMeetings,
