@@ -804,7 +804,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] w-[92vw]">
+      <DialogContent className="max-w-[92vw] w-[92vw] px-2.5">
         <DialogHeader>
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
           <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
