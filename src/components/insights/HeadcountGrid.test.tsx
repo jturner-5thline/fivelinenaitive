@@ -36,7 +36,7 @@ describe('headcount editor', () => {
   });
   it('confirms before leaving a dirty year', () => {
     open(); fireEvent.change(screen.getByLabelText(/Debt Jan/), { target: { value: '1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Previous year' }));
+    fireEvent.click(screen.getByRole('button', { name: '2028' }));
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     expect(screen.getByLabelText(/Debt Jan/)).toHaveValue('1');

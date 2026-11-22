@@ -1,3 +1,4 @@
+import { PlanPeriodToggles } from './PlanPeriodToggles';
 import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT, SHEET_WRAP, SHEET_HEAD, SHEET_TH, SHEET_TITLE_TH, SHEET_TITLE_TD, SHEET_GROUP_TD } from '@/lib/sheetGrid';
 import { Fragment, forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -129,17 +130,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   return (
     <div className="space-y-3 min-w-0 max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-        <div className="flex items-center gap-1">
-          {mode === 'monthly' && FINANCIAL_YEARS.map((y) => (
-            <Button key={y} size="sm" variant={y === year ? 'default' : 'ghost'} className={toggle(y === year)} onClick={() => setYear(y)}>{y}</Button>
-          ))}
-          <span className="mx-2 h-5 w-px bg-border" />
-          {(['monthly', 'quarterly'] as Mode[]).map((m) => (
-            <Button key={m} size="sm" variant={m === mode ? 'default' : 'ghost'} className={toggle(m === mode)} onClick={() => setMode(m)}>
-              {m === 'monthly' ? 'Monthly' : 'Quarterly'}
-            </Button>
-          ))}
-        </div>
+        <PlanPeriodToggles year={year} mode={mode} onYear={setYear} onMode={setMode} />
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>

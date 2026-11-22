@@ -27,7 +27,8 @@ import { Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
-import { monthHeaderLabel } from './financialsPlan';
+import { monthHeaderLabel, FINANCIAL_YEARS, financialPeriods } from './financialsPlan';
+import { PlanPeriodToggles } from './PlanPeriodToggles';
 import { FinancialsPlanGrid, type FinancialsPlanGridHandle } from './FinancialsPlanGrid';
 import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
@@ -267,7 +268,8 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
-  const [year, setYear] = useState<number>(() => new Date().getFullYear());
+  const [year, setYear] = useState<number>(FINANCIAL_YEARS[0]);
+  const [mode, setMode] = useState<'monthly' | 'quarterly'>('monthly');
   const [values, setValues] = useState<Record<string, string>>({});
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
   // Snapshot of loaded values so we only persist cells the user actually
@@ -436,7 +438,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     };
   }, [open, company?.id, metricKeyToWidgetKey]);
 
-  const periods = useMemo(() => monthPeriodKeys(year), [year]);
+  const periods = useMemo(() => (mode === 'quarterly' ? FINANCIAL_YEARS.flatMap((y) => financialPeriods(y, 'quarterly')) : monthPeriodKeys(year)), [year, mode]);
 
   // Build a fast lookup of widget format by key for validation.
   const widgetFormatByKey = useMemo(() => {
@@ -895,17 +897,12 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 <span className="opacity-70 font-normal">· {saveStatus.detail}</span>
               )}
             </div>
-            <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)} aria-label="Previous year">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="min-w-16 text-center font-medium tabular-nums">{year}</div>
-            <Button variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)} aria-label="Next year">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            </div>
           </div>
         </div>
+
+        {activeTab !== 'financials' && activeTab !== 'headcount' && (
+          <PlanPeriodToggles year={year} mode={mode} onYear={(y) => { if (dirtyCount === 0 || window.confirm('Discard unsaved changes?')) setYear(y); }} onMode={(m) => { if (dirtyCount === 0 || window.confirm('Discard unsaved changes?')) setMode(m); }} />
+        )}
 
         {hasErrors && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -1069,12 +1066,14 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 <span className="text-[10px] font-semibold text-muted-foreground w-4 text-center">
                                   {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
                                 </span>
-                                <RowBulkMenu
-                                  widgetKey={w.key}
-                                  periods={periods}
-                                  values={values}
-                                  setValues={setValuesWithUndo}
-                                />
+                                {mode === 'monthly' && (
+                                  <RowBulkMenu
+                                    widgetKey={w.key}
+                                    periods={periods}
+                                    values={values}
+                                    setValues={setValuesWithUndo}
+                                  />
+                                )}
                               </div>
                             </div>
                           </td>

@@ -1,6 +1,7 @@
-import { monthHeaderLabel } from '@/components/metrics/dashboards/plans/financialsPlan';
+import { monthHeaderLabel, FINANCIAL_YEARS } from '@/components/metrics/dashboards/plans/financialsPlan';
+import { PlanPeriodToggles, type PlanMode } from '@/components/metrics/dashboards/plans/PlanPeriodToggles';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { useCompany } from '@/hooks/useCompany';
@@ -23,7 +24,8 @@ export const HeadcountGrid = forwardRef<HeadcountGridHandle>(function HeadcountG
 });
 
 const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canEdit: boolean }>(function HeadcountTable({ companyId, canEdit }, ref) {
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(FINANCIAL_YEARS[0]);
+  const [mode, setMode] = useState<PlanMode>('monthly');
   const [draft, setDraft] = useState<HeadcountDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<(() => void) | null>(null);
@@ -50,13 +52,9 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
   return <div className="space-y-2 min-w-0 max-w-full">
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs text-muted-foreground">FTE by unit · {dirty ? 'Unsaved changes' : 'Saved'}</span>
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" aria-label="Previous year" disabled={saving || year <= 1900} onClick={() => changeYear(year - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-        <span className="w-12 text-center font-medium tabular-nums">{year}</span>
-        <Button variant="ghost" size="icon" aria-label="Next year" disabled={saving || year >= 2200} onClick={() => changeYear(year + 1)}><ChevronRight className="h-4 w-4" /></Button>
-      </div>
+      <PlanPeriodToggles year={year} mode={mode} onYear={changeYear} onMode={(m) => request(() => { setDraft(null); setMode(m); })} />
     </div>
-    {query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
+    {mode === 'quarterly' ? <HeadcountQuarterly companyId={companyId} fmt={fmt} /> : query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
       <div className={SHEET_WRAP}>
         <table className={SHEET_TABLE}>
           <thead className={SHEET_HEAD}><tr><th className={SHEET_TITLE_TH}>Unit</th>{HEADCOUNT_MONTHS.map((m, i) => <th key={m} className={cn(SHEET_TH, 'min-w-24')}>{monthHeaderLabel(year, i)}</th>)}<th className={SHEET_TH} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
@@ -81,3 +79,26 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
     <AlertDialog open={!!pending} onOpenChange={open => { if (!open) setPending(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Discard unsaved headcount?</AlertDialogTitle><AlertDialogDescription>Your changes have not been saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { pending?.(); setPending(null); }}>Discard changes</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </div>;
 });
+
+/** Quarterly view: read-only average FTE per quarter for each plan year (headcount is entered monthly). */
+function HeadcountQuarterly({ companyId, fmt }: { companyId: string; fmt: (n: number | null) => string }) {
+  const q0 = useMonthlyHeadcount(companyId, FINANCIAL_YEARS[0], true);
+  const q1 = useMonthlyHeadcount(companyId, FINANCIAL_YEARS[1], true);
+  const byYear = [q0.data ?? {}, q1.data ?? {}];
+  if (q0.isPending || q1.isPending) return <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  const cols = FINANCIAL_YEARS.flatMap((y, yi) => [0, 1, 2, 3].map((q) => ({ key: `${y}-Q${q + 1}`, label: `Q${q + 1} ${y}`, yi, months: [q * 3, q * 3 + 1, q * 3 + 2] })));
+  const avg = (vals: string[]) => { try { return headcountSummary(vals).average; } catch { return null; } };
+  const total = (yi: number, m: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => byYear[yi][headcountKey(u.realmId, m)] ?? '')); } catch { return null; } };
+  return <div className={SHEET_WRAP}>
+    <table className={SHEET_TABLE}>
+      <thead className={SHEET_HEAD}><tr><th className={SHEET_TITLE_TH}>Unit</th>{cols.map(c => <th key={c.key} className={cn(SHEET_TH, 'min-w-24')}>{c.label}</th>)}</tr></thead>
+      <tbody>{HEADCOUNT_UNITS.map(unit => <tr key={unit.realmId} className="hover:bg-muted/20">
+        <th scope="row" className={cn(SHEET_TITLE_TD, 'font-medium')} title={unit.name}>{unit.label}</th>
+        {cols.map(c => <td key={c.key} className={SHEET_VALUE_TD} title="Average of entered months in the quarter">{fmt(avg(c.months.map(m => byYear[c.yi][headcountKey(unit.realmId, m)] ?? '')))}</td>)}
+      </tr>)}</tbody>
+      <tfoot><tr className="font-medium bg-muted/40"><th className={cn(SHEET_TITLE_TD, 'bg-secondary')} title={HEADCOUNT_DUPLICATE_NOTE}>Total</th>
+        {cols.map(c => <td key={c.key} className={SHEET_VALUE_TD} title={HEADCOUNT_DUPLICATE_NOTE}>{fmt(avg(c.months.map(m => { const t = total(c.yi, m); return t === null ? '' : String(Math.round(t * 100) / 100); })))}</td>)}</tr></tfoot>
+    </table>
+    <p className="px-2 py-1.5 text-[11px] text-muted-foreground">Quarterly headcount is the average of the monthly entries. Switch to Monthly to edit.</p>
+  </div>;
+}
