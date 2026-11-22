@@ -1023,20 +1023,18 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
-                                <div className="font-medium text-foreground/90 whitespace-nowrap">
+                                <div className="font-medium text-foreground/90 whitespace-nowrap flex items-center gap-1.5">
                                   {w.label}
-                                </div>
                                 {isShared && (
                                   <TooltipProvider delayDuration={100}>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <button
                                           type="button"
-                                          className="mt-1 inline-flex items-center gap-1 rounded bg-primary/10 hover:bg-primary/20 text-primary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider cursor-help focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 transition-colors"
+                                          className="inline-flex items-center rounded text-primary hover:text-primary/80 cursor-help focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 transition-colors"
                                           aria-label={`Linked across ${linkedLabels.length} dashboards`}
                                         >
-                                          <Link2 className="h-2.5 w-2.5" />
-                                          Linked
+                                          <Link2 className="h-3 w-3" />
                                         </button>
                                       </TooltipTrigger>
                                       <TooltipContent side="right" align="start" className="max-w-xs p-3">
@@ -1062,6 +1060,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                     </Tooltip>
                                   </TooltipProvider>
                                 )}
+                                </div>
                                 {w.hint && (
                                   <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                                     {w.hint}
