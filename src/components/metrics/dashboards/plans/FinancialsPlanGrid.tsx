@@ -1,4 +1,4 @@
-import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT, SHEET_WRAP, SHEET_HEAD, SHEET_TH, SHEET_TITLE_TH, SHEET_TITLE_TD, SHEET_GROUP_TD } from '@/lib/sheetGrid';
 import { Fragment, forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ChevronRight } from 'lucide-react';
@@ -127,8 +127,8 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   const toggle = (active: boolean) => cn('h-8 px-3 text-xs', active ? '' : 'text-muted-foreground');
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="space-y-3 min-w-0 max-w-full">
+      <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-1">
           {mode === 'monthly' && FINANCIAL_YEARS.map((y) => (
             <Button key={y} size="sm" variant={y === year ? 'default' : 'ghost'} className={toggle(y === year)} onClick={() => setYear(y)}>{y}</Button>
@@ -140,7 +140,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
             </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
           <span>Monthly and quarterly figures are entered separately. Paste from Excel works.</span>
@@ -159,20 +159,20 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
       {loading ? (
         <div className="py-10 flex justify-center text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
-        <div className="max-h-[60vh] overflow-auto border border-border rounded-md">
+        <div className={SHEET_WRAP}>
           <table className={SHEET_TABLE}>
-            <thead className="sticky top-0 z-10 bg-card">
-              <tr className="border-b border-border">
-                <th className="sticky left-0 z-20 bg-card text-left px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground border-r border-border">Line item</th>
-                {periods.map((p) => <th key={p.key} className="text-right px-2 py-2 text-xs uppercase tracking-wider text-muted-foreground min-w-28 border-l border-border/60">{p.label}</th>)}
+            <thead className={SHEET_HEAD}>
+              <tr>
+                <th className={SHEET_TITLE_TH}>Line item</th>
+                {periods.map((p) => <th key={p.key} className={cn(SHEET_TH, 'min-w-24')}>{p.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {FINANCIAL_SEGMENTS.map((seg, si) => (
                 <Fragment key={seg.key}>
-                  <tr className="bg-muted/30 cursor-pointer hover:bg-muted/50" onClick={() => toggleSeg(seg.key)}>
-                    <td colSpan={1 + periods.length} className="sticky left-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                      <button type="button" aria-expanded={expanded.has(seg.key)} className="inline-flex items-center gap-1.5 uppercase">
+                  <tr className="cursor-pointer" onClick={() => toggleSeg(seg.key)}>
+                    <td colSpan={1 + periods.length} className={SHEET_GROUP_TD}>
+                      <button type="button" aria-expanded={expanded.has(seg.key)} className="inline-flex items-center gap-1.5 uppercase hover:text-primary/80">
                         <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', expanded.has(seg.key) && 'rotate-90')} />
                         {seg.label}
                       </button>
@@ -181,8 +181,8 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                   {expanded.has(seg.key) && FINANCIAL_ROWS.map((row, ri) => {
                     const r = si * FINANCIAL_ROWS.length + ri;
                     return (
-                      <tr key={row.key} className="border-b border-border/60 hover:bg-muted/20">
-                        <td className="sticky left-0 z-[5] bg-card px-2 py-1 border-r border-border whitespace-nowrap">
+                      <tr key={row.key} className="hover:bg-muted/20">
+                        <td className={SHEET_TITLE_TD}>
                           <span className={row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
                         </td>
                         {periods.map((p, c) => {
@@ -193,7 +193,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                           if (focused !== k && raw.trim() && !err) display = formatFinancial(parseFinancialInput(raw)!, row.format);
                           const dirty = (raw.trim()) !== (initial[k] ?? '').trim();
                           return (
-                            <td key={p.key} className="p-0 border-l border-border/60">
+                            <td key={p.key} className="p-0">
                               <input
                                 ref={(el) => { if (el) inputs.current.set(k, el); else inputs.current.delete(k); }}
                                 aria-label={`${seg.label} ${row.label} ${p.label}`}

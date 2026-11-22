@@ -1,4 +1,4 @@
-import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT, SHEET_WRAP, SHEET_HEAD, SHEET_TH, SHEET_TITLE_TH, SHEET_TITLE_TD, SHEET_GROUP_TD } from '@/lib/sheetGrid';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
@@ -819,7 +819,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={guardedOpenChange}>
-      <DialogContent className="max-w-[92vw] w-[92vw] px-2.5">
+      <DialogContent className="max-w-[92vw] w-[92vw] px-2.5 grid-cols-[minmax(0,1fr)] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
           <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
@@ -971,21 +971,18 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             aria-labelledby={`master-plan-tab-${activeTab}`}
             aria-label={`Plan values for ${PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
             tabIndex={0}
-            className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className={`${SHEET_WRAP} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50`}
           >
             <table className={SHEET_TABLE}>
-              <thead className="sticky top-0 z-10" style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
+              <thead className={SHEET_HEAD}>
                 <tr className="border-b border-border">
-                  <th
-                    style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
-                    className="text-left px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground sticky left-0 border-r border-border whitespace-nowrap w-auto z-30 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
-                  >
+                  <th className={SHEET_TITLE_TH}>
                     Widget
                   </th>
                   {periods.map((p) => (
                     <th
                       key={p.key}
-                      className="text-right px-2 py-2 font-medium text-xs uppercase tracking-wider text-muted-foreground min-w-24 border-l border-border/60"
+                      className={`${SHEET_TH} min-w-24`}
                     >
                       {p.label}
                     </th>
@@ -995,14 +992,13 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               <tbody>
                 {(() => { let rowIdx = -1; return groups.map((group) => (
                   <Fragment key={group.key}>
-                    <tr style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}>
+                    <tr>
                       <td
                         colSpan={1 + periods.length}
-                        style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
-                        className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-20"
+                        className={SHEET_GROUP_TD}
                       >
                         {activeTab === ENTITY_TAB && !search.trim() ? (
-                          <button type="button" aria-expanded={expandedEntities.has(group.key)} onClick={() => toggleEntity(group.key)} className="inline-flex items-center gap-1.5 uppercase hover:text-foreground">
+                          <button type="button" aria-expanded={expandedEntities.has(group.key)} onClick={() => toggleEntity(group.key)} className="inline-flex items-center gap-1.5 uppercase hover:text-primary/80">
                             <ChevronRight className={`h-3.5 w-3.5 transition-transform ${expandedEntities.has(group.key) ? 'rotate-90' : ''}`} />
                             {group.label}
                             <span className="normal-case font-normal opacity-60">({group.widgets.length})</span>
@@ -1019,10 +1015,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                       rowIdx += 1;
                       const ri = rowIdx;
                       return (
-                        <tr key={`${group.key}-${w.key}`} className="border-b border-border/60 hover:bg-muted/20">
+                        <tr key={`${group.key}-${w.key}`} className="hover:bg-muted/20">
                           <td
-                            style={{ background: 'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)' }}
-                            className="px-2 py-1.5 sticky left-0 z-20 border-r border-border whitespace-nowrap w-auto shadow-[2px_0_4px_-2px_rgba(0,0,0,0.4)]"
+                            className={SHEET_TITLE_TD}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
@@ -1095,7 +1090,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 ? formatCurrencyDisplay(rawVal)
                                 : rawVal;
                             return (
-                              <td key={p.key} className="p-0 border-l border-border/60 align-top">
+                              <td key={p.key} className="p-0 align-top">
                                 <Input
                                   type="text"
                                   inputMode="decimal"
@@ -1130,12 +1125,12 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   }
                                 />
                                 {err && (
-                                  <div className="text-[10px] text-destructive px-2 pb-0.5 text-right leading-tight">
+                                  <div className="text-[10px] text-destructive px-2 pb-0.5 text-center leading-tight">
                                     {err}
                                   </div>
                                 )}
                                 {!err && remoteHits > 0 && (
-                                  <div className="text-[10px] text-amber-500 px-2 pb-0.5 text-right leading-tight">
+                                  <div className="text-[10px] text-amber-500 px-2 pb-0.5 text-center leading-tight">
                                     Remote update · conflict
                                   </div>
                                 )}

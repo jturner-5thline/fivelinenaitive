@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useCanEditMasterPlan } from '@/hooks/useCanEditMasterPlan';
 import { useMonthlyHeadcount } from '@/hooks/useMonthlyHeadcount';
 import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, HEADCOUNT_MONTHS, headcountKey, headcountSummary, headcountMonthlyTotal, HEADCOUNT_DUPLICATE_NOTE, parseHeadcount, type HeadcountDraft } from '@/lib/monthlyHeadcount';
-import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
+import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT, SHEET_WRAP, SHEET_HEAD, SHEET_TH, SHEET_TITLE_TH, SHEET_TITLE_TD, SHEET_VALUE_TD } from '@/lib/sheetGrid';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -46,8 +46,7 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
   }
   useImperativeHandle(ref, () => ({ save, isDirty: () => dirty, isInvalid: () => invalid }));
   const monthTotal = (i: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => values[headcountKey(u.realmId, i)] ?? '')); } catch { return null; } };
-  const th = 'px-2 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted';
-  return <div className="space-y-2">
+  return <div className="space-y-2 min-w-0 max-w-full">
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs text-muted-foreground">FTE by unit · {dirty ? 'Unsaved changes' : 'Saved'}</span>
       <div className="flex items-center gap-1">
@@ -57,23 +56,23 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
       </div>
     </div>
     {query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
-      <div className="max-h-[60vh] overflow-auto border border-border">
-        <table className={cn(SHEET_TABLE, 'min-w-[1000px]')}>
-          <thead className="sticky top-0 z-10"><tr><th className={cn(th, 'sticky left-0 z-20 text-left w-32')}>Unit</th>{HEADCOUNT_MONTHS.map(m => <th key={m} className={cn(th, 'text-right min-w-16')}>{m}</th>)}<th className={cn(th, 'text-right whitespace-nowrap')} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
-          <tbody>{HEADCOUNT_UNITS.map((unit, row) => <tr key={unit.realmId}>
-            <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-1 text-left font-medium" title={unit.name}>{unit.label}</th>
+      <div className={SHEET_WRAP}>
+        <table className={SHEET_TABLE}>
+          <thead className={SHEET_HEAD}><tr><th className={SHEET_TITLE_TH}>Unit</th>{HEADCOUNT_MONTHS.map(m => <th key={m} className={cn(SHEET_TH, 'min-w-24')}>{m}</th>)}<th className={SHEET_TH} title="Average of entered months; blank months are not counted">Annual avg.</th></tr></thead>
+          <tbody>{HEADCOUNT_UNITS.map((unit, row) => <tr key={unit.realmId} className="hover:bg-muted/20">
+            <th scope="row" className={cn(SHEET_TITLE_TD, 'font-medium')} title={unit.name}>{unit.label}</th>
             {HEADCOUNT_MONTHS.map((month, index) => { const key = headcountKey(unit.realmId, index); const value = values[key] ?? ''; let valid = true; try { parseHeadcount(value); } catch { valid = false; }
               return <td key={month} className={cn('p-0', value !== (baseline[key] ?? '') && 'bg-primary/10', !valid && 'bg-destructive/15')}>
                 <input aria-label={`${unit.label} ${month} ${year}`} aria-invalid={!valid} inputMode="decimal" value={value} disabled={!canEdit || saving}
-                  data-row={row} data-col={index} className={cn(SHEET_INPUT, 'font-mono', !valid && 'text-destructive')}
+                  data-row={row} data-col={index} className={cn(SHEET_INPUT, !valid && 'text-destructive')}
                   onChange={e => setDraft({ ...values, [key]: e.target.value })}
                   onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setDraft({ ...values, [key]: baseline[key] ?? '' }); return; } if ((e.key === 'Delete' || e.key === 'Backspace') && e.currentTarget.dataset.editing !== '1') { e.preventDefault(); setDraft({ ...values, [key]: '' }); return; } sheetKeyDown(e); }}
                   onFocus={sheetFocus} onDoubleClick={sheetDoubleClick} /></td>; })}
-            <td className="px-2 text-right font-mono tabular-nums bg-muted/40">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => values[headcountKey(unit.realmId, i)] ?? '')).average)}</td>
+            <td className={cn(SHEET_VALUE_TD, 'bg-muted/40')}>{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => values[headcountKey(unit.realmId, i)] ?? '')).average)}</td>
           </tr>)}</tbody>
-          <tfoot><tr className="font-medium bg-muted/40"><th className="sticky left-0 z-10 bg-muted px-2 py-1 text-left"><span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">Total</span></th>
-            {HEADCOUNT_MONTHS.map((m, i) => <td key={m} title={HEADCOUNT_DUPLICATE_NOTE} className="px-2 text-right font-mono tabular-nums">{fmt(monthTotal(i))}</td>)}
-            <td title={HEADCOUNT_DUPLICATE_NOTE} className="px-2 text-right font-mono tabular-nums">{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => { const t = monthTotal(i); return t === null ? '' : String(Math.round(t * 100) / 100); })).average)}</td></tr></tfoot>
+          <tfoot><tr className="font-medium bg-muted/40"><th className={cn(SHEET_TITLE_TD, 'bg-secondary')}><span title={HEADCOUNT_DUPLICATE_NOTE} className="cursor-help underline decoration-dotted underline-offset-4">Total</span></th>
+            {HEADCOUNT_MONTHS.map((m, i) => <td key={m} title={HEADCOUNT_DUPLICATE_NOTE} className={SHEET_VALUE_TD}>{fmt(monthTotal(i))}</td>)}
+            <td title={HEADCOUNT_DUPLICATE_NOTE} className={SHEET_VALUE_TD}>{fmt(summary(HEADCOUNT_MONTHS.map((_, i) => { const t = monthTotal(i); return t === null ? '' : String(Math.round(t * 100) / 100); })).average)}</td></tr></tfoot>
         </table>
       </div>}
     {invalid && <p role="alert" className="text-sm text-destructive">Enter a headcount from 0 to 9,999.99 with up to two decimal places.</p>}
