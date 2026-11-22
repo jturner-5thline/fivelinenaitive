@@ -277,15 +277,15 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('financials');
   // Entity sections on the merged tab start collapsed each time the dialog opens.
   const [expandedEntities, setExpandedEntities] = useState<Set<string>>(() => new Set());
   useEffect(() => { if (open) setExpandedEntities(new Set()); }, [open]);
   const toggleEntity = (k: string) => setExpandedEntities((e) => { const n = new Set(e); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   // Sync the active tab with the caller-provided initialTab whenever the
-  // dialog is (re)opened. Falls back to "all" if none supplied.
+  // dialog is (re)opened. Defaults to Financials if none supplied.
   useEffect(() => {
-    if (open) setActiveTab(initialTab ?? 'all');
+    if (open) setActiveTab(initialTab ?? 'financials');
   }, [open, initialTab]);
   // Track cells another user/session updated while this dialog was open —
   // shown as a subtle badge so the reviewer knows why a value changed.
@@ -571,7 +571,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     const entries = VISIBLE_ENTRIES
       // When searching, always scan every dashboard so hits aren't hidden
       // by the active tab filter.
-      .filter(([key]) => q !== '' || activeTab === 'all' || key === activeTab || (activeTab === ENTITY_TAB && ENTITY_TAB_KEYS.includes(key)));
+      .filter(([key]) => q !== '' || key === activeTab || (activeTab === ENTITY_TAB && ENTITY_TAB_KEYS.includes(key)));
     return entries
       .map(([key, def]) => {
         const widgets = q
@@ -926,14 +926,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             aria-label="Dashboard filter"
             className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full"
           >
-            <TabsTrigger
-              value="all"
-              id="master-plan-tab-all"
-              aria-controls="master-plan-grid"
-              className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
-            >
-              All
-            </TabsTrigger>
             <TabsTrigger value="financials" id="master-plan-tab-financials" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
               Financials
             </TabsTrigger>
@@ -961,7 +953,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
         {/* Screen-reader announcement of the active tab change. */}
         <div className="sr-only" role="status" aria-live="polite">
-          {`Showing ${activeTab === 'all' ? 'all dashboards' : activeTab === ENTITY_TAB ? 'KPIs and Metrics' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
+          {`Showing ${activeTab === ENTITY_TAB ? 'KPIs and Metrics' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
         </div>
 
         {activeTab === 'financials' ? (
@@ -977,11 +969,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             id="master-plan-grid"
             role="tabpanel"
             aria-labelledby={`master-plan-tab-${activeTab}`}
-            aria-label={
-              activeTab === 'all'
-                ? 'Plan values for all dashboards'
-                : `Plan values for ${PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`
-            }
+            aria-label={`Plan values for ${PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
             tabIndex={0}
             className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
