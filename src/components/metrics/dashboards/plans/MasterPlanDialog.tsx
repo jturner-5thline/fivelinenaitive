@@ -6,9 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff, Undo2 } from 'lucide-react';
@@ -651,7 +651,38 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     if (activeTab === 'financials' || activeTab === 'headcount') return confirmDiscardSubgrid();
     return dirtyCount === 0 || window.confirm('Discard unsaved changes?');
   }
-  const guardedOpenChange = (next: boolean) => { if (next || confirmDiscardSubgrid()) onOpenChange(next); };
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  /** Human-readable list of every unsaved change, shown in the exit confirmation. */
+  function pendingChanges(): string[] {
+    const out: string[] = [];
+    if (activeTab === 'financials' && financialsRef.current?.isDirty()) out.push('Financials: unsaved figure edits');
+    if (activeTab === 'headcount' && headcountRef.current?.isDirty()) out.push('Headcount: unsaved FTE edits');
+    const labelByKey = new Map(periods.map((p) => [p.key, p.label] as const));
+    const seen = new Set<string>();
+    for (const k of new Set([...Object.keys(values), ...Object.keys(initialValues)])) {
+      const to = values[k] ?? ''; const from = initialValues[k] ?? '';
+      if (to === from || seen.has(k)) continue;
+      seen.add(k);
+      const [wk, pk] = k.split('|');
+      out.push(`${widgetMetaByKey.get(wk)?.label ?? wk} · ${labelByKey.get(pk) ?? pk}: ${from || '—'} → ${to || '—'}`);
+    }
+    return out;
+  }
+  const guardedOpenChange = (next: boolean) => {
+    if (next) return onOpenChange(true);
+    if (pendingChanges().length > 0) { setExitConfirmOpen(true); return; }
+    onOpenChange(false);
+  };
+  async function saveAndExit() {
+    if (activeTab === 'financials' && financialsRef.current?.isDirty() && !(await financialsRef.current.save())) return;
+    if (activeTab === 'headcount' && headcountRef.current?.isDirty() && !(await headcountRef.current.save())) return;
+    if (dirtyCount > 0) {
+      if (hasErrors) { toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`); return; }
+      await handleSaveInternal({ silent: false, keepOpen: true });
+    }
+    setExitConfirmOpen(false);
+    onOpenChange(false);
+  }
   const guardedTabChange = (next: string) => { if (confirmDiscardSubgrid()) setActiveTab(next); };
 
   async function handleSave() {
@@ -826,10 +857,14 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={guardedOpenChange}>
-      <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] px-2.5 flex flex-col overflow-hidden">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="max-w-[92vw] w-[92vw] h-[90vh] px-2.5 pt-2.5 pb-2 gap-2 flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0 flex-row items-center justify-between space-y-0 pr-8">
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
           <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
+          <Button size="sm" className="h-8" onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
+          </Button>
         </DialogHeader>
 
         <div className="flex items-center justify-between gap-3">
@@ -1214,16 +1249,23 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         )}
 
-        <DialogFooter className="shrink-0">
-          <Button variant="outline" onClick={() => guardedOpenChange(false)} disabled={saving}>
-            Close
-          </Button>
-          <Button onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
-          </Button>
-        </DialogFooter>
       </DialogContent>
+      <AlertDialog open={exitConfirmOpen} onOpenChange={setExitConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogDescription>These changes have not been saved yet:</AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="max-h-60 overflow-y-auto space-y-1 rounded-md border border-border/60 p-2 text-xs">
+            {exitConfirmOpen && pendingChanges().map((c) => <li key={c}>{c}</li>)}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <Button variant="outline" onClick={() => { setExitConfirmOpen(false); onOpenChange(false); }}>Exit without Saving</Button>
+            <Button onClick={saveAndExit} disabled={saving}>{saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save and Exit</Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
