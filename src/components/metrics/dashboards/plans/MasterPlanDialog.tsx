@@ -12,7 +12,6 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff, Undo2, Clock } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Popover,
   PopoverContent,
