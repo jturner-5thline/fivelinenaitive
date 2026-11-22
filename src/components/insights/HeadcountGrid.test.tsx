@@ -34,12 +34,12 @@ describe('headcount editor', () => {
     expect(mocks.save).toHaveBeenCalled();
     expect(screen.getByLabelText(/Debt Jan/)).toHaveValue('3');
   });
-  it('confirms before leaving a dirty year', () => {
-    open(); fireEvent.change(screen.getByLabelText(/Debt Jan/), { target: { value: '1' } });
-    fireEvent.click(screen.getByRole('button', { name: '2028' }));
-    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
-    expect(screen.getByLabelText(/Debt Jan/)).toHaveValue('1');
+  it('shows the year chosen in the Master Plan header and clears drafts when it changes', () => {
+    const { rerender } = render(<HeadcountGrid year={2027} />);
+    fireEvent.change(screen.getByLabelText(/Debt Jan/), { target: { value: '1' } });
+    rerender(<HeadcountGrid year={2028} />);
+    expect(screen.getByLabelText(/Debt Jan.*2028/)).toHaveValue('');
+    expect(screen.queryByRole('button', { name: '2028' })).toBeNull();
   });
   it('does not expose the tool in another workspace', () => { mocks.companyId = 'another'; const { container } = render(<HeadcountGrid />); expect(container).toBeEmptyDOMElement(); });
   it('makes the table read-only for non-editors', () => { mocks.canEdit = false; open(); expect(screen.getByLabelText(/Debt Jan/)).toBeDisabled(); expect(screen.queryByRole('button', { name: 'Discard' })).toBeNull(); });

@@ -646,6 +646,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       : activeTab === 'headcount' ? headcountRef.current?.isDirty() : false;
     return !dirty || window.confirm('You have unsaved changes on this tab. Discard them?');
   }
+  /** Changing year/view discards unsaved edits on the active tab, so confirm first. */
+  function confirmDiscardPeriod(): boolean {
+    if (activeTab === 'financials' || activeTab === 'headcount') return confirmDiscardSubgrid();
+    return dirtyCount === 0 || window.confirm('Discard unsaved changes?');
+  }
   const guardedOpenChange = (next: boolean) => { if (next || confirmDiscardSubgrid()) onOpenChange(next); };
   const guardedTabChange = (next: string) => { if (confirmDiscardSubgrid()) setActiveTab(next); };
 
@@ -900,10 +905,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         </div>
 
-        {activeTab !== 'financials' && activeTab !== 'headcount' && (
-          <PlanPeriodToggles year={year} mode={mode} onYear={(y) => { if (dirtyCount === 0 || window.confirm('Discard unsaved changes?')) setYear(y); }} onMode={(m) => { if (dirtyCount === 0 || window.confirm('Discard unsaved changes?')) setMode(m); }} />
-        )}
-
         {hasErrors && (
           <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -918,10 +919,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={guardedTabChange}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 p-1 min-w-0">
+        <Tabs value={activeTab} onValueChange={guardedTabChange} className="min-w-0">
           <TabsList
             aria-label="Dashboard filter"
-            className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full"
+            className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-0 rounded-none"
           >
             <TabsTrigger value="financials" id="master-plan-tab-financials" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
               Financials
@@ -947,6 +949,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             ))}
           </TabsList>
         </Tabs>
+          <div className="ml-auto shrink-0">
+            <PlanPeriodToggles year={year} mode={mode} onYear={(y) => { if (confirmDiscardPeriod()) setYear(y); }} onMode={(m) => { if (confirmDiscardPeriod()) setMode(m); }} />
+          </div>
+        </div>
 
         {/* Screen-reader announcement of the active tab change. */}
         <div className="sr-only" role="status" aria-live="polite">
@@ -954,9 +960,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         </div>
 
         {activeTab === 'financials' ? (
-          <FinancialsPlanGrid ref={financialsRef} canEdit />
+          <FinancialsPlanGrid ref={financialsRef} canEdit year={year} mode={mode} />
         ) : activeTab === 'headcount' ? (
-          <HeadcountGrid ref={headcountRef} />
+          <HeadcountGrid ref={headcountRef} year={year} mode={mode} />
         ) : loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />

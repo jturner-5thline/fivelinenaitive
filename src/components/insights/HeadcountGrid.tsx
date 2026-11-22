@@ -1,6 +1,6 @@
 import { monthHeaderLabel, FINANCIAL_YEARS } from '@/components/metrics/dashboards/plans/financialsPlan';
-import { PlanPeriodToggles, type PlanMode } from '@/components/metrics/dashboards/plans/PlanPeriodToggles';
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { type PlanMode } from '@/components/metrics/dashboards/plans/PlanPeriodToggles';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
@@ -16,17 +16,17 @@ import { toast } from 'sonner';
 export type HeadcountGridHandle = { save: () => Promise<boolean>; isDirty: () => boolean; isInvalid: () => boolean };
 
 /** Saving is driven by the Master Plan dialog's "Save master plan" button through the ref. */
-export const HeadcountGrid = forwardRef<HeadcountGridHandle>(function HeadcountGrid(_, ref) {
+export const HeadcountGrid = forwardRef<HeadcountGridHandle, { year?: number; mode?: PlanMode }>(function HeadcountGrid({ year = FINANCIAL_YEARS[0], mode = 'monthly' }, ref) {
   const { company } = useCompany();
   const { canEditMasterPlan } = useCanEditMasterPlan();
   if (company?.id !== HEADCOUNT_COMPANY_ID) return null;
-  return <HeadcountTable ref={ref} companyId={company.id} canEdit={canEditMasterPlan} />;
+  return <HeadcountTable ref={ref} companyId={company.id} canEdit={canEditMasterPlan} year={year} mode={mode} />;
 });
 
-const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canEdit: boolean }>(function HeadcountTable({ companyId, canEdit }, ref) {
-  const [year, setYear] = useState(FINANCIAL_YEARS[0]);
-  const [mode, setMode] = useState<PlanMode>('monthly');
+const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canEdit: boolean; year: number; mode: PlanMode }>(function HeadcountTable({ companyId, canEdit, year, mode }, ref) {
   const [draft, setDraft] = useState<HeadcountDraft | null>(null);
+  // Year/mode are controlled by the Master Plan header, which confirms discards first.
+  useEffect(() => { setDraft(null); }, [year, mode]);
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<(() => void) | null>(null);
   const query = useMonthlyHeadcount(companyId, year, true);
@@ -37,7 +37,6 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
   const fmt = (n: number | null) => n === null ? '—' : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
   const summary = (entries: string[]) => { try { return headcountSummary(entries); } catch { return { total: 0, average: null }; } };
   function request(action: () => void) { if (saving) return; if (dirty) setPending(() => action); else action(); }
-  function changeYear(next: number) { request(() => { setDraft(null); setYear(next); }); }
   async function save(): Promise<boolean> {
     if (!canEdit || saving) return false;
     if (invalid) { toast.error('Fix invalid headcount cells before saving'); return false; }
@@ -50,9 +49,8 @@ const HeadcountTable = forwardRef<HeadcountGridHandle, { companyId: string; canE
   useImperativeHandle(ref, () => ({ save, isDirty: () => dirty, isInvalid: () => invalid }));
   const monthTotal = (i: number) => { try { return headcountMonthlyTotal(HEADCOUNT_UNITS.map(u => values[headcountKey(u.realmId, i)] ?? '')); } catch { return null; } };
   return <div className="space-y-2 min-w-0 max-w-full">
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex items-center gap-3">
       <span className="text-xs text-muted-foreground">FTE by unit · {dirty ? 'Unsaved changes' : 'Saved'}</span>
-      <PlanPeriodToggles year={year} mode={mode} onYear={changeYear} onMode={(m) => request(() => { setDraft(null); setMode(m); })} />
     </div>
     {mode === 'quarterly' ? <HeadcountQuarterly companyId={companyId} fmt={fmt} /> : query.isPending ? <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : query.isError ? <div className="py-8 text-center"><p className="text-destructive mb-3">Headcount could not be loaded.</p><Button variant="outline" onClick={() => query.refetch()}>Retry</Button></div> :
       <div className={SHEET_WRAP}>

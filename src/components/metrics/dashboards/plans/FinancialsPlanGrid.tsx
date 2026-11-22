@@ -1,4 +1,3 @@
-import { PlanPeriodToggles } from './PlanPeriodToggles';
 import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT, SHEET_WRAP, SHEET_HEAD, SHEET_TH, SHEET_TITLE_TH, SHEET_TITLE_TD, SHEET_GROUP_TD } from '@/lib/sheetGrid';
 import { Fragment, forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -19,11 +18,9 @@ const cellId = (seg: string, row: string, period: string) => `${seg}|${row}|${pe
 /** Spreadsheet-style editor for Consolidated, FinServ and Debt Services plan financials. */
 export interface FinancialsPlanGridHandle { save: () => Promise<boolean>; isDirty: () => boolean }
 
-export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit: boolean }>(function FinancialsPlanGrid({ canEdit }, ref) {
+export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit: boolean; year: number; mode: Mode }>(function FinancialsPlanGrid({ canEdit, year, mode }, ref) {
   const { user } = useAuth();
   const { company } = useCompany();
-  const [year, setYear] = useState(FINANCIAL_YEARS[0]);
-  const [mode, setMode] = useState<Mode>('monthly');
   const [values, setValues] = useState<Record<string, string>>({});
   const [initial, setInitial] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -130,7 +127,6 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   return (
     <div className="space-y-3 min-w-0 max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-        <PlanPeriodToggles year={year} mode={mode} onYear={setYear} onMode={setMode} />
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
