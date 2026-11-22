@@ -1,5 +1,5 @@
 import { sheetKeyDown, sheetFocus, sheetDoubleClick, SHEET_TABLE, SHEET_INPUT } from '@/lib/sheetGrid';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, forwardRef, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,9 @@ type Mode = 'monthly' | 'quarterly';
 const cellId = (seg: string, row: string, period: string) => `${seg}|${row}|${period}`;
 
 /** Spreadsheet-style editor for Consolidated, FinServ and Debt Services plan financials. */
-export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
+export interface FinancialsPlanGridHandle { save: () => Promise<boolean> }
+
+export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit: boolean }>(function FinancialsPlanGrid({ canEdit }, ref) {
   const { user } = useAuth();
   const { company } = useCompany();
   const [year, setYear] = useState(FINANCIAL_YEARS[0]);
@@ -68,9 +70,10 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
     [values, initial],
   );
 
-  async function save() {
-    if (!company?.id || !user?.id) return;
-    if (Object.keys(errors).length) { toast.error('Fix invalid cells before saving'); return; }
+  async function save(): Promise<boolean> {
+    if (!company?.id || !user?.id) return false;
+    if (Object.keys(errors).length) { toast.error('Fix invalid cells before saving'); return false; }
+    if (dirtyKeys.length === 0) return true;
     setSaving(true);
     try {
       const upserts: any[] = [];
@@ -96,10 +99,14 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
       }
       toast.success(`Financials saved — ${dirtyKeys.length} cell${dirtyKeys.length === 1 ? '' : 's'} updated`);
       await load();
+      return true;
     } catch (e: any) {
       toast.error('Failed to save financials', { description: e?.message });
+      return false;
     } finally { setSaving(false); }
   }
+
+  useImperativeHandle(ref, () => ({ save }));
 
   /** Paste a block copied from Excel (tabs/newlines) starting at this cell. */
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>, r: number, c: number) {
@@ -224,4 +231,4 @@ export function FinancialsPlanGrid({ canEdit }: { canEdit: boolean }) {
       )}
     </div>
   );
-}
+});

@@ -27,7 +27,7 @@ import { Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
-import { FinancialsPlanGrid } from './FinancialsPlanGrid';
+import { FinancialsPlanGrid, type FinancialsPlanGridHandle } from './FinancialsPlanGrid';
 import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
 import { useQueryClient } from '@tanstack/react-query';
@@ -323,6 +323,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // Cleared on successful save (each save = new baseline) and on close.
   // Capped so long editing sessions don't grow unbounded.
   const headcountRef = useRef<HeadcountGridHandle>(null);
+  const financialsRef = useRef<FinancialsPlanGridHandle>(null);
   const [undoStack, setUndoStack] = useState<Record<string, string>[]>([]);
   const UNDO_CAP = 100;
   // Wrapper around setValues that snapshots the pre-edit state so Undo can
@@ -643,6 +644,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       if (ok) onOpenChange(false);
       return;
     }
+    if (activeTab === 'financials') {
+      const ok = await financialsRef.current?.save();
+      if (ok) onOpenChange(false);
+      return;
+    }
     return handleSaveInternal({ silent: false });
   }
 
@@ -950,7 +956,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         </div>
 
         {activeTab === 'financials' ? (
-          <FinancialsPlanGrid canEdit />
+          <FinancialsPlanGrid ref={financialsRef} canEdit />
         ) : activeTab === 'headcount' ? (
           <HeadcountGrid ref={headcountRef} />
         ) : loading ? (
@@ -1215,7 +1221,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Close
           </Button>
-          <Button onClick={handleSave} disabled={activeTab === 'headcount' ? saving : (saving || loading || hasErrors)}>
+          <Button onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
           </Button>
