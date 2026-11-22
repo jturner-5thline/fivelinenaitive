@@ -638,6 +638,15 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     return () => { cancelled = true; };
   }, [open, year, company?.id, periods]);
 
+  /** True when the current Financials/Headcount tab holds edits that would be lost on unmount. */
+  function confirmDiscardSubgrid(): boolean {
+    const dirty = activeTab === 'financials' ? financialsRef.current?.isDirty()
+      : activeTab === 'headcount' ? headcountRef.current?.isDirty() : false;
+    return !dirty || window.confirm('You have unsaved changes on this tab. Discard them?');
+  }
+  const guardedOpenChange = (next: boolean) => { if (next || confirmDiscardSubgrid()) onOpenChange(next); };
+  const guardedTabChange = (next: string) => { if (confirmDiscardSubgrid()) setActiveTab(next); };
+
   async function handleSave() {
     if (activeTab === 'headcount') {
       const ok = await headcountRef.current?.save();
@@ -809,7 +818,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   }, [values, initialValues, autosave, open, loading, saving, hasErrors]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={guardedOpenChange}>
       <DialogContent className="max-w-[92vw] w-[92vw] px-2.5">
         <DialogHeader>
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
@@ -912,7 +921,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={guardedTabChange}>
           <TabsList
             aria-label="Dashboard filter"
             className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full"
@@ -1218,7 +1227,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button variant="outline" onClick={() => guardedOpenChange(false)} disabled={saving}>
             Close
           </Button>
           <Button onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>

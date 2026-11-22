@@ -16,7 +16,7 @@ type Mode = 'monthly' | 'quarterly';
 const cellId = (seg: string, row: string, period: string) => `${seg}|${row}|${period}`;
 
 /** Spreadsheet-style editor for Consolidated, FinServ and Debt Services plan financials. */
-export interface FinancialsPlanGridHandle { save: () => Promise<boolean> }
+export interface FinancialsPlanGridHandle { save: () => Promise<boolean>; isDirty: () => boolean }
 
 export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit: boolean }>(function FinancialsPlanGrid({ canEdit }, ref) {
   const { user } = useAuth();
@@ -106,7 +106,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
     } finally { setSaving(false); }
   }
 
-  useImperativeHandle(ref, () => ({ save }));
+  useImperativeHandle(ref, () => ({ save, isDirty: () => dirtyKeys.length > 0 }));
 
   /** Paste a block copied from Excel (tabs/newlines) starting at this cell. */
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>, r: number, c: number) {
