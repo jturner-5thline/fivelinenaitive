@@ -685,41 +685,12 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   }
   const guardedTabChange = (next: string) => { if (confirmDiscardSubgrid()) setActiveTab(next); };
 
+  /** "Save master plan" saves every pending edit in the pop-up (active grid + KPI targets), then closes. */
   async function handleSave() {
-    if (activeTab === 'headcount') {
-      const ok = await headcountRef.current?.save();
-      if (ok) onOpenChange(false);
-      return;
+    if (dirtyCount === 0 && !(activeTab === 'financials' && financialsRef.current?.isDirty()) && !(activeTab === 'headcount' && headcountRef.current?.isDirty())) {
+      onOpenChange(false); return;
     }
-    if (activeTab === 'financials') {
-      const ok = await financialsRef.current?.save();
-      if (ok) onOpenChange(false);
-      return;
-    }
-    return handleSaveInternal({ silent: false });
-  }
-
-  /**
-   * Manual "Save now" — cancels any pending debounced autosave and flushes
-   * immediately. Keeps the dialog open so the user can continue editing.
-   * No-op (with a toast) if there are validation errors or nothing dirty.
-   */
-  async function handleSaveNow() {
-    if (autosaveTimer.current) {
-      clearTimeout(autosaveTimer.current);
-      autosaveTimer.current = null;
-    }
-    if (hasErrors) {
-      toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`);
-      return;
-    }
-    if (dirtyCount === 0) {
-      // Nothing dirty (autosave already persisted). Still confirm success so
-      // the user's click feels acknowledged instead of showing an error.
-      toast.success(`All changes saved${savedAgoLabel ? ` (${savedAgoLabel})` : ''}`);
-      return;
-    }
-    return handleSaveInternal({ silent: false, keepOpen: true });
+    return saveAndExit();
   }
 
   async function handleSaveInternal({ silent, keepOpen = false }: { silent: boolean; keepOpen?: boolean }) {
@@ -902,24 +873,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             >
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={handleSaveNow}
-              disabled={saving || loading || hasErrors}
-              className="h-8"
-              title={
-                hasErrors
-                  ? `Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} first`
-                  : dirtyCount === 0
-                    ? 'No unsaved changes'
-                    : 'Save now — bypasses the autosave delay and keeps this dialog open'
-              }
-            >
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
-              Save now{dirtyCount > 0 ? ` (${dirtyCount})` : ''}
             </Button>
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusToneClass[saveStatus.tone]}`}

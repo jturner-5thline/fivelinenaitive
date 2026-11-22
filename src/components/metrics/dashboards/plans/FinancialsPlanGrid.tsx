@@ -130,13 +130,6 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
-          <span>Monthly and quarterly figures are entered separately. Paste from Excel works.</span>
-          {canEdit && (
-            <Button size="sm" className="h-8" disabled={saving || dirtyKeys.length === 0} onClick={save}>
-              {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              Save financials{dirtyKeys.length ? ` (${dirtyKeys.length})` : ''}
-            </Button>
-          )}
           {canEdit && dirtyKeys.length > 0 && (
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setValues(initial)}>Discard</Button>
           )}
