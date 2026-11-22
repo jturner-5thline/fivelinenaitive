@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff, Undo2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff, Undo2, Clock } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Popover,
   PopoverContent,
@@ -331,40 +332,42 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // Wrapper around setValues that snapshots the pre-edit state so Undo can
   // revert the most recent change. Skip snapshotting when the updater is a
   // no-op (e.g. same value re-entered) to keep the stack useful.
+  const undoValuesRef = useRef(values);
+  useEffect(() => { undoValuesRef.current = values; }, [values]);
+  const undoStackRef = useRef<Record<string, string>[]>([]);
+  useEffect(() => { undoStackRef.current = undoStack; }, [undoStack]);
+  // Snapshot outside state updaters so StrictMode double-invocation never
+  // pushes duplicate steps; each change = exactly one undo step.
   function setValuesWithUndo(
     updater: React.SetStateAction<Record<string, string>>,
   ) {
-    setValues((v) => {
-      const next = typeof updater === 'function' ? (updater as (p: Record<string, string>) => Record<string, string>)(v) : updater;
-      // Only push if something actually changed.
-      let changed = false;
-      const keys = new Set([...Object.keys(v), ...Object.keys(next)]);
-      for (const k of keys) {
-        if ((v[k] ?? '') !== (next[k] ?? '')) { changed = true; break; }
-      }
-      if (changed) {
-        setUndoStack((s) => {
-          const snap = { ...v };
-          const nextStack = [...s, snap];
-          return nextStack.length > UNDO_CAP ? nextStack.slice(nextStack.length - UNDO_CAP) : nextStack;
-        });
-      }
-      return next;
-    });
+    const v = undoValuesRef.current;
+    const next = typeof updater === 'function' ? (updater as (p: Record<string, string>) => Record<string, string>)(v) : updater;
+    const keys = new Set([...Object.keys(v), ...Object.keys(next)]);
+    let changed = false;
+    for (const k of keys) if ((v[k] ?? '') !== (next[k] ?? '')) { changed = true; break; }
+    if (!changed) return;
+    const stack = [...undoStackRef.current, { ...v }];
+    const capped = stack.length > UNDO_CAP ? stack.slice(stack.length - UNDO_CAP) : stack;
+    undoStackRef.current = capped;
+    undoValuesRef.current = next;
+    setUndoStack(capped);
+    setValues(next);
   }
   function handleUndo() {
-    setUndoStack((s) => {
-      if (s.length === 0) return s;
-      const prev = s[s.length - 1];
-      setValues(prev);
-      // Cancel any pending autosave so the revert isn't immediately committed
-      // — user gets a chance to review before the next debounce cycle.
-      if (autosaveTimer.current) {
-        clearTimeout(autosaveTimer.current);
-        autosaveTimer.current = null;
-      }
-      return s.slice(0, -1);
-    });
+    const s = undoStackRef.current;
+    if (s.length === 0) return;
+    const prev = s[s.length - 1];
+    const rest = s.slice(0, -1);
+    undoStackRef.current = rest;
+    undoValuesRef.current = prev;
+    setUndoStack(rest);
+    setValues(prev);
+    // Cancel any pending autosave so the revert isn't immediately committed.
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
   }
   // Ref mirrors of state so the realtime handler always sees current values
   // without needing to be re-subscribed on every keystroke.
@@ -832,10 +835,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
         <DialogHeader className="shrink-0 flex-row items-center justify-between space-y-0 pr-8">
           <DialogTitle>Master Plan — All Insights Dashboards</DialogTitle>
           <DialogDescription className="sr-only">Master Plan editor</DialogDescription>
-          <Button size="sm" className="h-8" onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
-          </Button>
         </DialogHeader>
 
         <div className="flex items-center justify-between gap-3">
@@ -858,6 +857,50 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               />
               Autosave
             </label>
+            <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Audit log" title="Audit log of saved changes">
+                  <Clock className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-96 p-0">
+                <div className="px-3 py-2 border-b border-border/60 text-xs font-medium">Audit log · {history.length} save{history.length === 1 ? '' : 's'} this session</div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-border/60">
+                  {history.length === 0 && <div className="p-3 text-xs text-muted-foreground">No saved changes yet.</div>}
+                {history.map((entry) => (
+                  <div key={entry.id} className="p-2 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium">
+                        {entry.at.toLocaleTimeString()} ·{' '}
+                        <span className={entry.kind === 'auto' ? 'text-muted-foreground' : 'text-primary'}>
+                          {entry.kind === 'auto' ? 'Autosaved' : 'Saved'}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        {entry.changes.length} cell{entry.changes.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <ul className="space-y-0.5 pl-1">
+                      {entry.changes.map((c) => (
+                        <li key={c.cellKey} className="text-muted-foreground leading-snug">
+                          <span className="text-foreground">{c.widget}</span>
+                          {c.dashboards.length > 0 && (
+                            <span className="text-[10px]"> ({c.dashboards.join(', ')})</span>
+                          )}
+                          {' · '}
+                          <span className="text-foreground">{c.period}</span>
+                          {': '}
+                          <span className="line-through">{c.from || '—'}</span>
+                          {' → '}
+                          <span className="text-foreground">{c.to || '—'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               type="button"
               size="sm"
@@ -874,6 +917,10 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
             </Button>
+            <Button size="sm" className="h-8" onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save'}
+          </Button>
             <div
               className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${statusToneClass[saveStatus.tone]}`}
               title={
@@ -1144,61 +1191,6 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 )}
               </tbody>
             </table>
-          </div>
-        )}
-
-        {history.length > 0 && (
-          <div className="border-t border-border/60 pt-3">
-            <button
-              type="button"
-              onClick={() => setHistoryOpen((v) => !v)}
-              className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-              aria-expanded={historyOpen}
-              aria-controls="master-plan-history-panel"
-            >
-              <span>
-                Change history · {history.length} save{history.length === 1 ? '' : 's'} this session
-              </span>
-              <span>{historyOpen ? '▾' : '▸'}</span>
-            </button>
-            {historyOpen && (
-              <div
-                id="master-plan-history-panel"
-                className="mt-2 max-h-56 overflow-y-auto rounded-md border border-border/60 bg-muted/20 divide-y divide-border/60"
-              >
-                {history.map((entry) => (
-                  <div key={entry.id} className="p-2 text-xs">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium">
-                        {entry.at.toLocaleTimeString()} ·{' '}
-                        <span className={entry.kind === 'auto' ? 'text-muted-foreground' : 'text-primary'}>
-                          {entry.kind === 'auto' ? 'Autosaved' : 'Saved'}
-                        </span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        {entry.changes.length} cell{entry.changes.length === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                    <ul className="space-y-0.5 pl-1">
-                      {entry.changes.map((c) => (
-                        <li key={c.cellKey} className="text-muted-foreground leading-snug">
-                          <span className="text-foreground">{c.widget}</span>
-                          {c.dashboards.length > 0 && (
-                            <span className="text-[10px]"> ({c.dashboards.join(', ')})</span>
-                          )}
-                          {' · '}
-                          <span className="text-foreground">{c.period}</span>
-                          {': '}
-                          <span className="line-through">{c.from || '—'}</span>
-                          {' → '}
-                          <span className="text-foreground">{c.to || '—'}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 

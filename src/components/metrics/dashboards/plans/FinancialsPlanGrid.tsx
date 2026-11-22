@@ -128,8 +128,8 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
     <div className="flex-1 min-h-0 flex flex-col gap-3 min-w-0 max-w-full">
       <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground min-w-0">
-          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
-          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
+          <Button size="sm" variant="ghost" className="h-6 px-2 py-0 text-xs" onClick={() => setExpanded(new Set(FINANCIAL_SEGMENTS.map((x) => x.key)))}>Expand all</Button>
+          <Button size="sm" variant="ghost" className="h-6 px-2 py-0 text-xs" onClick={() => setExpanded(new Set())}>Collapse all</Button>
           {canEdit && dirtyKeys.length > 0 && (
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setValues(initial)}>Discard</Button>
           )}
