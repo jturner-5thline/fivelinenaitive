@@ -103,3 +103,29 @@ export function buildBdRevenueTree(sources: BdSourceInput[], feeByDeal: Map<stri
     return { key: k, label: ch.label, revenue: r, hours: h, deals: ch.deals.size, perHour: perHour(r, h), ...correlation(ch.meet, ch.deals, ch.pairs), children: companies };
   }).sort(byRev);
 }
+
+export interface BdInvoiceInput { customerName: string | null; amount: number }
+const normCustomer = (v: string | null | undefined) => (v || '').toLowerCase().replace(/[.,;]/g, '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Actual QuickBooks-invoiced revenue per deal: all invoices whose customer name equals the deal
+ * name or contains / is contained in it (both at least 4 characters). Deals with no matching
+ * invoice are $0 — never invoiced means no revenue.
+ */
+export function invoicedRevenueByDeal(deals: { id: string; name: string | null }[], invoices: BdInvoiceInput[]): Map<string, number> {
+  const byCustomer = new Map<string, number>();
+  for (const inv of invoices) {
+    const c = normCustomer(inv.customerName);
+    if (c) byCustomer.set(c, (byCustomer.get(c) || 0) + (Number(inv.amount) || 0));
+  }
+  const out = new Map<string, number>();
+  for (const d of deals) {
+    const dn = normCustomer(d.name);
+    let total = 0;
+    if (dn) for (const [c, amt] of byCustomer) {
+      if (c === dn || (c.length >= 4 && dn.length >= 4 && (c.includes(dn) || dn.includes(c)))) total += amt;
+    }
+    out.set(d.id, total);
+  }
+  return out;
+}

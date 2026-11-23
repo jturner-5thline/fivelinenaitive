@@ -11,7 +11,7 @@ import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { channelLabel } from './channelOptions';
-import { buildBdRevenueTree, formatBdLag, isBdReferralInRange, meetingHours, type BdNode, type BdSourceInput, type BdMeetingInput } from '@/lib/bdRevenuePerHour';
+import { invoicedRevenueByDeal, buildBdRevenueTree, formatBdLag, isBdReferralInRange, meetingHours, type BdNode, type BdSourceInput, type BdMeetingInput } from '@/lib/bdRevenuePerHour';
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
 type DrillKind = 'deals' | 'meetings' | 'pairs';
@@ -25,6 +25,7 @@ export function BdRevenuePerHourWidget() {
   const start = dateCtx?.start ?? null;
   const end = dateCtx?.end ?? null;
   const { referralSources, resolveChannel, isLoading } = useDealReferralSources({ ignoreDateRange: true });
+  const [basis, setBasis] = useState<'invoiced' | 'pipeline'>('invoiced');
   const [sort, setSort] = useState<SortKey>('revenue');
   const [ascending, setAscending] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -36,7 +37,7 @@ export function BdRevenuePerHourWidget() {
   const dealIds = useMemo(() => [...new Set(sources.flatMap((s) => s.deals.map((d) => d.id)))].sort(), [sources]);
   const contactIds = useMemo(() => [...new Set(sources.map((s) => s.contactId).filter((v): v is string => !!v))].sort(), [sources]);
 
-  const { data: fees = new Map<string, number>(), isLoading: feesLoading, isError: feesError } = useQuery({
+  const { data: pipelineFees = new Map<string, number>(), isLoading: pipelineLoading, isError: pipelineError } = useQuery({
     queryKey: ['bd_rev_hour_fees', company?.id, dealIds.join(',')],
     enabled: !!company?.id && dealIds.length > 0,
     queryFn: async () => {
@@ -50,6 +51,25 @@ export function BdRevenuePerHourWidget() {
       return map;
     },
   });
+  const dealNames = useMemo(() => [...new Map(sources.flatMap((s) => s.deals.map((d) => [d.id, d.company] as const))).entries()].map(([id, name]) => ({ id, name })), [sources]);
+  const { data: invoices = [], isLoading: invoicesLoading, isError: invoicesError } = useQuery({
+    queryKey: ['bd_rev_hour_qbo_invoices', company?.id],
+    enabled: !!company?.id && basis === 'invoiced',
+    queryFn: async () => {
+      const rows: { customerName: string | null; amount: number }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await supabase.from('quickbooks_invoices').select('customer_name, total_amt').range(from, from + 999);
+        if (error) throw error;
+        for (const r of data || []) rows.push({ customerName: r.customer_name, amount: Number(r.total_amt) || 0 });
+        if (!data || data.length < 1000) break;
+      }
+      return rows;
+    },
+  });
+  const invoicedFees = useMemo(() => invoicedRevenueByDeal(dealNames, invoices), [dealNames, invoices]);
+  const fees = basis === 'invoiced' ? invoicedFees : pipelineFees;
+  const feesLoading = basis === 'invoiced' ? invoicesLoading : pipelineLoading;
+  const feesError = basis === 'invoiced' ? invoicesError : pipelineError;
   const { data: emails = new Map<string, string[]>(), isLoading: emailsLoading, isError: emailsError } = useQuery({
     queryKey: ['bd_rev_hour_emails', company?.id, contactIds.join(',')],
     enabled: !!company?.id && contactIds.length > 0,
@@ -150,12 +170,19 @@ export function BdRevenuePerHourWidget() {
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Revenue per BD Hour</h3>
-          <p className="text-[11px] text-muted-foreground">Fee revenue from referred deals ÷ calendar hours spent with each contact, rolled up to company and channel.</p>
+          <p className="text-[11px] text-muted-foreground">{basis === 'invoiced' ? 'Actual QuickBooks-invoiced revenue from referred deals (never invoiced = $0)' : 'Pipeline fee from referred deals'} ÷ calendar hours spent with each contact, rolled up to company and channel.</p>
         </div>
-        <span className="text-[11px] text-muted-foreground">{dateCtx?.range?.resolved?.label}</span>
+        <div className="flex items-center gap-2">
+          <div role="group" aria-label="Revenue basis" className="flex rounded-md border border-border p-0.5">
+            {([['invoiced', 'Actual Invoiced (QBO)'], ['pipeline', 'Pipeline Fee']] as const).map(([k, label]) => (
+              <Button key={k} type="button" size="sm" variant={basis === k ? 'secondary' : 'ghost'} aria-pressed={basis === k} onClick={() => setBasis(k)} className="h-6 px-2 text-[11px]">{label}</Button>
+            ))}
+          </div>
+          <span className="text-[11px] text-muted-foreground">{dateCtx?.range?.resolved?.label}</span>
+        </div>
       </div>
       {meetingsError && <p className="mb-2 text-[11px] text-warning">Calendar meetings could not be loaded; meeting metrics are unavailable.</p>}
-      {feesError && <p className="mb-2 text-[11px] text-warning">Referred-deal revenue could not be loaded.</p>}
+      {feesError && <p className="mb-2 text-[11px] text-warning">{basis === 'invoiced' ? 'QuickBooks invoices' : 'Referred-deal fees'} could not be loaded.</p>}
       {emailsError && <p className="mb-2 text-[11px] text-warning">Contact emails could not be loaded; meeting matches may be incomplete.</p>}
       <div className="max-h-[480px] max-w-full overflow-auto">
         <table className="w-full min-w-[920px] text-xs">

@@ -106,3 +106,21 @@ describe('NDA referral timeframe', () => {
     expect(formatBdLag(null)).toBe('—');
   });
 });
+
+import { invoicedRevenueByDeal } from '../bdRevenuePerHour';
+describe('invoicedRevenueByDeal', () => {
+  it('gives $0 to a referred deal that was never invoiced (ByRider)', () => {
+    const m = invoicedRevenueByDeal([{ id: 'b', name: 'ByRider' }], [{ customerName: 'Merlin Labs', amount: 100 }]);
+    expect(m.get('b')).toBe(0);
+  });
+  it('sums every invoice whose customer matches the deal name', () => {
+    const m = invoicedRevenueByDeal([{ id: 'c', name: 'Care Solace' }], [
+      { customerName: 'Care Solace, Inc.', amount: 100000 }, { customerName: 'care solace', amount: 150000 }, { customerName: 'Other Co', amount: 5 },
+    ]);
+    expect(m.get('c')).toBe(250000);
+  });
+  it('does not match very short names by substring', () => {
+    const m = invoicedRevenueByDeal([{ id: 't', name: 'T1V' }], [{ customerName: 'T1V Holdings Group', amount: 10 }]);
+    expect(m.get('t')).toBe(0);
+  });
+});
