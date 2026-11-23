@@ -11,7 +11,7 @@ import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { formatUSDFromDollars } from '@/lib/formatters/currency';
 import { channelLabel } from './channelOptions';
-import { invoicedRevenueByDeal, buildBdRevenueTree, formatBdLag, isBdReferralInRange, meetingHours, type BdNode, type BdSourceInput, type BdMeetingInput } from '@/lib/bdRevenuePerHour';
+import { bdTotals, invoicedRevenueByDeal, buildBdRevenueTree, formatBdLag, isBdReferralInRange, meetingHours, type BdNode, type BdSourceInput, type BdMeetingInput } from '@/lib/bdRevenuePerHour';
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
 type DrillKind = 'deals' | 'meetings' | 'pairs';
@@ -129,6 +129,8 @@ export function BdRevenuePerHourWidget() {
     sources.forEach((s) => s.deals.forEach((d) => m.set(d.id, { company: d.company, referredBy: s.referredBy, ndaEnteredAt: d.ndaEnteredAt, stage: d.stage })));
     return m;
   }, [sources]);
+  const totals = useMemo(() => bdTotals(tree, fees, meetings), [tree, fees, meetings]);
+  const totalNode: BdNode = { key: 'total', label: 'All channels', revenue: totals.revenue, hours: totals.hours, deals: totals.deals, perHour: totals.perHour, meetings: totals.meetings, meetingsPerDeal: null, avgLagDays: null, lagPairs: 0, dealIds: totals.dealIds, meetingIds: totals.meetingIds, pairs: [], children: [] };
   const meetingById = useMemo(() => new Map(meetings.map((m) => [m.id, m])), [meetings]);
   const toggle = (k: string) => setOpen((p) => { const n = new Set(p); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   const loading = isLoading || feesLoading || meetingsLoading || emailsLoading;
@@ -184,6 +186,21 @@ export function BdRevenuePerHourWidget() {
       {meetingsError && <p className="mb-2 text-[11px] text-warning">Calendar meetings could not be loaded; meeting metrics are unavailable.</p>}
       {feesError && <p className="mb-2 text-[11px] text-warning">{basis === 'invoiced' ? 'QuickBooks invoices' : 'Referred-deal fees'} could not be loaded.</p>}
       {emailsError && <p className="mb-2 text-[11px] text-warning">Contact emails could not be loaded; meeting matches may be incomplete.</p>}
+      {!loading && tree.length > 0 && (
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Total revenue per BD hour">
+          {([
+            ['Total Revenue / BD Hour', !feesError && !meetingsError && totals.perHour != null ? `${formatUSDFromDollars(totals.perHour)}/hr` : '—', 'deals', true],
+            ['Total Revenue', feesError ? '—' : formatUSDFromDollars(totals.revenue), 'deals', false],
+            ['Total BD Hours', meetingsError ? '—' : totals.hours.toFixed(1), 'meetings', false],
+            ['Deals · Mtgs', `${totals.deals} · ${meetingsError ? '—' : totals.meetings}`, 'deals', false],
+          ] as const).map(([label, value, kind, primary]) => (
+            <button key={label} type="button" onClick={() => setDrill({ node: totalNode, kind })} className="rounded-md border border-border px-3 py-2 text-left hover:bg-muted/30 focus-visible:outline focus-visible:outline-1 focus-visible:outline-primary">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+              <div className={`tabular-nums ${primary ? 'text-lg font-semibold text-primary' : 'text-sm font-medium text-foreground'}`}>{value}</div>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="max-h-[480px] max-w-full overflow-auto">
         <table className="w-full min-w-[920px] text-xs">
           <thead className="sticky top-0 bg-card text-muted-foreground">

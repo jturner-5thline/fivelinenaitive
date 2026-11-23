@@ -124,3 +124,15 @@ describe('invoicedRevenueByDeal', () => {
     expect(m.get('t')).toBe(0);
   });
 });
+
+import { bdTotals } from '../bdRevenuePerHour';
+describe('bdTotals', () => {
+  it('total revenue ÷ total BD hours across channels, shared meetings counted once', () => {
+    const tree = buildBdRevenueTree([src(), src({ contactId: 'c2', channel: 'Advisors', companyKey: 'x', emails: ['b@x.com'], dealIds: ['d2'] })],
+      new Map([['d1', 60000], ['d2', 40000]]), [meet('m1', 6, ['armen@boa.com', 'b@x.com']), meet('m2', 4)]);
+    const t = bdTotals(tree, new Map([['d1', 60000], ['d2', 40000]]), [meet('m1', 6), meet('m2', 4)]);
+    expect(t.revenue).toBe(100000);
+    expect(t.hours).toBe(10);
+    expect(t.perHour).toBe(10000);
+  });
+});

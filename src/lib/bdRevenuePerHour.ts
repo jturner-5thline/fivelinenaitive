@@ -129,3 +129,13 @@ export function invoicedRevenueByDeal(deals: { id: string; name: string | null }
   }
   return out;
 }
+
+/** Overall totals: unique deals' revenue ÷ unique meetings' hours across every channel. */
+export function bdTotals(tree: BdNode[], feeByDeal: Map<string, number>, meetings: BdMeetingInput[]) {
+  const deals = new Set(tree.flatMap((n) => n.dealIds));
+  const meet = new Set(tree.flatMap((n) => n.meetingIds));
+  const hrsById = new Map(meetings.map((m) => [m.id, meetingHours(m)]));
+  const revenue = [...deals].reduce((a, d) => a + (feeByDeal.get(d) || 0), 0);
+  const hours = [...meet].reduce((a, id) => a + (hrsById.get(id) || 0), 0);
+  return { revenue, hours, deals: deals.size, meetings: meet.size, perHour: perHour(revenue, hours), dealIds: [...deals], meetingIds: [...meet] };
+}
