@@ -670,7 +670,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     if (activeTab === 'headcount' && headcountRef.current?.isDirty() && !(await headcountRef.current.save())) return;
     if (dirtyCount > 0) {
       if (hasErrors) { toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`); return; }
-      await handleSaveInternal({ silent: false, keepOpen: true });
+      if (!(await handleSaveInternal({ silent: false, keepOpen: true }))) return;
     }
     setExitConfirmOpen(false);
     onOpenChange(false);
@@ -685,11 +685,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     return saveAndExit();
   }
 
-  async function handleSaveInternal({ silent, keepOpen = false }: { silent: boolean; keepOpen?: boolean }) {
-    if (!user) { if (!silent) toast.error('Not signed in'); return; }
+  async function handleSaveInternal({ silent, keepOpen = false }: { silent: boolean; keepOpen?: boolean }): Promise<boolean> {
+    if (!user) { if (!silent) toast.error('Not signed in'); return false; }
     if (hasErrors) {
       if (!silent) toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`);
-      return;
+      return false;
     }
     setSaving(true);
     try {
@@ -730,7 +730,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       if (upserts.length === 0 && Object.keys(clearedByMetric).length === 0) {
         if (!silent) toast.info('No changes to save');
         setSaving(false);
-        return;
+        return true;
       }
       const upsertPromise = upserts.length > 0
         ? supabase
@@ -795,9 +795,11 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       // meaningfully "undoable" without re-writing the DB, so clear the stack.
       setUndoStack([]);
       if (!silent && !keepOpen) onOpenChange(false);
+      return true;
     } catch (e: any) {
       if (!silent) toast.error('Save failed', { description: e?.message });
       else toast.error('Autosave failed', { description: e?.message });
+      return false;
     } finally {
       setSaving(false);
     }
