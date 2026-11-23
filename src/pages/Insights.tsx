@@ -2219,6 +2219,8 @@ function MetricsInner() {
           {/* Header (sticky to top of scrollable <main>) */}
           <StickyDashboardHeader
             surface="module"
+            // This dashboard scrolls beneath the fixed workspace navigation.
+            topClassName={selectedDashboard === 'sales-bd-page' ? 'top-[68px]' : undefined}
             className="flex flex-col md:flex-row md:items-stretch md:justify-between gap-4 !py-2"
           >
             <div>
