@@ -1,5 +1,9 @@
 # Roadmap
 
+## BD meeting/referral correlation
+- [x] Add NDA-dated referrals, unique meeting counts, meetings per referral and pair-weighted average lag to Revenue per BD Hour; deduplicate parent pairs and allow ascending/descending sorting.
+- [x] 18 focused tests, affected-file lint, preview build and diff checks passed. Signed-in preview expansion/sorting and 1198×726/390×844 layouts verified without live writes; no page errors. Calculations use selected-period calendar data, not causal attribution. Published app and broader suite not checked; no dependencies removed.
+
 ## Master Plan Claude MCP
 - [x] Share visible tab/row metadata with the dialog; expose all monthly/quarterly cells and derived Headcount values.
 - [x] Add caller-scoped, audited batch target/headcount writes with dry-run defaults and null clears.

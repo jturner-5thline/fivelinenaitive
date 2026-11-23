@@ -1,1 +1,2 @@
 - Revenue per BD Hour uses `src/lib/bdRevenuePerHour.ts`: referred-deal `total_fee` over calendar-meetings-all hours matched to contacts (matched contact or attendee email); a meeting counts once per company/channel — why: hours must roll up without double counting.
+- BD correlation filters referrals by shared NDA-entry dates and pairs each matched meeting with subsequent referrals by that contact within the selected timeframe; company/channel averages union meeting/deal pairs — why: prevent duplicate pairs and unrelated colleague attribution without claiming causation.
