@@ -50,6 +50,9 @@ describe('buildBdRevenueTree', () => {
       ]));
     expect(tree[0].avgLagDays).toBe(20);
     expect(tree[0].lagPairs).toBe(3);
+    expect(tree[0].dealIds.sort()).toEqual(['d1', 'd2', 'd3']);
+    expect(tree[0].meetingIds.sort()).toEqual(['m1', 'm2']);
+    expect(tree[0].pairs.map((p) => `${p.meetingId}>${p.dealId}`).sort()).toEqual(['m1>d1', 'm1>d2', 'm2>d3']);
   });
 
   it('deduplicates shared meeting/referral pairs across companies and the channel', () => {

@@ -12,7 +12,8 @@ export interface BdSourceInput {
   emails: string[];
 }
 export interface BdMeetingInput { id: string; start: string | null; end: string | null; attendeeEmails: string[]; matchedContactId: string | null }
-export interface BdNode { key: string; label: string; revenue: number; hours: number; deals: number; perHour: number | null; meetings: number; meetingsPerDeal: number | null; avgLagDays: number | null; lagPairs: number; children: BdNode[] }
+export interface BdNode { key: string; label: string; revenue: number; hours: number; deals: number; perHour: number | null; meetings: number; meetingsPerDeal: number | null; avgLagDays: number | null; lagPairs: number; dealIds: string[]; meetingIds: string[]; pairs: BdPair[]; children: BdNode[] }
+export interface BdPair { meetingId: string; dealId: string; days: number }
 
 /** Stage-history dates only: missing/invalid dates never fall back to CRM creation. */
 export function isBdReferralInRange(ndaEnteredAt: string | null, start: Date | null, end: Date | null): boolean {
@@ -71,6 +72,9 @@ export function buildBdRevenueTree(sources: BdSourceInput[], feeByDeal: Map<stri
     meetingsPerDeal: deals.size > 0 ? meet.size / deals.size : null,
     avgLagDays: pairs.size > 0 ? [...pairs.values()].reduce((a, days) => a + days, 0) / pairs.size : null,
     lagPairs: pairs.size,
+    dealIds: [...deals],
+    meetingIds: [...meet],
+    pairs: [...pairs.entries()].map(([k, days]) => { const [meetingId, dealId] = JSON.parse(k) as [string, string]; return { meetingId, dealId, days }; }),
   });
   const channels = new Map<string, { label: string; meet: Set<string>; deals: Set<string>; pairs: Map<string, number>; companies: Map<string, { label: string; meet: Set<string>; deals: Set<string>; pairs: Map<string, number>; contacts: BdNode[] }> }>();
   sources.forEach((s, i) => {
