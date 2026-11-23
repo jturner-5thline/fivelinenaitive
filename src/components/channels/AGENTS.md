@@ -1,0 +1,1 @@
+- Revenue per BD Hour uses `src/lib/bdRevenuePerHour.ts`: referred-deal `total_fee` over calendar-meetings-all hours matched to contacts (matched contact or attendee email); a meeting counts once per company/channel — why: hours must roll up without double counting.

@@ -8,6 +8,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ReferralSourceMetricWidgets } from "@/components/channels/ReferralSourceMetricWidgets";
 import { ReferralConversionWidget } from "@/components/channels/ReferralConversionWidget";
 import { ReferralSourcePipelineWidget } from "@/components/partners/ReferralSourcePipelineWidget";
+import { BdRevenuePerHourWidget } from "@/components/channels/BdRevenuePerHourWidget";
 import { ChannelPartnerPipelineBoard } from "@/components/partners/ChannelPartnerPipelineBoard";
 import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
 import type { ChannelEntry } from "@/hooks/useChannelEntries";
@@ -125,6 +126,7 @@ function SalesBdDashboardInner() {
             <ChannelPartnerPipelineBoard search={search} searchSlot={searchSlot} toggleSlot={toggleSlot} />
           );
         })()}
+        <BdRevenuePerHourWidget />
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
