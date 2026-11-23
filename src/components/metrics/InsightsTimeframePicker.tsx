@@ -76,6 +76,20 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   const activeQuarterStart = reportingPeriod?.view === 'quarter' ? reportingPeriod.period : null;
   const activeQuarterEnd = reportingPeriod?.view === 'quarter' ? (reportingPeriod.periodEnd ?? reportingPeriod.period) : null;
 
+  const fullYearRange = (y: number) => {
+    const lastQ = y === currentYear ? Math.floor(now.getMonth() / 3) + 1 : 4;
+    return { start: `${y}-Q1`, end: lastQ === 1 ? undefined : `${y}-Q${lastQ}` };
+  };
+  const isFullYearSelected = (() => {
+    if (reportingPeriod?.view !== 'quarter') return false;
+    const r = fullYearRange(quarterYear);
+    return reportingPeriod.period === r.start && (reportingPeriod.periodEnd ?? undefined) === r.end;
+  })();
+  const applyFullYear = (y: number) => {
+    const r = fullYearRange(y);
+    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', r.start, r.end));
+  };
+
   const triggerLabel = reportingPeriod?.label ?? timeframe.label;
 
   const selectPreset = (id: InsightsTimeframeId) => {
@@ -189,24 +203,25 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    const lastQ = quarterYear === currentYear ? Math.floor(now.getMonth() / 3) + 1 : 4;
-                    setReportingPeriod(
-                      reportingPeriodHelpers.computeReportingPeriod(
-                        'quarter',
-                        `${quarterYear}-Q1`,
-                        `${quarterYear}-Q${lastQ}`,
-                      ),
-                    );
-                  }}
-                  className="h-5 px-2 rounded border border-border bg-background text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  aria-pressed={isFullYearSelected}
+                  onClick={() => applyFullYear(quarterYear)}
+                  className={cn(
+                    'h-5 px-2 rounded border text-[10px] font-medium transition-colors',
+                    isFullYearSelected
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent',
+                  )}
                 >
                   Full year
                 </button>
                 <YearTabs
                   years={years}
                   value={quarterYear}
-                  onChange={setQuarterYear}
+                  onChange={(y) => {
+                    setQuarterYear(y);
+                    // In Full-year mode, switching year applies that year's full year.
+                    if (isFullYearSelected) applyFullYear(y);
+                  }}
                 />
               </div>
             </div>
