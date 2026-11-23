@@ -90,11 +90,26 @@ export function BdRevenuePerHourWidget() {
     enabled: !!company?.id && !!start && !!end,
     queryFn: async () => {
       if (!company?.id || !start || !end) return [];
-      const { data, error } = await supabase.functions.invoke('calendar-meetings-all', {
-        body: { company_id: company.id, time_min: start.toISOString(), time_max: end.toISOString() },
-      });
-      if (error) throw error;
-      return ((data?.events || []) as { id: string; start?: string; end?: string; attendees?: { email?: string }[]; matched_contact_id?: string | null; title?: string; owner_name?: string | null; owner_email?: string | null }[]).map((e) => ({
+      // Load in ~3-month windows: one call over a full year (or more) exceeds
+      // the server function's memory/CPU limits.
+      const all: unknown[] = [];
+      const seen = new Set<string>();
+      let cursor = new Date(start);
+      while (cursor < end) {
+        const next = new Date(cursor);
+        next.setMonth(next.getMonth() + 3);
+        const winEnd = next < end ? next : end;
+        const { data, error } = await supabase.functions.invoke('calendar-meetings-all', {
+          body: { company_id: company.id, time_min: cursor.toISOString(), time_max: winEnd.toISOString() },
+        });
+        if (error) throw error;
+        for (const e of (data?.events || []) as { id: string }[]) {
+          const k = String(e.id);
+          if (!seen.has(k)) { seen.add(k); all.push(e); }
+        }
+        cursor = winEnd;
+      }
+      return (all as { id: string; start?: string; end?: string; attendees?: { email?: string }[]; matched_contact_id?: string | null; title?: string; owner_name?: string | null; owner_email?: string | null }[]).map((e) => ({
         id: String(e.id), title: e.title || '(No title)', owner: e.owner_name || e.owner_email || null, start: e.start || null, end: e.end || null,
         attendeeEmails: (e.attendees || []).map((a) => String(a?.email || '')).filter(Boolean),
         matchedContactId: e.matched_contact_id || null,
