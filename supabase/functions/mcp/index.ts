@@ -11539,7 +11539,7 @@ function masterPlanCatalog() {
   const finRow = (seg, r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [financialMetricKey(seg, r.key)], linked_dashboards: [], editable: true });
   const sumRows = (seg) => FINANCIAL_TTM_SUM_ROWS.map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [], linked_dashboards: [], editable: false, derived: true, source_metric_key: financialMetricKey(seg, r.source), calculation: "Sum of trailing 12 months (monthly) or 4 quarters (quarterly) of the source row; 2027 onward" }));
   const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: [...financialRowsFor(s2.key, "base").map((r) => finRow(s2.key, r)), ...sumRows(s2.key)] })) };
-  const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: [...sumRows(s2.key), ...financialRowsFor(s2.key, "ttm").map((r) => finRow(s2.key, r))] }));
+  const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "ttm").map((r) => finRow(s2.key, r)) }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map((w) => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some((x) => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format, ...w.unit ? { unit: w.unit } : {}, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };

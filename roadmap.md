@@ -1,5 +1,9 @@
 # Roadmap
 
+## Master Plan TTM row placement
+- [x] Remove the five calculated TTM sum rows from every KPIs & Metrics group and its MCP catalog; retain Financials calculations and all saved figures.
+- [x] 208 tests passed, including an all-group placement regression; automatic build OK and diff check passed. Signed-in 1198×726 and 390×844 preview confirmed KPI efficiency rows and retained Financials sums without writes. Two existing Financials grid lint errors and existing mobile control clipping remain; published app not checked.
+
 ## BD meeting/referral correlation
 - [x] Add NDA-dated referrals, unique meeting counts, meetings per referral and pair-weighted average lag to Revenue per BD Hour; deduplicate parent pairs and allow ascending/descending sorting.
 - [x] 18 focused tests, affected-file lint, preview build and diff checks passed. Signed-in preview expansion/sorting and 1198×726/390×844 layouts verified without live writes; no page errors. Calculations use selected-period calendar data, not causal attribution. Published app and broader suite not checked; no dependencies removed.

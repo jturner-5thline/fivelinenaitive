@@ -15,9 +15,9 @@ import {
 
 type Mode = 'monthly' | 'quarterly';
 type GridRow = { key: string; label: string; format: 'currency' | 'percent' | 'number'; source?: string };
-/** Editable rows plus calculated TTM sums: below P&L on Financials, above per-head rows on KPIs & Metrics. */
+/** Calculated TTM sums stay below P&L on Financials; KPIs & Metrics contains efficiency rows only. */
 const gridRows = (seg: string, part: FinancialRowPart): GridRow[] => part === 'ttm'
-  ? [...FINANCIAL_TTM_SUM_ROWS, ...financialRowsFor(seg, part)]
+  ? financialRowsFor(seg, part)
   : [...financialRowsFor(seg, part), ...FINANCIAL_TTM_SUM_ROWS];
 const cellId = (seg: string, row: string, period: string) => `${seg}|${row}|${period}`;
 

@@ -135,6 +135,21 @@ describe('Master Plan tool safety', () => {
   });
 });
 describe('calculated TTM sum rows', () => {
+  it('keeps all five sum rows in Financials only for every group, preserving KPI efficiency rows', () => {
+    const tabs = buildMasterPlan([], [], 2027, 'monthly').tabs;
+    const financials = tabs.find(t => t.key === 'financials');
+    const kpis = tabs.find(t => t.key === 'entity-metrics');
+    if (!financials || !kpis) throw new Error('Missing Master Plan tabs');
+    const sumKeys = ['ttm-sum-revenue', 'ttm-sum-gross-margin', 'ttm-sum-total-opex', 'ttm-sum-total-expenses', 'ttm-sum-net-operating-income'];
+    for (const group of ['consolidated', 'finserv', 'debt', 'tech']) {
+      expect(financials.sections.find(s => s.key === group)?.rows.filter(r => r.key.startsWith('ttm-sum-')).map(r => r.key)).toEqual(sumKeys);
+      const rows = kpis.sections.find(s => s.key === group)?.rows;
+      expect(rows?.map(r => r.key)).toEqual([
+        ...(group === 'consolidated' ? ['ttm-avg-headcount'] : []),
+        'ttm-revenue-per-head', 'ttm-gross-profit-per-head', 'ttm-operating-profit-per-head', 'ttm-operating-cashflow-per-head',
+      ]);
+    }
+  });
   it('are read-only, computed from 2026 inputs for Jan 2027, and reject writes', () => {
     const targets = Array.from({ length: 12 }, (_, i) => ({ metric_key: 'plan:financials:debt:revenue', period_month: `2026-${String(i + 1).padStart(2, '0')}`, target_value: 10 }));
     const fin = buildMasterPlan(targets, [], 2027, 'monthly').tabs.find(t => t.key === 'financials')!;
