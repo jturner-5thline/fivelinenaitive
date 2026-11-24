@@ -5483,3 +5483,17 @@ html body table thead.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque.sheet-
 html body table td.sheet-group.sheet-group.sheet-group.sheet-group.sheet-group > * {
   background-color: var(--bg-card, hsl(var(--card))) !important;
 }
+
+/* Calculated Master Plan totals: a subtle, opaque band, including frozen titles. */
+html body table tr.sheet-ttm-row {
+  --sheet-ttm-surface: color-mix(in srgb, var(--bg-card, hsl(var(--card))) 96%, hsl(var(--foreground)) 4%);
+  --sheet-ttm-divider: color-mix(in srgb, hsl(var(--border)) 65%, hsl(var(--foreground)) 35%);
+}
+html body table tr.sheet-ttm-row > td,
+html body table tr.sheet-ttm-row > td.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque.sheet-opaque {
+  background-color: var(--sheet-ttm-surface) !important;
+  background-image: none !important;
+}
+html body table tr.sheet-ttm-start > td {
+  border-top: 2px solid var(--sheet-ttm-divider);
+}

@@ -167,9 +167,9 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                   {expanded.has(seg.key) && gridRows(seg.key, part).map((row, ri) => {
                     const r = FINANCIAL_SEGMENTS.slice(0, si).reduce((n, x) => n + gridRows(x.key, part).length, 0) + ri;
                     return (
-                      <tr key={row.key} className="hover:bg-muted/20">
+                      <tr key={row.key} className={cn('hover:bg-muted/20', row.source && 'sheet-ttm-row', row.key === 'ttm-sum-revenue' && 'sheet-ttm-start')}>
                         <td className={SHEET_TITLE_TD}>
-                          <span className={row.source ? 'italic text-muted-foreground' : row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
+                          <span className={row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
                         </td>
                         {periods.map((p, c) => {
                           const k = cellId(seg.key, row.key, p.key);
@@ -178,10 +178,10 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                             const sum = computeTtmSum(num, p.key);
                             const shown = sum == null ? '—' : formatFinancial(sum, row.format);
                             return (
-                              <td key={p.key} className="p-0 bg-muted/30">
+                              <td key={p.key} className="p-0">
                                 <input readOnly tabIndex={0} aria-label={`${seg.label} ${row.label} ${p.label}`} title="Calculated: sum of trailing 12 months" value={shown} data-row={r} data-col={c}
                                   onFocus={sheetFocus} onKeyDown={(e) => { if (e.key.length === 1 || e.key === 'Delete' || e.key === 'Backspace' || e.key === 'F2') { e.preventDefault(); return; } sheetKeyDown(e); }}
-                                  className={cn(SHEET_INPUT, 'italic text-muted-foreground cursor-default', shown.startsWith('-') && 'text-destructive')} />
+                                  className={cn(SHEET_INPUT, 'text-foreground cursor-default', shown.startsWith('-') && 'text-destructive')} />
                               </td>
                             );
                           }
