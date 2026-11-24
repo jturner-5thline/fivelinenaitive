@@ -22,3 +22,12 @@ describe('financials plan', () => {
     expect(financialMetricKey('finserv', 'revenue')).toBe('plan:financials:finserv:revenue');
   });
 });
+
+import { financialRowsFor } from './financialsPlan';
+describe('financial rows per segment', () => {
+  it('includes Tech and TTM per-head rows', () => {
+    expect(financialRowsFor('tech').map((r) => r.label)).toContain('TTM Operating Cashflow/Head');
+    expect(financialRowsFor('consolidated')[7].label).toBe('TTM Avg Headcount');
+    expect(financialRowsFor('debt').some((r) => r.key === 'ttm-avg-headcount')).toBe(false);
+  });
+});

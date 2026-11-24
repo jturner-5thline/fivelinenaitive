@@ -8,7 +8,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  FINANCIAL_ROWS, FINANCIAL_SEGMENTS, FINANCIAL_YEARS,
+  financialRowsFor, FINANCIAL_SEGMENTS, FINANCIAL_YEARS,
   financialMetricKey, financialPeriods, formatFinancial, parseFinancialInput,
 } from './financialsPlan';
 
@@ -32,7 +32,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   const inputs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const periods = useMemo(() => (mode === 'quarterly' ? FINANCIAL_YEARS.flatMap((y) => financialPeriods(y, 'quarterly')) : financialPeriods(year, mode)), [year, mode]);
-  const rowsFlat = useMemo(() => FINANCIAL_SEGMENTS.flatMap((s) => FINANCIAL_ROWS.map((r) => ({ seg: s.key, row: r }))), []);
+  const rowsFlat = useMemo(() => FINANCIAL_SEGMENTS.flatMap((s) => financialRowsFor(s.key).map((r) => ({ seg: s.key, row: r }))), []);
 
   const load = useCallback(async () => {
     if (!company?.id) return;
@@ -83,7 +83,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
         if (n === null) deletes.push({ key: metric_key, period });
         else {
           const segLabel = FINANCIAL_SEGMENTS.find((s) => s.key === seg)?.label;
-          const rowLabel = FINANCIAL_ROWS.find((r) => r.key === row)?.label;
+          const rowLabel = financialRowsFor(seg).find((r) => r.key === row)?.label;
           upserts.push({ company_id: company.id, owner_user_id: user.id, metric_key, metric_label: `Financials · ${segLabel} · ${rowLabel}`, period_month: period, target_value: n });
         }
       }
@@ -158,8 +158,8 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                       </button>
                     </td>
                   </tr>
-                  {expanded.has(seg.key) && FINANCIAL_ROWS.map((row, ri) => {
-                    const r = si * FINANCIAL_ROWS.length + ri;
+                  {expanded.has(seg.key) && financialRowsFor(seg.key).map((row, ri) => {
+                    const r = FINANCIAL_SEGMENTS.slice(0, si).reduce((n, x) => n + financialRowsFor(x.key).length, 0) + ri;
                     return (
                       <tr key={row.key} className="hover:bg-muted/20">
                         <td className={SHEET_TITLE_TD}>

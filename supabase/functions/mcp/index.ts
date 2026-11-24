@@ -11191,7 +11191,9 @@ var PLANNABLE_WIDGETS = {
     { key: "utilization", label: "Utilization %", format: "percent" },
     { key: "cashflow", label: "Cashflow", format: "currency" },
     { key: "revenue-per-hour", label: "Revenue / Hour", format: "currency" },
-    { key: "avg-rev-per-client", label: "Avg Revenue / Client", format: "currency" }
+    { key: "avg-rev-per-client", label: "Avg Revenue / Client", format: "currency" },
+    { key: "new-clients", label: "New Clients", format: "number" },
+    { key: "revenue-run-rate", label: "Revenue Run Rate", format: "currency" }
   ],
   "consolidated-debt-pipeline": [
     { key: "deals-on-board", label: "Deals on Board", format: "number" },
@@ -11219,7 +11221,24 @@ var PLANNABLE_WIDGETS = {
     { key: "in-due-diligence", label: "In Due Diligence", format: "number" },
     { key: "proposal-to-signed-conversion", label: "Proposal \u2192 Signed Conversion (# deals)", format: "percent" },
     { key: "agreements-pending", label: "Agreements Pending", format: "number" },
-    { key: "closed-won-fees", label: "Closed-Won Fees", format: "currency" }
+    { key: "closed-won-fees", label: "Closed-Won Fees", format: "currency" },
+    { key: "proposals-pending", label: "Proposals Pending #", format: "number" },
+    { key: "proposals-pending-value", label: "Proposals Pending $", format: "currency" },
+    { key: "agreements-pending-value", label: "Agreements Pending $", format: "currency" },
+    { key: "active-dollars", label: "Active Dollars", format: "currency" },
+    { key: "active-revenue", label: "Active Revenue", format: "currency" },
+    { key: "dollars-in-diligence", label: "Dollars in Diligence", format: "currency" },
+    { key: "revenue-in-diligence", label: "Revenue in Diligence", format: "currency" },
+    { key: "conv-rate-onboard-proposal", label: "Conversion Rate \u2013 On-Board to Proposal", format: "percent" },
+    { key: "conv-rate-proposal-engage", label: "Conversion Rate \u2013 Proposal to Engage", format: "percent" },
+    { key: "conv-rate-engaged-terms-issued", label: "Conversion Rate \u2013 Engaged to Terms Issued", format: "percent" },
+    { key: "conv-rate-engaged-terms-signed", label: "Conversion Rate \u2013 Engaged to Terms Signed", format: "percent" },
+    { key: "conv-rate-terms-funded", label: "Conversion Rate \u2013 Terms to Funded", format: "percent" },
+    { key: "conv-days-onboard-proposal", label: "Conversion Timing \u2013 On-Board to Proposal (days)", format: "number" },
+    { key: "conv-days-proposal-engage", label: "Conversion Timing \u2013 Proposal to Engage (days)", format: "number" },
+    { key: "conv-days-engage-terms-issued", label: "Conversion Timing \u2013 Engage to Terms Issued (days)", format: "number" },
+    { key: "conv-days-engage-terms-signed", label: "Conversion Timing \u2013 Engage to Terms Signed (days)", format: "number" },
+    { key: "conv-days-terms-signed-funded", label: "Conversion Timing \u2013 Terms Signed to Funded (days)", format: "number" }
   ],
   "sales-bd-roi": [
     { key: "ttm-revenue", label: "TTM Revenue", format: "currency" },
@@ -11350,7 +11369,8 @@ var ENTITY_TAB_LABELS = { "finserv-financial-metrics": "FinServ", "consolidated-
 var FINANCIAL_SEGMENTS = [
   { key: "consolidated", label: "Consolidated / Parent" },
   { key: "finserv", label: "FinServ" },
-  { key: "debt", label: "Debt Services" }
+  { key: "debt", label: "Debt Services" },
+  { key: "tech", label: "Tech" }
 ];
 var FINANCIAL_ROWS = [
   { key: "revenue", label: "Revenue", format: "currency" },
@@ -11361,6 +11381,19 @@ var FINANCIAL_ROWS = [
   { key: "net-operating-income", label: "Net Operating Income", format: "currency" },
   { key: "margin-pct", label: "Margin %", format: "percent" }
 ];
+var FINANCIAL_TTM_ROWS = [
+  { key: "ttm-revenue-per-head", label: "TTM Revenue/Head", format: "currency" },
+  { key: "ttm-gross-profit-per-head", label: "TTM Gross Profit/Head", format: "currency" },
+  { key: "ttm-operating-profit-per-head", label: "TTM Operating Profit/Head", format: "currency" },
+  { key: "ttm-operating-cashflow-per-head", label: "TTM Operating Cashflow/Head", format: "currency" }
+];
+function financialRowsFor(segment) {
+  const base = FINANCIAL_ROWS.map(
+    (r) => r.key === "total-firm-expenses" && segment !== "consolidated" ? { ...r, label: "Total Unit Expenses (COGS+OP)" } : r
+  );
+  const ttm = segment === "consolidated" ? [{ key: "ttm-avg-headcount", label: "TTM Avg Headcount", format: "number" }, ...FINANCIAL_TTM_ROWS] : FINANCIAL_TTM_ROWS;
+  return [...base, ...ttm];
+}
 function monthHeaderLabel(year, monthIndex) {
   const m = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "short" });
   return `${m}-${String(year % 100).padStart(2, "0")}`;
@@ -11403,7 +11436,7 @@ var planPeriod = z90.string().regex(/^202[78]-(0[1-9]|1[0-2]|Q[1-4])$/);
 var headcountMonth = z90.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
 var headcountValue = z90.number().finite().min(0).max(9999.99).refine((n2) => Math.abs(n2 * 100 - Math.round(n2 * 100)) < 1e-7, "Use at most two decimal places").nullable();
 function masterPlanCatalog() {
-  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: FINANCIAL_ROWS.map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
+  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key).map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map((w) => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some((x) => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
@@ -11425,7 +11458,7 @@ function normalizeTargetUpdates(updates) {
       const tab = VISIBLE_ENTRIES.find(([k]) => key.startsWith(`plan:${k}:`));
       const label = tab ? `${tab[1].label} \xB7 ${tab[1].widgets.find((w) => key === buildPlanMetricKey(tab[0], w.key))?.label}` : (() => {
         const [, , segment, metric] = key.split(":");
-        return `Financials \xB7 ${FINANCIAL_SEGMENTS.find((s2) => s2.key === segment)?.label} \xB7 ${FINANCIAL_ROWS.find((r) => r.key === metric)?.label}`;
+        return `Financials \xB7 ${FINANCIAL_SEGMENTS.find((s2) => s2.key === segment)?.label} \xB7 ${financialRowsFor(segment).find((r) => r.key === metric)?.label}`;
       })();
       result.set(id, { metric_key: key, metric_label: label, period: u.period, value: u.value });
     }

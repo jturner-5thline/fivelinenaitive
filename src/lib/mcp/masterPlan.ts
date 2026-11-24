@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS } from '@/components/metrics/dashboards/plans/masterPlanTabs';
-import { FINANCIAL_SEGMENTS, FINANCIAL_ROWS, financialMetricKey, financialPeriods } from '@/components/metrics/dashboards/plans/financialsPlan';
+import { FINANCIAL_SEGMENTS, financialRowsFor, financialMetricKey, financialPeriods } from '@/components/metrics/dashboards/plans/financialsPlan';
 import { buildPlanMetricKey } from '@/components/metrics/dashboards/plans/plannableWidgetsRegistry';
 import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, headcountMonthlyTotal, headcountSummary } from '@/lib/monthlyHeadcount';
 import type { supabaseForUser } from './supabase';
@@ -11,7 +11,7 @@ export const headcountMonth = z.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
 export const headcountValue = z.number().finite().min(0).max(9999.99).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 1e-7, 'Use at most two decimal places').nullable();
 
 export function masterPlanCatalog() {
-  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: FINANCIAL_ROWS.map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) })) };
+  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key).map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) })) };
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk as string, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map(w => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some(x => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format as string, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
@@ -34,7 +34,7 @@ export function normalizeTargetUpdates(updates: Array<{ metric_key: string; peri
       const tab = VISIBLE_ENTRIES.find(([k]) => key.startsWith(`plan:${k}:`));
       const label = tab ? `${tab[1].label} · ${tab[1].widgets.find(w => key === buildPlanMetricKey(tab[0], w.key))?.label}` : (() => {
         const [, , segment, metric] = key.split(':');
-        return `Financials · ${FINANCIAL_SEGMENTS.find(s => s.key === segment)?.label} · ${FINANCIAL_ROWS.find(r => r.key === metric)?.label}`;
+        return `Financials · ${FINANCIAL_SEGMENTS.find(s => s.key === segment)?.label} · ${financialRowsFor(segment).find(r => r.key === metric)?.label}`;
       })();
       result.set(id, { metric_key: key, metric_label: label, period: u.period, value: u.value });
     }

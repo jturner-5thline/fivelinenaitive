@@ -26,7 +26,7 @@ beforeEach(() => {
 describe('Master Plan catalog and calculations', () => {
   it('covers all five current tabs, without an All or hidden dashboard tab', () => {
     expect(buildMasterPlan([], [], undefined, 'both').tabs.map(t => t.key)).toEqual(['financials', 'entity-metrics', 'headcount', 'sales-dashboard-v2', 'sales-bd-roi']);
-    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows)).toHaveLength(21);
+    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows)).toHaveLength(45);
   });
   it('keeps monthly and quarterly figures separate and returns blanks as null', () => {
     const result = buildMasterPlan([{ metric_key: target.metric_key, period_month: '2027-01', target_value: 125000 }, { metric_key: target.metric_key, period_month: '2027-Q1', target_value: 450000 }], [], 2027, 'both', 'financials');
