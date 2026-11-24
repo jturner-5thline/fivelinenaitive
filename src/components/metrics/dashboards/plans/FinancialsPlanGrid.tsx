@@ -10,9 +10,15 @@ import { cn } from '@/lib/utils';
 import {
   financialRowsFor, FINANCIAL_SEGMENTS, type FinancialRowPart, FINANCIAL_YEARS,
   financialMetricKey, financialPeriods, formatFinancial, parseFinancialInput,
+  FINANCIAL_TTM_SUM_ROWS, computeTtmSum,
 } from './financialsPlan';
 
 type Mode = 'monthly' | 'quarterly';
+type GridRow = { key: string; label: string; format: 'currency' | 'percent' | 'number'; source?: string };
+/** Editable rows plus calculated TTM sums: below P&L on Financials, above per-head rows on KPIs & Metrics. */
+const gridRows = (seg: string, part: FinancialRowPart): GridRow[] => part === 'ttm'
+  ? [...FINANCIAL_TTM_SUM_ROWS, ...financialRowsFor(seg, part)]
+  : [...financialRowsFor(seg, part), ...FINANCIAL_TTM_SUM_ROWS];
 const cellId = (seg: string, row: string, period: string) => `${seg}|${row}|${period}`;
 
 /** Spreadsheet-style editor for Consolidated, FinServ and Debt Services plan financials. */
@@ -32,7 +38,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
   const inputs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const periods = useMemo(() => (mode === 'quarterly' ? FINANCIAL_YEARS.flatMap((y) => financialPeriods(y, 'quarterly')) : financialPeriods(year, mode)), [year, mode]);
-  const rowsFlat = useMemo(() => FINANCIAL_SEGMENTS.flatMap((s) => financialRowsFor(s.key, part).map((r) => ({ seg: s.key, row: r }))), [part]);
+  const rowsFlat = useMemo(() => FINANCIAL_SEGMENTS.flatMap((s) => gridRows(s.key, part).map((r) => ({ seg: s.key, row: r }))), [part]);
 
   const load = useCallback(async () => {
     if (!company?.id) return;
@@ -116,7 +122,7 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
       const next = { ...v };
       lines.forEach((line, i) => line.split('\t').forEach((cell, j) => {
         const t = rowsFlat[r + i]; const p = periods[c + j];
-        if (t && p) next[cellId(t.seg, t.row.key, p.key)] = cell.trim();
+        if (t && p && !t.row.source) next[cellId(t.seg, t.row.key, p.key)] = cell.trim();
       }));
       return next;
     });
@@ -158,15 +164,27 @@ export const FinancialsPlanGrid = forwardRef<FinancialsPlanGridHandle, { canEdit
                       </button>
                     </td>
                   </tr>
-                  {expanded.has(seg.key) && financialRowsFor(seg.key, part).map((row, ri) => {
-                    const r = FINANCIAL_SEGMENTS.slice(0, si).reduce((n, x) => n + financialRowsFor(x.key, part).length, 0) + ri;
+                  {expanded.has(seg.key) && gridRows(seg.key, part).map((row, ri) => {
+                    const r = FINANCIAL_SEGMENTS.slice(0, si).reduce((n, x) => n + gridRows(x.key, part).length, 0) + ri;
                     return (
                       <tr key={row.key} className="hover:bg-muted/20">
                         <td className={SHEET_TITLE_TD}>
-                          <span className={row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
+                          <span className={row.source ? 'italic text-muted-foreground' : row.format === 'percent' ? 'pl-3 text-muted-foreground' : 'font-medium'}>{row.label}</span>
                         </td>
                         {periods.map((p, c) => {
                           const k = cellId(seg.key, row.key, p.key);
+                          if (row.source) {
+                            const num = (pk: string) => { const v = values[cellId(seg.key, row.source!, pk)]; if (!v?.trim()) return null; try { return parseFinancialInput(v); } catch { return null; } };
+                            const sum = computeTtmSum(num, p.key);
+                            const shown = sum == null ? '—' : formatFinancial(sum, row.format);
+                            return (
+                              <td key={p.key} className="p-0 bg-muted/30">
+                                <input readOnly tabIndex={0} aria-label={`${seg.label} ${row.label} ${p.label}`} title="Calculated: sum of trailing 12 months" value={shown} data-row={r} data-col={c}
+                                  onFocus={sheetFocus} onKeyDown={(e) => { if (e.key.length === 1 || e.key === 'Delete' || e.key === 'Backspace' || e.key === 'F2') { e.preventDefault(); return; } sheetKeyDown(e); }}
+                                  className={cn(SHEET_INPUT, 'italic text-muted-foreground cursor-default', shown.startsWith('-') && 'text-destructive')} />
+                              </td>
+                            );
+                          }
                           const raw = values[k] ?? '';
                           const err = errors[k];
                           let display = raw;

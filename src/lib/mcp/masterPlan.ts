@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS } from '@/components/metrics/dashboards/plans/masterPlanTabs';
-import { FINANCIAL_YEARS, FINANCIAL_SEGMENTS, financialRowsFor, financialMetricKey, financialPeriods } from '@/components/metrics/dashboards/plans/financialsPlan';
+import { FINANCIAL_YEARS, FINANCIAL_SEGMENTS, financialRowsFor, financialMetricKey, financialPeriods, FINANCIAL_TTM_SUM_ROWS, computeTtmSum } from '@/components/metrics/dashboards/plans/financialsPlan';
 import { buildPlanMetricKey } from '@/components/metrics/dashboards/plans/plannableWidgetsRegistry';
 import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, headcountMonthlyTotal, headcountSummary } from '@/lib/monthlyHeadcount';
 import type { supabaseForUser } from './supabase';
@@ -12,11 +12,15 @@ export const headcountMonth = z.string().regex(new RegExp(`^${planYears}-(0[1-9]
 export const headcountValue = z.number().finite().min(0).max(9999.99).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 1e-7, 'Use at most two decimal places').nullable();
 
 export function masterPlanCatalog() {
-  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key, 'base').map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) })) };
-  const kpiRows = FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key, 'ttm').map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) }));
+  type CatalogRow = { key: string; label: string; format: string; unit?: string; metric_key: string; metric_keys: string[]; linked_dashboards: string[]; editable: boolean; derived?: true; source_metric_key?: string; calculation?: string };
+  const finRow = (seg: string, r: { key: string; label: string; format: string }): CatalogRow => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [financialMetricKey(seg, r.key)], linked_dashboards: [], editable: true });
+  // Calculated TTM sums: read-only, never stored, rejected by writes.
+  const sumRows = (seg: string): CatalogRow[] => FINANCIAL_TTM_SUM_ROWS.map(r => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [], linked_dashboards: [], editable: false, derived: true, source_metric_key: financialMetricKey(seg, r.source), calculation: 'Sum of trailing 12 months (monthly) or 4 quarters (quarterly) of the source row; 2027 onward' }));
+  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: [...financialRowsFor(s.key, 'base').map(r => finRow(s.key, r)), ...sumRows(s.key)] })) };
+  const kpiRows = FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: [...sumRows(s.key), ...financialRowsFor(s.key, 'ttm').map(r => finRow(s.key, r))] }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk as string, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map(w => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some(x => x.key === w.key));
-    return { key: w.key, label: w.label, format: w.format as string, ...(w.unit ? { unit: w.unit } : {}), metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
+    return <CatalogRow>{ key: w.key, label: w.label, format: w.format as string, ...(w.unit ? { unit: w.unit } : {}), metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
   }) }));
   return [financials, { key: ENTITY_TAB, label: 'KPIs & Metrics', sections: kpiRows }, { key: 'sales-dashboard', label: 'Sales Dashboard', sections: sections.filter(s => ENTITY_TAB_KEYS.includes(s.key)) }, ...sections.filter(s => !ENTITY_TAB_KEYS.includes(s.key)).map(s => ({ key: s.key, label: VISIBLE_ENTRIES.find(([k]) => k === s.key)?.[1].label ?? s.label, sections: [s] }))];
 }
@@ -29,6 +33,7 @@ export function normalizeTargetUpdates(updates: Array<{ metric_key: string; peri
     planPeriod.parse(u.period);
     const row = byKey.get(u.metric_key);
     if (!row) throw new Error(`Unknown Master Plan metric: ${u.metric_key}`);
+    if (!row.editable) throw new Error(`${u.metric_key} is a calculated row and cannot be written`);
     for (const key of row.metric_keys) {
       const id = `${key}|${u.period}`;
       const prev = result.get(id);
@@ -61,6 +66,7 @@ export function buildMasterPlan(targets: PlanTarget[], headcount: HeadcountRecor
   const periods = years.flatMap(y => (periodType === 'both' ? ['monthly', 'quarterly'] as const : [periodType]).flatMap(m => financialPeriods(y, m).map(p => ({ ...p, period_type: m }))));
   const saved = new Map(targets.map(t => [`${t.metric_key}|${t.period_month}`, t]));
   const tabs = masterPlanCatalog().map(t => ({ ...t, columns: periods, sections: t.sections.map(s => ({ ...s, rows: s.rows.map(r => ({ ...r, cells: periods.map(p => {
+    if (r.derived) return { period: p.key, value: computeTtmSum(k => saved.get(`${r.source_metric_key}|${k}`)?.target_value ?? null, p.key), updated_at: null, editable: false, derived: true, linked_value_conflict: false, stored_values: [] };
     // Match the dialog's shared widget last-row-wins precedence, while exposing conflicts.
     const variants = r.metric_keys.map(k => saved.get(`${k}|${p.key}`)).filter((v): v is PlanTarget => Boolean(v));
     const current = variants.at(-1);

@@ -31,3 +31,18 @@ describe('financial rows per segment', () => {
     expect(financialRowsFor('debt').some((r) => r.key === 'ttm-avg-headcount')).toBe(false);
   });
 });
+
+import { computeTtmSum, trailingPeriods } from './financialsPlan';
+describe('calculated TTM sums', () => {
+  it('Jan 2027 sums Feb 2026 through Jan 2027', () => {
+    const t = trailingPeriods('2027-01');
+    expect(t[0]).toBe('2026-02'); expect(t[11]).toBe('2027-01'); expect(t).toHaveLength(12);
+    expect(computeTtmSum(() => 100, '2027-01')).toBe(1200);
+  });
+  it('2027-Q1 sums 2026-Q2 through 2027-Q1', () => {
+    expect(trailingPeriods('2027-Q1')).toEqual(['2026-Q2', '2026-Q3', '2026-Q4', '2027-Q1']);
+  });
+  it('shows nothing for 2026 periods', () => {
+    expect(computeTtmSum(() => 100, '2026-12')).toBeNull();
+  });
+});

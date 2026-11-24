@@ -26,15 +26,15 @@ beforeEach(() => {
 describe('Master Plan catalog and calculations', () => {
   it('covers all five current tabs, without an All or hidden dashboard tab', () => {
     expect(buildMasterPlan([], [], undefined, 'both').tabs.map(t => t.key)).toEqual(['financials', 'entity-metrics', 'headcount', 'sales-dashboard', 'sales-bd-roi']);
-    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows)).toHaveLength(28);
+    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows).filter(r => r.editable)).toHaveLength(28);
   });
   it('puts TTM rows on KPIs & Metrics by segment and Debt Advisory/FinServ on Sales Dashboard', () => {
     const cat = masterPlanCatalog();
-    expect(cat[0].sections.flatMap(s => s.rows).some(r => r.key.startsWith('ttm-'))).toBe(false);
+    expect(cat[0].sections.flatMap(s => s.rows).filter(r => r.editable).some(r => r.key.startsWith('ttm-'))).toBe(false);
     const kpis = cat.find(t => t.key === 'entity-metrics')!;
     expect(kpis.sections.map(s => s.label)).toEqual(['Consolidated / Parent', 'FinServ', 'Debt Services', 'Tech']);
-    expect(kpis.sections.flatMap(s => s.rows)).toHaveLength(17);
-    expect(kpis.sections[0].rows[0].metric_key).toBe('plan:financials:consolidated:ttm-avg-headcount');
+    expect(kpis.sections.flatMap(s => s.rows).filter(r => r.editable)).toHaveLength(17);
+    expect(kpis.sections[0].rows.filter(r => r.editable)[0].metric_key).toBe('plan:financials:consolidated:ttm-avg-headcount');
     const sales = cat.find(t => t.key === 'sales-dashboard')!;
     expect(sales.sections.map(s => s.label)).toEqual(['FinServ', 'Debt Advisory']);
     expect(sales.sections.flatMap(s => s.rows)).toHaveLength(39);
@@ -132,5 +132,15 @@ describe('Master Plan tool safety', () => {
     rpc.mockClear();
     expect(await hcTool.handler({ ...input, updates: [...input.updates, ...input.updates] }, ctx)).toMatchObject({ isError: true });
     expect(rpc).not.toHaveBeenCalled();
+  });
+});
+describe('calculated TTM sum rows', () => {
+  it('are read-only, computed from 2026 inputs for Jan 2027, and reject writes', () => {
+    const targets = Array.from({ length: 12 }, (_, i) => ({ metric_key: 'plan:financials:debt:revenue', period_month: `2026-${String(i + 1).padStart(2, '0')}`, target_value: 10 }));
+    const fin = buildMasterPlan(targets, [], 2027, 'monthly').tabs.find(t => t.key === 'financials')!;
+    const row = fin.sections.find(s => s.key === 'debt')!.rows.find(r => r.key === 'ttm-sum-revenue')!;
+    expect(row.editable).toBe(false);
+    expect(row.cells[0].value).toBe(110); // Feb-26..Jan-27 = 11 × 10
+    expect(() => normalizeTargetUpdates([{ metric_key: 'plan:financials:debt:ttm-sum-revenue', period: '2027-01', value: 1 }])).toThrow(/calculated/);
   });
 });

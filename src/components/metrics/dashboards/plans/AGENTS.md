@@ -1,2 +1,3 @@
 - Financials tab stores plan:financials:{segment}:{row} per YYYY-MM and YYYY-Qn — why: monthly and quarterly figures are entered separately.
 - Master Plan Sales Dashboard tab shows the Debt Advisory/FinServ sections (old sales-dashboard-v2 rows hidden); KPIs & Metrics shows Financials TTM rows by segment, still stored as plan:financials:{segment}:{row} — why: moving rows must not change stored figures.
+- Calculated TTM sum rows (ttm-sum-*) are computed in memory from base Financials rows via computeTtmSum, never stored, editable:false in MCP and rejected by writes — why: they are formulas, not inputs.

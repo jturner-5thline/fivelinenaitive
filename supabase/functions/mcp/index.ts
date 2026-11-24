@@ -11156,6 +11156,40 @@ var FINANCIAL_TTM_ROWS = [
   { key: "ttm-operating-profit-per-head", label: "TTM Operating Profit/Head", format: "currency" },
   { key: "ttm-operating-cashflow-per-head", label: "TTM Operating Cashflow/Head", format: "currency" }
 ];
+var FINANCIAL_TTM_SUM_ROWS = [
+  { key: "ttm-sum-revenue", label: "TTM Revenue", format: "currency", source: "revenue" },
+  { key: "ttm-sum-gross-margin", label: "TTM Gross Margin", format: "currency", source: "gross-margin" },
+  { key: "ttm-sum-total-opex", label: "TTM Operating Expenses", format: "currency", source: "total-opex" },
+  { key: "ttm-sum-total-expenses", label: "TTM Total Expenses", format: "currency", source: "total-firm-expenses" },
+  { key: "ttm-sum-net-operating-income", label: "TTM Net Operating Income", format: "currency", source: "net-operating-income" }
+];
+var TTM_SUM_START_YEAR = 2027;
+function trailingPeriods(period) {
+  const y = Number(period.slice(0, 4));
+  const q = /Q(\d)$/.exec(period);
+  if (q) return Array.from({ length: 4 }, (_, i) => {
+    const idx = y * 4 + Number(q[1]) - 1 - i;
+    return `${Math.floor(idx / 4)}-Q${idx % 4 + 1}`;
+  }).reverse();
+  const m = Number(period.slice(5, 7));
+  return Array.from({ length: 12 }, (_, i) => {
+    const idx = y * 12 + m - 1 - i;
+    return `${Math.floor(idx / 12)}-${String(idx % 12 + 1).padStart(2, "0")}`;
+  }).reverse();
+}
+function computeTtmSum(get, period) {
+  if (Number(period.slice(0, 4)) < TTM_SUM_START_YEAR) return null;
+  let total = 0;
+  let any = false;
+  for (const p of trailingPeriods(period)) {
+    const v = get(p);
+    if (v != null && Number.isFinite(v)) {
+      total += v;
+      any = true;
+    }
+  }
+  return any ? total : null;
+}
 function financialRowsFor(segment, part = "all") {
   const base = FINANCIAL_ROWS.map(
     (r) => r.key === "total-firm-expenses" && segment !== "consolidated" ? { ...r, label: "Total Unit Expenses (COGS+OP)" } : r
@@ -11502,8 +11536,10 @@ var planPeriod = z90.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2]|Q[1
 var headcountMonth = z90.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2])$`));
 var headcountValue = z90.number().finite().min(0).max(9999.99).refine((n2) => Math.abs(n2 * 100 - Math.round(n2 * 100)) < 1e-7, "Use at most two decimal places").nullable();
 function masterPlanCatalog() {
-  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "base").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
-  const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "ttm").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) }));
+  const finRow = (seg, r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [financialMetricKey(seg, r.key)], linked_dashboards: [], editable: true });
+  const sumRows = (seg) => FINANCIAL_TTM_SUM_ROWS.map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(seg, r.key), metric_keys: [], linked_dashboards: [], editable: false, derived: true, source_metric_key: financialMetricKey(seg, r.source), calculation: "Sum of trailing 12 months (monthly) or 4 quarters (quarterly) of the source row; 2027 onward" }));
+  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: [...financialRowsFor(s2.key, "base").map((r) => finRow(s2.key, r)), ...sumRows(s2.key)] })) };
+  const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: [...sumRows(s2.key), ...financialRowsFor(s2.key, "ttm").map((r) => finRow(s2.key, r))] }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map((w) => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some((x) => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format, ...w.unit ? { unit: w.unit } : {}, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
@@ -11518,6 +11554,7 @@ function normalizeTargetUpdates(updates) {
     planPeriod.parse(u.period);
     const row = byKey.get(u.metric_key);
     if (!row) throw new Error(`Unknown Master Plan metric: ${u.metric_key}`);
+    if (!row.editable) throw new Error(`${u.metric_key} is a calculated row and cannot be written`);
     for (const key of row.metric_keys) {
       const id = `${key}|${u.period}`;
       const prev = result.get(id);
@@ -11545,6 +11582,7 @@ function buildMasterPlan(targets, headcount, year, periodType, tab) {
   const periods = years.flatMap((y) => (periodType === "both" ? ["monthly", "quarterly"] : [periodType]).flatMap((m) => financialPeriods(y, m).map((p) => ({ ...p, period_type: m }))));
   const saved = new Map(targets.map((t) => [`${t.metric_key}|${t.period_month}`, t]));
   const tabs = masterPlanCatalog().map((t) => ({ ...t, columns: periods, sections: t.sections.map((s2) => ({ ...s2, rows: s2.rows.map((r) => ({ ...r, cells: periods.map((p) => {
+    if (r.derived) return { period: p.key, value: computeTtmSum((k) => saved.get(`${r.source_metric_key}|${k}`)?.target_value ?? null, p.key), updated_at: null, editable: false, derived: true, linked_value_conflict: false, stored_values: [] };
     const variants = r.metric_keys.map((k) => saved.get(`${k}|${p.key}`)).filter((v) => Boolean(v));
     const current = variants.at(-1);
     return { period: p.key, value: current?.target_value ?? null, updated_at: current?.updated_at ?? null, editable: true, linked_value_conflict: new Set(variants.map((v) => v.target_value)).size > 1, stored_values: variants.map((v) => ({ metric_key: v.metric_key, value: v.target_value })) };

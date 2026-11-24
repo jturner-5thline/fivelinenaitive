@@ -30,6 +30,34 @@ export const FINANCIAL_TTM_ROWS: { key: string; label: string; format: Financial
   { key: 'ttm-operating-cashflow-per-head', label: 'TTM Operating Cashflow/Head', format: 'currency' },
 ];
 
+/** Calculated (read-only) TTM sum rows: each period sums the trailing 12 months (or 4 quarters) of a base row. */
+export const FINANCIAL_TTM_SUM_ROWS: { key: string; label: string; format: FinancialFormat; source: string }[] = [
+  { key: 'ttm-sum-revenue', label: 'TTM Revenue', format: 'currency', source: 'revenue' },
+  { key: 'ttm-sum-gross-margin', label: 'TTM Gross Margin', format: 'currency', source: 'gross-margin' },
+  { key: 'ttm-sum-total-opex', label: 'TTM Operating Expenses', format: 'currency', source: 'total-opex' },
+  { key: 'ttm-sum-total-expenses', label: 'TTM Total Expenses', format: 'currency', source: 'total-firm-expenses' },
+  { key: 'ttm-sum-net-operating-income', label: 'TTM Net Operating Income', format: 'currency', source: 'net-operating-income' },
+];
+/** First period that shows a calculated TTM value. */
+export const TTM_SUM_START_YEAR = 2027;
+
+/** Trailing periods (inclusive) ending at `period` (YYYY-MM -> 12 months, YYYY-Qn -> 4 quarters). */
+export function trailingPeriods(period: string): string[] {
+  const y = Number(period.slice(0, 4));
+  const q = /Q(\d)$/.exec(period);
+  if (q) return Array.from({ length: 4 }, (_, i) => { const idx = y * 4 + Number(q[1]) - 1 - i; return `${Math.floor(idx / 4)}-Q${(idx % 4) + 1}`; }).reverse();
+  const m = Number(period.slice(5, 7));
+  return Array.from({ length: 12 }, (_, i) => { const idx = y * 12 + m - 1 - i; return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`; }).reverse();
+}
+
+/** TTM sum for one period from available trailing values; null before 2027 or when no trailing value exists. */
+export function computeTtmSum(get: (period: string) => number | null | undefined, period: string): number | null {
+  if (Number(period.slice(0, 4)) < TTM_SUM_START_YEAR) return null;
+  let total = 0; let any = false;
+  for (const p of trailingPeriods(period)) { const v = get(p); if (v != null && Number.isFinite(v)) { total += v; any = true; } }
+  return any ? total : null;
+}
+
 export type FinancialRowPart = 'all' | 'base' | 'ttm';
 /** Rows for one segment. Consolidated adds TTM Avg Headcount; segment units label total expenses as unit expenses.
  *  'base' = P&L rows (Financials tab), 'ttm' = TTM rows (KPIs & Metrics tab); storage keys are the same either way. */
