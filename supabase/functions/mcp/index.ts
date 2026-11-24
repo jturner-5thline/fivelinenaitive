@@ -11134,6 +11134,51 @@ var get_headcount_default = defineTool88({
   }
 });
 
+// src/components/metrics/dashboards/plans/financialsPlan.ts
+var FINANCIAL_SEGMENTS = [
+  { key: "consolidated", label: "Consolidated / Parent" },
+  { key: "finserv", label: "FinServ" },
+  { key: "debt", label: "Debt Services" },
+  { key: "tech", label: "Tech" }
+];
+var FINANCIAL_ROWS = [
+  { key: "revenue", label: "Revenue", format: "currency" },
+  { key: "gross-margin", label: "Gross Margin", format: "currency" },
+  { key: "gross-margin-pct", label: "Gross Margin %", format: "percent" },
+  { key: "total-opex", label: "Total Operating Expenses", format: "currency" },
+  { key: "total-firm-expenses", label: "Total Firm Expenses (COGS+OP)", format: "currency" },
+  { key: "net-operating-income", label: "Net Operating Income", format: "currency" },
+  { key: "margin-pct", label: "Margin %", format: "percent" }
+];
+var FINANCIAL_TTM_ROWS = [
+  { key: "ttm-revenue-per-head", label: "TTM Revenue/Head", format: "currency" },
+  { key: "ttm-gross-profit-per-head", label: "TTM Gross Profit/Head", format: "currency" },
+  { key: "ttm-operating-profit-per-head", label: "TTM Operating Profit/Head", format: "currency" },
+  { key: "ttm-operating-cashflow-per-head", label: "TTM Operating Cashflow/Head", format: "currency" }
+];
+function financialRowsFor(segment, part = "all") {
+  const base = FINANCIAL_ROWS.map(
+    (r) => r.key === "total-firm-expenses" && segment !== "consolidated" ? { ...r, label: "Total Unit Expenses (COGS+OP)" } : r
+  );
+  const ttm = segment === "consolidated" ? [{ key: "ttm-avg-headcount", label: "TTM Avg Headcount", format: "number" }, ...FINANCIAL_TTM_ROWS] : FINANCIAL_TTM_ROWS;
+  return part === "base" ? base : part === "ttm" ? ttm : [...base, ...ttm];
+}
+function monthHeaderLabel(year, monthIndex) {
+  const m = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "short" });
+  return `${m}-${String(year % 100).padStart(2, "0")}`;
+}
+var FINANCIAL_YEARS = [2026, 2027, 2028];
+function financialMetricKey(segment, row) {
+  return `plan:financials:${segment}:${row}`;
+}
+function financialPeriods(year, mode) {
+  if (mode === "quarterly") return [1, 2, 3, 4].map((q) => ({ key: `${year}-Q${q}`, label: `Q${q} ${year}` }));
+  return Array.from({ length: 12 }, (_, i) => ({
+    key: `${year}-${String(i + 1).padStart(2, "0")}`,
+    label: monthHeaderLabel(year, i)
+  }));
+}
+
 // src/lib/mcp/tools/get-master-plan.ts
 import { defineTool as defineTool89 } from "npm:@lovable.dev/mcp-js@3.0.0";
 import { z as z91 } from "npm:zod@^3.23.0";
@@ -11429,50 +11474,6 @@ var ENTITY_TAB = "entity-metrics";
 var ENTITY_TAB_KEYS = ["finserv-financial-metrics", "consolidated-debt-pipeline"];
 var ENTITY_TAB_LABELS = { "finserv-financial-metrics": "FinServ", "consolidated-debt-pipeline": "Debt Advisory" };
 
-// src/components/metrics/dashboards/plans/financialsPlan.ts
-var FINANCIAL_SEGMENTS = [
-  { key: "consolidated", label: "Consolidated / Parent" },
-  { key: "finserv", label: "FinServ" },
-  { key: "debt", label: "Debt Services" },
-  { key: "tech", label: "Tech" }
-];
-var FINANCIAL_ROWS = [
-  { key: "revenue", label: "Revenue", format: "currency" },
-  { key: "gross-margin", label: "Gross Margin", format: "currency" },
-  { key: "gross-margin-pct", label: "Gross Margin %", format: "percent" },
-  { key: "total-opex", label: "Total Operating Expenses", format: "currency" },
-  { key: "total-firm-expenses", label: "Total Firm Expenses (COGS+OP)", format: "currency" },
-  { key: "net-operating-income", label: "Net Operating Income", format: "currency" },
-  { key: "margin-pct", label: "Margin %", format: "percent" }
-];
-var FINANCIAL_TTM_ROWS = [
-  { key: "ttm-revenue-per-head", label: "TTM Revenue/Head", format: "currency" },
-  { key: "ttm-gross-profit-per-head", label: "TTM Gross Profit/Head", format: "currency" },
-  { key: "ttm-operating-profit-per-head", label: "TTM Operating Profit/Head", format: "currency" },
-  { key: "ttm-operating-cashflow-per-head", label: "TTM Operating Cashflow/Head", format: "currency" }
-];
-function financialRowsFor(segment, part = "all") {
-  const base = FINANCIAL_ROWS.map(
-    (r) => r.key === "total-firm-expenses" && segment !== "consolidated" ? { ...r, label: "Total Unit Expenses (COGS+OP)" } : r
-  );
-  const ttm = segment === "consolidated" ? [{ key: "ttm-avg-headcount", label: "TTM Avg Headcount", format: "number" }, ...FINANCIAL_TTM_ROWS] : FINANCIAL_TTM_ROWS;
-  return part === "base" ? base : part === "ttm" ? ttm : [...base, ...ttm];
-}
-function monthHeaderLabel(year, monthIndex) {
-  const m = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "short" });
-  return `${m}-${String(year % 100).padStart(2, "0")}`;
-}
-function financialMetricKey(segment, row) {
-  return `plan:financials:${segment}:${row}`;
-}
-function financialPeriods(year, mode) {
-  if (mode === "quarterly") return [1, 2, 3, 4].map((q) => ({ key: `${year}-Q${q}`, label: `Q${q} ${year}` }));
-  return Array.from({ length: 12 }, (_, i) => ({
-    key: `${year}-${String(i + 1).padStart(2, "0")}`,
-    label: monthHeaderLabel(year, i)
-  }));
-}
-
 // src/lib/monthlyHeadcount.ts
 var HEADCOUNT_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
 var HEADCOUNT_UNITS = [
@@ -11496,8 +11497,9 @@ function headcountMonthlyTotal(values) {
 }
 
 // src/lib/mcp/masterPlan.ts
-var planPeriod = z90.string().regex(/^202[78]-(0[1-9]|1[0-2]|Q[1-4])$/);
-var headcountMonth = z90.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
+var planYears = `(${FINANCIAL_YEARS.join("|")})`;
+var planPeriod = z90.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2]|Q[1-4])$`));
+var headcountMonth = z90.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2])$`));
 var headcountValue = z90.number().finite().min(0).max(9999.99).refine((n2) => Math.abs(n2 * 100 - Math.round(n2 * 100)) < 1e-7, "Use at most two decimal places").nullable();
 function masterPlanCatalog() {
   const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "base").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
@@ -11539,7 +11541,7 @@ async function assertMasterPlanAccess(sb, write = false) {
   if (write && !["jturner@5thline.co", "jmoffitt@5thline.co", "ffustinoni@5thline.co"].includes(auth2.user.email?.toLowerCase() ?? "")) throw new Error("Master Plan editor access required");
 }
 function buildMasterPlan(targets, headcount, year, periodType, tab) {
-  const years = year ? [year] : [2026, 2027, 2028];
+  const years = year ? [year] : [...FINANCIAL_YEARS];
   const periods = years.flatMap((y) => (periodType === "both" ? ["monthly", "quarterly"] : [periodType]).flatMap((m) => financialPeriods(y, m).map((p) => ({ ...p, period_type: m }))));
   const saved = new Map(targets.map((t) => [`${t.metric_key}|${t.period_month}`, t]));
   const tabs = masterPlanCatalog().map((t) => ({ ...t, columns: periods, sections: t.sections.map((s2) => ({ ...s2, rows: s2.rows.map((r) => ({ ...r, cells: periods.map((p) => {
@@ -11572,7 +11574,7 @@ var get_master_plan_default = defineTool89({
   name: "get_master_plan",
   title: "Read the complete Master Plan spreadsheet",
   description: 'Rows with unit="months" (Debt Advisory Conversion Timing) hold month values. Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.',
-  inputSchema: { tab: z91.string().max(80).optional().describe("Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi."), year: z91.union([z91.literal(2026), z91.literal(2027), z91.literal(2028)]).optional(), period_type: z91.enum(["monthly", "quarterly", "both"]).default("both") },
+  inputSchema: { tab: z91.string().max(80).optional().describe("Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi."), year: z91.number().int().refine((y) => FINANCIAL_YEARS.includes(y), `Year must be one of ${FINANCIAL_YEARS.join(", ")}`).optional(), period_type: z91.enum(["monthly", "quarterly", "both"]).default("both") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ tab, year, period_type }, ctx) => {
     const authError = requireAuth(ctx);

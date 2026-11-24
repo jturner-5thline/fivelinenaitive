@@ -1,13 +1,14 @@
 import { z } from 'zod';
 import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS } from '@/components/metrics/dashboards/plans/masterPlanTabs';
-import { FINANCIAL_SEGMENTS, financialRowsFor, financialMetricKey, financialPeriods } from '@/components/metrics/dashboards/plans/financialsPlan';
+import { FINANCIAL_YEARS, FINANCIAL_SEGMENTS, financialRowsFor, financialMetricKey, financialPeriods } from '@/components/metrics/dashboards/plans/financialsPlan';
 import { buildPlanMetricKey } from '@/components/metrics/dashboards/plans/plannableWidgetsRegistry';
 import { HEADCOUNT_COMPANY_ID, HEADCOUNT_UNITS, headcountMonthlyTotal, headcountSummary } from '@/lib/monthlyHeadcount';
 import type { supabaseForUser } from './supabase';
 
 export { HEADCOUNT_COMPANY_ID };
-export const planPeriod = z.string().regex(/^202[78]-(0[1-9]|1[0-2]|Q[1-4])$/);
-export const headcountMonth = z.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
+const planYears = `(${FINANCIAL_YEARS.join('|')})`;
+export const planPeriod = z.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2]|Q[1-4])$`));
+export const headcountMonth = z.string().regex(new RegExp(`^${planYears}-(0[1-9]|1[0-2])$`));
 export const headcountValue = z.number().finite().min(0).max(9999.99).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 1e-7, 'Use at most two decimal places').nullable();
 
 export function masterPlanCatalog() {
@@ -56,7 +57,7 @@ export async function assertMasterPlanAccess(sb: ReturnType<typeof supabaseForUs
 export type PlanTarget = { metric_key: string; period_month: string; target_value: number | null; updated_at?: string };
 export type HeadcountRecord = { realm_id: string; month: string; headcount: number | null };
 export function buildMasterPlan(targets: PlanTarget[], headcount: HeadcountRecord[], year: number | undefined, periodType: 'monthly' | 'quarterly' | 'both', tab?: string) {
-  const years = year ? [year] : [2026, 2027, 2028];
+  const years = year ? [year] : [...FINANCIAL_YEARS];
   const periods = years.flatMap(y => (periodType === 'both' ? ['monthly', 'quarterly'] as const : [periodType]).flatMap(m => financialPeriods(y, m).map(p => ({ ...p, period_type: m }))));
   const saved = new Map(targets.map(t => [`${t.metric_key}|${t.period_month}`, t]));
   const tabs = masterPlanCatalog().map(t => ({ ...t, columns: periods, sections: t.sections.map(s => ({ ...s, rows: s.rows.map(r => ({ ...r, cells: periods.map(p => {

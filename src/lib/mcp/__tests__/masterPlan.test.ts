@@ -73,7 +73,7 @@ describe('Master Plan catalog and calculations', () => {
     expect(rows[0].cells.find(c => c.period === '2027-03')?.value).toBeNull();
   });
   it('validates periods, finite values, and headcount limits', () => {
-    for (const p of ['2027-00','2027-13','2027-Q5','2026-01']) expect(planPeriod.safeParse(p).success).toBe(false);
+    for (const p of ['2027-00','2027-13','2027-Q5','2025-12']) expect(planPeriod.safeParse(p).success).toBe(false);
     expect(headcountMonth.safeParse('2027-Q1').success).toBe(false);
     for (const v of [-1, 10000, 1.234, Infinity]) expect(headcountValue.safeParse(v).success).toBe(false);
     expect(headcountValue.parse(9999.99)).toBe(9999.99);

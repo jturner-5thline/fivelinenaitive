@@ -729,6 +729,13 @@
       "when": 1795540393856,
       "tag": "0103_master_plan_mcp_accept_tech_and_per_head_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1795544830123,
+      "tag": "0104_master_plan_mcp_accept_all_plan_years",
+      "breakpoints": true
     }
   ]
 }
