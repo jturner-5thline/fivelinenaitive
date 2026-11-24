@@ -1049,7 +1049,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                       rowIdx += 1;
                       const ri = rowIdx;
                       return (
-                        <tr key={`${group.key}-${w.key}`} className="hover:bg-muted/20">
+                        <tr key={`${group.key}-${w.key}`} className={`hover:bg-muted/20 ${activeTab === ENTITY_TAB && group.key === 'consolidated-debt-pipeline' ? w.key === 'conv-days-onboard-proposal' ? 'sheet-conversion-start' : w.key === 'conv-rate-terms-funded' ? 'sheet-conversion-end' : '' : ''}`}>
                           <td
                             className={SHEET_TITLE_TD}
                           >
