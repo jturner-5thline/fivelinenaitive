@@ -1572,12 +1572,7 @@
               "description": "Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi."
             },
             "year": {
-              "type": "number",
-              "enum": [
-                2026,
-                2027,
-                2028
-              ]
+              "type": "integer"
             },
             "period_type": {
               "type": "string",
@@ -1618,7 +1613,7 @@
                   },
                   "period": {
                     "type": "string",
-                    "pattern": "^202[78]-(0[1-9]|1[0-2]|Q[1-4])$"
+                    "pattern": "^(2026|2027|2028)-(0[1-9]|1[0-2]|Q[1-4])$"
                   },
                   "value": {
                     "anyOf": [
@@ -1692,7 +1687,7 @@
                   },
                   "month": {
                     "type": "string",
-                    "pattern": "^202[78]-(0[1-9]|1[0-2])$"
+                    "pattern": "^(2026|2027|2028)-(0[1-9]|1[0-2])$"
                   },
                   "value": {
                     "anyOf": [
