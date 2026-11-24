@@ -6,7 +6,7 @@ import { assertMasterPlanAccess, buildMasterPlan, HEADCOUNT_COMPANY_ID, type Pla
 export default defineTool({
   name: 'get_master_plan',
   title: 'Read the complete Master Plan spreadsheet',
-  description: 'Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.',
+  description: 'Rows with unit="months" (Debt Advisory Conversion Timing) hold month values. Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.',
   inputSchema: { tab: z.string().max(80).optional().describe('Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi.'), year: z.union([z.literal(2027), z.literal(2028)]).optional(), period_type: z.enum(['monthly', 'quarterly', 'both']).default('both') },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ tab, year, period_type }, ctx) => {

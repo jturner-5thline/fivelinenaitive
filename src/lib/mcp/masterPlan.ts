@@ -15,7 +15,7 @@ export function masterPlanCatalog() {
   const kpiRows = FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key, 'ttm').map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk as string, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map(w => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some(x => x.key === w.key));
-    return { key: w.key, label: w.label, format: w.format as string, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
+    return { key: w.key, label: w.label, format: w.format as string, ...(w.unit ? { unit: w.unit } : {}), metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
   }) }));
   return [financials, { key: ENTITY_TAB, label: 'KPIs & Metrics', sections: kpiRows }, { key: 'sales-dashboard', label: 'Sales Dashboard', sections: sections.filter(s => ENTITY_TAB_KEYS.includes(s.key)) }, ...sections.filter(s => !ENTITY_TAB_KEYS.includes(s.key)).map(s => ({ key: s.key, label: VISIBLE_ENTRIES.find(([k]) => k === s.key)?.[1].label ?? s.label, sections: [s] }))];
 }

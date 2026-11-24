@@ -11377,11 +11377,11 @@ var MASTER_PLAN_ROW_OVERRIDES = {
     ["retainer-revenue", "Retainer Revenue"],
     ["consulting-milestone-revenue", "Consulting / Milestone Revenue"],
     ["fee-revenue", "Fee Revenue"],
-    ["conv-days-onboard-proposal", "Conversion Timing - On-Board to Proposal"],
-    ["conv-days-proposal-engage", "Conversion Timing - Proposal to Engage"],
-    ["conv-days-engage-terms-issued", "Conversion Timing - Engage to Terms Issued"],
-    ["conv-days-engage-terms-signed", "Conversion Timing - Engage to Terms Signed"],
-    ["conv-days-terms-signed-funded", "Conversion Timing - Terms Signed to Funded"],
+    ["conv-days-onboard-proposal", "Conversion Timing - On-Board to Proposal (months)"],
+    ["conv-days-proposal-engage", "Conversion Timing - Proposal to Engage (months)"],
+    ["conv-days-engage-terms-issued", "Conversion Timing - Engage to Terms Issued (months)"],
+    ["conv-days-engage-terms-signed", "Conversion Timing - Engage to Terms Signed (months)"],
+    ["conv-days-terms-signed-funded", "Conversion Timing - Terms Signed to Funded (months)"],
     ["conv-rate-onboard-proposal", "Conversion Rate - On-Board to Proposal"],
     ["conv-rate-proposal-engage", "Conversion Rate - Proposal to Engage"],
     ["conv-rate-engaged-terms-issued", "Conversion Rate - Engaged to Terms Issued"],
@@ -11419,7 +11419,8 @@ function applyOverrides(k) {
   const byKey = new Map(def.widgets.map((w) => [w.key, w]));
   const widgets = rows.flatMap(([key, label]) => {
     const w = byKey.get(key);
-    return w ? [{ ...w, label }] : [];
+    if (!w) return [];
+    return [key.startsWith("conv-days-") ? { ...w, label, unit: "months" } : { ...w, label }];
   });
   return { ...def, widgets };
 }
@@ -11503,7 +11504,7 @@ function masterPlanCatalog() {
   const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "ttm").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map((w) => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some((x) => x.key === w.key));
-    return { key: w.key, label: w.label, format: w.format, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
+    return { key: w.key, label: w.label, format: w.format, ...w.unit ? { unit: w.unit } : {}, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
   }) }));
   return [financials, { key: ENTITY_TAB, label: "KPIs & Metrics", sections: kpiRows }, { key: "sales-dashboard", label: "Sales Dashboard", sections: sections.filter((s2) => ENTITY_TAB_KEYS.includes(s2.key)) }, ...sections.filter((s2) => !ENTITY_TAB_KEYS.includes(s2.key)).map((s2) => ({ key: s2.key, label: VISIBLE_ENTRIES.find(([k]) => k === s2.key)?.[1].label ?? s2.label, sections: [s2] }))];
 }
@@ -11570,7 +11571,7 @@ function buildMasterPlan(targets, headcount, year, periodType, tab) {
 var get_master_plan_default = defineTool89({
   name: "get_master_plan",
   title: "Read the complete Master Plan spreadsheet",
-  description: "Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.",
+  description: 'Rows with unit="months" (Debt Advisory Conversion Timing) hold month values. Read saved Financials, KPIs & Metrics, Sales Dashboard, Sales & BD ROI and Headcount cells, exact row titles, linked metric keys, formats, monthly and quarterly columns. Row titles are code-defined and read-only; quarterly headcount and totals are derived. 5th Line workspace only; unsaved browser drafts are not available.',
   inputSchema: { tab: z91.string().max(80).optional().describe("Omit or all for every tab; financials, kpis (entity-metrics), headcount, sales-dashboard-v2, sales-bd-roi."), year: z91.union([z91.literal(2027), z91.literal(2028)]).optional(), period_type: z91.enum(["monthly", "quarterly", "both"]).default("both") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ tab, year, period_type }, ctx) => {

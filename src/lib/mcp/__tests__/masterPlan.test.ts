@@ -39,6 +39,13 @@ describe('Master Plan catalog and calculations', () => {
     expect(sales.sections.map(s => s.label)).toEqual(['FinServ', 'Debt Advisory']);
     expect(sales.sections.flatMap(s => s.rows)).toHaveLength(39);
   });
+  it('reports conversion timing rows in months under their original keys', () => {
+    const rows = masterPlanCatalog().find(t => t.key === 'sales-dashboard')!.sections.flatMap(s => s.rows).filter(r => r.key.startsWith('conv-days-'));
+    expect(rows).toHaveLength(5);
+    for (const r of rows) { expect(r).toMatchObject({ unit: 'months' }); expect(r.label).toContain('(months)'); expect(r.metric_key).toBe(`plan:consolidated-debt-pipeline:${r.key}`); }
+    const saved = buildMasterPlan([{ metric_key: 'plan:consolidated-debt-pipeline:conv-days-proposal-engage', period_month: '2027-01', target_value: 1.5 }], [], 2027, 'monthly', 'sales-dashboard');
+    expect(saved.tabs[0].sections.flatMap(s => s.rows).find(r => r.key === 'conv-days-proposal-engage')!.cells[0].value).toBe(1.5);
+  });
   it('keeps monthly and quarterly figures separate and returns blanks as null', () => {
     const result = buildMasterPlan([{ metric_key: target.metric_key, period_month: '2027-01', target_value: 125000 }, { metric_key: target.metric_key, period_month: '2027-Q1', target_value: 450000 }], [], 2027, 'both', 'financials');
     const row = result.tabs[0].sections[1].rows[0];

@@ -24,6 +24,8 @@ export interface PlannableWidget {
   format: PlanWidgetFormat;
   /** Optional short helper hint shown under the label. */
   hint?: string;
+  /** Optional display unit (Master Plan only), e.g. 'months'. */
+  unit?: 'months';
 }
 
 export type PlannableDashboardKey =

@@ -1101,7 +1101,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 <span className="text-[10px] font-semibold text-muted-foreground w-4 text-center">
-                                  {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
+                                  {w.unit === 'months' ? 'mo' : w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
                                 </span>
                                 {mode === 'monthly' && (
                                   <RowBulkMenu

@@ -24,11 +24,11 @@ export const MASTER_PLAN_ROW_OVERRIDES: Partial<Record<PlannableDashboardKey, [k
     ['retainer-revenue', 'Retainer Revenue'],
     ['consulting-milestone-revenue', 'Consulting / Milestone Revenue'],
     ['fee-revenue', 'Fee Revenue'],
-    ['conv-days-onboard-proposal', 'Conversion Timing - On-Board to Proposal'],
-    ['conv-days-proposal-engage', 'Conversion Timing - Proposal to Engage'],
-    ['conv-days-engage-terms-issued', 'Conversion Timing - Engage to Terms Issued'],
-    ['conv-days-engage-terms-signed', 'Conversion Timing - Engage to Terms Signed'],
-    ['conv-days-terms-signed-funded', 'Conversion Timing - Terms Signed to Funded'],
+    ['conv-days-onboard-proposal', 'Conversion Timing - On-Board to Proposal (months)'],
+    ['conv-days-proposal-engage', 'Conversion Timing - Proposal to Engage (months)'],
+    ['conv-days-engage-terms-issued', 'Conversion Timing - Engage to Terms Issued (months)'],
+    ['conv-days-engage-terms-signed', 'Conversion Timing - Engage to Terms Signed (months)'],
+    ['conv-days-terms-signed-funded', 'Conversion Timing - Terms Signed to Funded (months)'],
     ['conv-rate-onboard-proposal', 'Conversion Rate - On-Board to Proposal'],
     ['conv-rate-proposal-engage', 'Conversion Rate - Proposal to Engage'],
     ['conv-rate-engaged-terms-issued', 'Conversion Rate - Engaged to Terms Issued'],
@@ -71,7 +71,9 @@ function applyOverrides(k: PlannableDashboardKey) {
   const byKey = new Map(def.widgets.map((w) => [w.key, w] as const));
   const widgets: PlannableWidget[] = rows.flatMap(([key, label]) => {
     const w = byKey.get(key);
-    return w ? [{ ...w, label }] : [];
+    if (!w) return [];
+    // conv-days-* keys are kept for stored data/MCP, but Master Plan values are months.
+    return [key.startsWith('conv-days-') ? { ...w, label, unit: 'months' as const } : { ...w, label }];
   });
   return { ...def, widgets };
 }
