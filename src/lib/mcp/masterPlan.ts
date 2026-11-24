@@ -56,7 +56,7 @@ export async function assertMasterPlanAccess(sb: ReturnType<typeof supabaseForUs
 export type PlanTarget = { metric_key: string; period_month: string; target_value: number | null; updated_at?: string };
 export type HeadcountRecord = { realm_id: string; month: string; headcount: number | null };
 export function buildMasterPlan(targets: PlanTarget[], headcount: HeadcountRecord[], year: number | undefined, periodType: 'monthly' | 'quarterly' | 'both', tab?: string) {
-  const years = year ? [year] : [2027, 2028];
+  const years = year ? [year] : [2026, 2027, 2028];
   const periods = years.flatMap(y => (periodType === 'both' ? ['monthly', 'quarterly'] as const : [periodType]).flatMap(m => financialPeriods(y, m).map(p => ({ ...p, period_type: m }))));
   const saved = new Map(targets.map(t => [`${t.metric_key}|${t.period_month}`, t]));
   const tabs = masterPlanCatalog().map(t => ({ ...t, columns: periods, sections: t.sections.map(s => ({ ...s, rows: s.rows.map(r => ({ ...r, cells: periods.map(p => {

@@ -258,7 +258,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
-  const [year, setYear] = useState<number>(FINANCIAL_YEARS[0]);
+  const [year, setYear] = useState<number>(2027);
   const [mode, setMode] = useState<'monthly' | 'quarterly'>('monthly');
   const [values, setValues] = useState<Record<string, string>>({});
   const [focusedCell, setFocusedCell] = useState<string | null>(null);

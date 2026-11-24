@@ -4,7 +4,7 @@ import { FINANCIAL_YEARS } from './financialsPlan';
 
 export type PlanMode = 'monthly' | 'quarterly';
 
-/** Shared 2027 | 2028 and Monthly | Quarterly toggles used by every Master Plan tab. Quarterly shows both years. */
+/** Shared 2026 | 2027 | 2028 and Monthly | Quarterly toggles used by every Master Plan tab. Quarterly shows both years. */
 export function PlanPeriodToggles({ year, mode, onYear, onMode }: { year: number; mode: PlanMode; onYear: (y: number) => void; onMode: (m: PlanMode) => void }) {
   const cls = (active: boolean) => cn('h-8 px-3 text-xs', !active && 'text-muted-foreground');
   return (

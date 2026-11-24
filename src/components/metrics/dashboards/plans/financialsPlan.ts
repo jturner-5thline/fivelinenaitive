@@ -49,7 +49,7 @@ export function monthHeaderLabel(year: number, monthIndex: number) {
   return `${m}-${String(year % 100).padStart(2, '0')}`;
 }
 
-export const FINANCIAL_YEARS = [2027, 2028];
+export const FINANCIAL_YEARS = [2026, 2027, 2028];
 
 export function financialMetricKey(segment: string, row: string) {
   return `plan:financials:${segment}:${row}`;
