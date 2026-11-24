@@ -5503,9 +5503,9 @@ html body table tr.sheet-conversion-start,
 html body table tr.sheet-conversion-end {
   --sheet-conversion-divider: color-mix(in srgb, hsl(var(--border)) 65%, hsl(var(--foreground)) 35%);
 }
-html body table tr.sheet-conversion-start > td {
+html body table tr.sheet-conversion-start.sheet-conversion-start.sheet-conversion-start.sheet-conversion-start.sheet-conversion-start > td {
   border-top: 2px solid var(--sheet-conversion-divider) !important;
 }
-html body table tr.sheet-conversion-end > td {
+html body table tr.sheet-conversion-end.sheet-conversion-end.sheet-conversion-end.sheet-conversion-end.sheet-conversion-end > td {
   border-bottom: 2px solid var(--sheet-conversion-divider) !important;
 }
