@@ -1,1 +1,2 @@
 - Financials tab stores plan:financials:{segment}:{row} per YYYY-MM and YYYY-Qn — why: monthly and quarterly figures are entered separately.
+- Master Plan Sales Dashboard tab shows the Debt Advisory/FinServ sections (old sales-dashboard-v2 rows hidden); KPIs & Metrics shows Financials TTM rows by segment, still stored as plan:financials:{segment}:{row} — why: moving rows must not change stored figures.

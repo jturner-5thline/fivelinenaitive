@@ -1,6 +1,6 @@
 import { MASTER_PLAN_TAB_ORDER, PLANNABLE_DASHBOARDS, type PlannableDashboardKey, type PlannableWidget } from './plannableWidgetsRegistry';
 
-const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review', 'revenue-customers']);
+const HIDDEN_MASTER_PLAN_TABS = new Set<string>(['management-snapshot', 'controller-dashboard', 'controller', 'management-review', 'revenue-customers', 'sales-dashboard-v2']);
 
 /**
  * Master Plan rows for the KPIs & Metrics entity sections, in display order with
@@ -79,6 +79,10 @@ function applyOverrides(k: PlannableDashboardKey) {
 export const VISIBLE_ENTRIES = MASTER_PLAN_TAB_ORDER
   .filter(k => Boolean(PLANNABLE_DASHBOARDS[k]) && !HIDDEN_MASTER_PLAN_TABS.has(k))
   .map(k => [k, applyOverrides(k)] as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]]);
+/** Debt Advisory + FinServ sections now live on the Sales Dashboard tab (old Sales Dashboard rows are hidden). */
 export const ENTITY_TAB = 'entity-metrics';
+export const ENTITY_TAB_TITLE = 'Sales Dashboard';
+/** KPIs & Metrics tab: TTM per-head rows from each Financials segment. */
+export const KPI_TTM_TAB = 'kpis-ttm';
 export const ENTITY_TAB_KEYS = ['finserv-financial-metrics', 'consolidated-debt-pipeline'];
 export const ENTITY_TAB_LABELS: Record<string, string> = { 'finserv-financial-metrics': 'FinServ', 'consolidated-debt-pipeline': 'Debt Advisory' };

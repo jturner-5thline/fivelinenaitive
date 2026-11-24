@@ -11359,7 +11359,7 @@ function buildPlanMetricKey(dashboardKey, widgetKey) {
 }
 
 // src/components/metrics/dashboards/plans/masterPlanTabs.ts
-var HIDDEN_MASTER_PLAN_TABS = /* @__PURE__ */ new Set(["management-snapshot", "controller-dashboard", "controller", "management-review", "revenue-customers"]);
+var HIDDEN_MASTER_PLAN_TABS = /* @__PURE__ */ new Set(["management-snapshot", "controller-dashboard", "controller", "management-review", "revenue-customers", "sales-dashboard-v2"]);
 var MASTER_PLAN_ROW_OVERRIDES = {
   "consolidated-debt-pipeline": [
     ["deals-on-board", "Deals on Board"],
@@ -11450,12 +11450,12 @@ var FINANCIAL_TTM_ROWS = [
   { key: "ttm-operating-profit-per-head", label: "TTM Operating Profit/Head", format: "currency" },
   { key: "ttm-operating-cashflow-per-head", label: "TTM Operating Cashflow/Head", format: "currency" }
 ];
-function financialRowsFor(segment) {
+function financialRowsFor(segment, part = "all") {
   const base = FINANCIAL_ROWS.map(
     (r) => r.key === "total-firm-expenses" && segment !== "consolidated" ? { ...r, label: "Total Unit Expenses (COGS+OP)" } : r
   );
   const ttm = segment === "consolidated" ? [{ key: "ttm-avg-headcount", label: "TTM Avg Headcount", format: "number" }, ...FINANCIAL_TTM_ROWS] : FINANCIAL_TTM_ROWS;
-  return [...base, ...ttm];
+  return part === "base" ? base : part === "ttm" ? ttm : [...base, ...ttm];
 }
 function monthHeaderLabel(year, monthIndex) {
   const m = new Date(year, monthIndex, 1).toLocaleDateString("en-US", { month: "short" });
@@ -11499,12 +11499,13 @@ var planPeriod = z90.string().regex(/^202[78]-(0[1-9]|1[0-2]|Q[1-4])$/);
 var headcountMonth = z90.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
 var headcountValue = z90.number().finite().min(0).max(9999.99).refine((n2) => Math.abs(n2 * 100 - Math.round(n2 * 100)) < 1e-7, "Use at most two decimal places").nullable();
 function masterPlanCatalog() {
-  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key).map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
+  const financials = { key: "financials", label: "Financials", sections: FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "base").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) })) };
+  const kpiRows = FINANCIAL_SEGMENTS.map((s2) => ({ key: s2.key, label: s2.label, rows: financialRowsFor(s2.key, "ttm").map((r) => ({ key: r.key, label: r.label, format: r.format, metric_key: financialMetricKey(s2.key, r.key), metric_keys: [financialMetricKey(s2.key, r.key)], linked_dashboards: [], editable: true })) }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map((w) => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some((x) => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
   }) }));
-  return [financials, { key: ENTITY_TAB, label: "KPIs & Metrics", sections: sections.filter((s2) => ENTITY_TAB_KEYS.includes(s2.key)) }, ...sections.filter((s2) => !ENTITY_TAB_KEYS.includes(s2.key)).map((s2) => ({ key: s2.key, label: VISIBLE_ENTRIES.find(([k]) => k === s2.key)?.[1].label ?? s2.label, sections: [s2] }))];
+  return [financials, { key: ENTITY_TAB, label: "KPIs & Metrics", sections: kpiRows }, { key: "sales-dashboard", label: "Sales Dashboard", sections: sections.filter((s2) => ENTITY_TAB_KEYS.includes(s2.key)) }, ...sections.filter((s2) => !ENTITY_TAB_KEYS.includes(s2.key)).map((s2) => ({ key: s2.key, label: VISIBLE_ENTRIES.find(([k]) => k === s2.key)?.[1].label ?? s2.label, sections: [s2] }))];
 }
 function normalizeTargetUpdates(updates) {
   const rows = masterPlanCatalog().flatMap((t) => t.sections.flatMap((s2) => s2.rows));
@@ -11559,7 +11560,7 @@ function buildMasterPlan(targets, headcount, year, periodType, tab) {
     })).average;
     return { ...r, format: "headcount", cells: periods.map((p) => ({ period: p.key, value: p.period_type === "monthly" ? value(p.key) : average([1, 2, 3].map((i) => `${p.key.slice(0, 4)}-${String((Number(p.key.at(-1)) - 1) * 3 + i).padStart(2, "0")}`)), editable: r.editable && p.period_type === "monthly", derived: !r.editable || p.period_type === "quarterly" })), annual_averages: years.map((y) => ({ year: y, value: average(financialPeriods(y, "monthly").map((p) => p.key)) })) };
   });
-  const allTabs = [...tabs.slice(0, 2), { key: "headcount", label: "Headcount", columns: periods, sections: [{ key: "units", label: "Unit", rows: hcRows }] }, ...tabs.slice(2)];
+  const allTabs = [tabs[0], tabs[1], { key: "headcount", label: "Headcount", columns: periods, sections: [{ key: "units", label: "Unit", rows: hcRows }] }, ...tabs.slice(2)];
   const selectedTab = tab === "kpis" ? ENTITY_TAB : tab;
   if (selectedTab && selectedTab !== "all" && !allTabs.some((t) => t.key === selectedTab)) throw new Error("Unknown Master Plan tab");
   return { company_id: HEADCOUNT_COMPANY_ID, years, period_type: periodType, row_titles_editable: false, tabs: allTabs.filter((t) => !selectedTab || selectedTab === "all" || t.key === selectedTab) };

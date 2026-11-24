@@ -25,8 +25,19 @@ beforeEach(() => {
 });
 describe('Master Plan catalog and calculations', () => {
   it('covers all five current tabs, without an All or hidden dashboard tab', () => {
-    expect(buildMasterPlan([], [], undefined, 'both').tabs.map(t => t.key)).toEqual(['financials', 'entity-metrics', 'headcount', 'sales-dashboard-v2', 'sales-bd-roi']);
-    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows)).toHaveLength(45);
+    expect(buildMasterPlan([], [], undefined, 'both').tabs.map(t => t.key)).toEqual(['financials', 'entity-metrics', 'headcount', 'sales-dashboard', 'sales-bd-roi']);
+    expect(masterPlanCatalog()[0].sections.flatMap(s => s.rows)).toHaveLength(28);
+  });
+  it('puts TTM rows on KPIs & Metrics by segment and Debt Advisory/FinServ on Sales Dashboard', () => {
+    const cat = masterPlanCatalog();
+    expect(cat[0].sections.flatMap(s => s.rows).some(r => r.key.startsWith('ttm-'))).toBe(false);
+    const kpis = cat.find(t => t.key === 'entity-metrics')!;
+    expect(kpis.sections.map(s => s.label)).toEqual(['Consolidated / Parent', 'FinServ', 'Debt Services', 'Tech']);
+    expect(kpis.sections.flatMap(s => s.rows)).toHaveLength(17);
+    expect(kpis.sections[0].rows[0].metric_key).toBe('plan:financials:consolidated:ttm-avg-headcount');
+    const sales = cat.find(t => t.key === 'sales-dashboard')!;
+    expect(sales.sections.map(s => s.label)).toEqual(['FinServ', 'Debt Advisory']);
+    expect(sales.sections.flatMap(s => s.rows)).toHaveLength(39);
   });
   it('keeps monthly and quarterly figures separate and returns blanks as null', () => {
     const result = buildMasterPlan([{ metric_key: target.metric_key, period_month: '2027-01', target_value: 125000 }, { metric_key: target.metric_key, period_month: '2027-Q1', target_value: 450000 }], [], 2027, 'both', 'financials');
@@ -37,13 +48,13 @@ describe('Master Plan catalog and calculations', () => {
     expect(result.tabs[0].columns[0].label).toBe('Jan-27');
     expect(result.row_titles_editable).toBe(false);
   });
-  it('fans linked KPI writes out to each dashboard and preserves explicit null clears', () => {
+  it('writes Sales Dashboard KPIs only to their own row and preserves explicit null clears', () => {
     const updates = normalizeTargetUpdates([{ metric_key: 'plan:consolidated-debt-pipeline:deals-signed', period: '2028-Q2', value: null }]);
-    expect(updates.map(u => u.metric_key)).toEqual(['plan:sales-dashboard-v2:deals-signed', 'plan:consolidated-debt-pipeline:deals-signed']);
+    expect(updates.map(u => u.metric_key)).toEqual(['plan:consolidated-debt-pipeline:deals-signed']);
     expect(updates.every(u => u.value === null && u.period === '2028-Q2')).toBe(true);
   });
-  it('rejects conflicting linked updates and unknown row keys', () => {
-    expect(() => normalizeTargetUpdates([{ metric_key: 'plan:consolidated-debt-pipeline:deals-signed', period: '2027-01', value: 1 }, { metric_key: 'plan:sales-dashboard-v2:deals-signed', period: '2027-01', value: 2 }])).toThrow('Conflicting');
+  it('rejects old Sales Dashboard and unknown row keys', () => {
+    expect(() => normalizeTargetUpdates([{ metric_key: 'plan:sales-dashboard-v2:deals-signed', period: '2027-01', value: 2 }])).toThrow('Unknown');
     expect(() => normalizeTargetUpdates([{ ...target, metric_key: 'plan:financials:finserv:made-up' }])).toThrow('Unknown');
   });
   it('derives Headcount quarters from entered months and deducts the firm duplicate', () => {
@@ -53,11 +64,6 @@ describe('Master Plan catalog and calculations', () => {
     expect(rows[0].cells.find(c => c.period === '2027-Q1')).toMatchObject({ value: 4, editable: false });
     expect(rows[4].cells.find(c => c.period === '2027-01')).toMatchObject({ value: 4, editable: false });
     expect(rows[0].cells.find(c => c.period === '2027-03')?.value).toBeNull();
-  });
-  it('exposes stored linked conflicts rather than concealing them', () => {
-    const tab = buildMasterPlan([{ metric_key: 'plan:consolidated-debt-pipeline:deals-signed', period_month: '2027-01', target_value: 1 }, { metric_key: 'plan:sales-dashboard-v2:deals-signed', period_month: '2027-01', target_value: 2 }], [], 2027, 'monthly', 'kpis').tabs[0];
-    const row = tab.sections.flatMap(s => s.rows).find(r => r.metric_keys?.includes?.('plan:consolidated-debt-pipeline:deals-signed') || r.label === 'Deals Signed')!;
-    expect(row.cells[0]).toMatchObject({ value: 1, linked_value_conflict: true });
   });
   it('validates periods, finite values, and headcount limits', () => {
     for (const p of ['2027-00','2027-13','2027-Q5','2026-01']) expect(planPeriod.safeParse(p).success).toBe(false);

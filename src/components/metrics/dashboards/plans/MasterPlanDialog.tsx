@@ -32,7 +32,7 @@ import { PlanPeriodToggles } from './PlanPeriodToggles';
 import { FinancialsPlanGrid, type FinancialsPlanGridHandle } from './FinancialsPlanGrid';
 import { HeadcountGrid, type HeadcountGridHandle } from '@/components/insights/HeadcountGrid';
 import { HEADCOUNT_COMPANY_ID } from '@/lib/monthlyHeadcount';
-import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS } from './masterPlanTabs';
+import { VISIBLE_ENTRIES, ENTITY_TAB, ENTITY_TAB_KEYS, ENTITY_TAB_LABELS, ENTITY_TAB_TITLE, KPI_TTM_TAB } from './masterPlanTabs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -634,20 +634,20 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   /** True when the current Financials/Headcount tab holds edits that would be lost on unmount. */
   function confirmDiscardSubgrid(): boolean {
-    const dirty = activeTab === 'financials' ? financialsRef.current?.isDirty()
+    const dirty = (activeTab === 'financials' || activeTab === KPI_TTM_TAB) ? financialsRef.current?.isDirty()
       : activeTab === 'headcount' ? headcountRef.current?.isDirty() : false;
     return !dirty || window.confirm('You have unsaved changes on this tab. Discard them?');
   }
   /** Changing year/view discards unsaved edits on the active tab, so confirm first. */
   function confirmDiscardPeriod(): boolean {
-    if (activeTab === 'financials' || activeTab === 'headcount') return confirmDiscardSubgrid();
+    if ((activeTab === 'financials' || activeTab === KPI_TTM_TAB) || activeTab === 'headcount') return confirmDiscardSubgrid();
     return dirtyCount === 0 || window.confirm('Discard unsaved changes?');
   }
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
   /** Human-readable list of every unsaved change, shown in the exit confirmation. */
   function pendingChanges(): string[] {
     const out: string[] = [];
-    if (activeTab === 'financials' && financialsRef.current?.isDirty()) out.push('Financials: unsaved figure edits');
+    if ((activeTab === 'financials' || activeTab === KPI_TTM_TAB) && financialsRef.current?.isDirty()) out.push('Financials: unsaved figure edits');
     if (activeTab === 'headcount' && headcountRef.current?.isDirty()) out.push('Headcount: unsaved FTE edits');
     const labelByKey = new Map(periods.map((p) => [p.key, p.label] as const));
     const seen = new Set<string>();
@@ -666,7 +666,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     onOpenChange(false);
   };
   async function saveAndExit() {
-    if (activeTab === 'financials' && financialsRef.current?.isDirty() && !(await financialsRef.current.save())) return;
+    if ((activeTab === 'financials' || activeTab === KPI_TTM_TAB) && financialsRef.current?.isDirty() && !(await financialsRef.current.save())) return;
     if (activeTab === 'headcount' && headcountRef.current?.isDirty() && !(await headcountRef.current.save())) return;
     if (dirtyCount > 0) {
       if (hasErrors) { toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`); return; }
@@ -679,7 +679,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   /** "Save master plan" saves every pending edit in the pop-up (active grid + KPI targets), then closes. */
   async function handleSave() {
-    if (dirtyCount === 0 && !(activeTab === 'financials' && financialsRef.current?.isDirty()) && !(activeTab === 'headcount' && headcountRef.current?.isDirty())) {
+    if (dirtyCount === 0 && !((activeTab === 'financials' || activeTab === KPI_TTM_TAB) && financialsRef.current?.isDirty()) && !(activeTab === 'headcount' && headcountRef.current?.isDirty())) {
       onOpenChange(false); return;
     }
     return saveAndExit();
@@ -908,7 +908,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               <Undo2 className="h-3.5 w-3.5 mr-1.5" />
               Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
             </Button>
-            <Button size="sm" className="h-8" onClick={handleSave} disabled={activeTab === 'headcount' || activeTab === 'financials' ? saving : (saving || loading || hasErrors)}>
+            <Button size="sm" className="h-8" onClick={handleSave} disabled={activeTab === 'headcount' || (activeTab === 'financials' || activeTab === KPI_TTM_TAB) ? saving : (saving || loading || hasErrors)}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {hasErrors && activeTab !== 'headcount' ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save'}
           </Button>
@@ -954,7 +954,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             <TabsTrigger value="financials" id="master-plan-tab-financials" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
               Financials
             </TabsTrigger>
-            <TabsTrigger value={ENTITY_TAB} id={`master-plan-tab-${ENTITY_TAB}`} aria-controls="master-plan-grid" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
+            <TabsTrigger value={KPI_TTM_TAB} id={`master-plan-tab-${KPI_TTM_TAB}`} className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
               KPIs &amp; Metrics
             </TabsTrigger>
             {company?.id === HEADCOUNT_COMPANY_ID && (
@@ -962,6 +962,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 Headcount
               </TabsTrigger>
             )}
+            <TabsTrigger value={ENTITY_TAB} id={`master-plan-tab-${ENTITY_TAB}`} aria-controls="master-plan-grid" className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20">
+              {ENTITY_TAB_TITLE}
+            </TabsTrigger>
             {VISIBLE_ENTRIES.filter(([k]) => !ENTITY_TAB_KEYS.includes(k)).map(([k, def]) => (
               <TabsTrigger
                 key={k}
@@ -982,11 +985,13 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
         {/* Screen-reader announcement of the active tab change. */}
         <div className="sr-only" role="status" aria-live="polite">
-          {`Showing ${activeTab === ENTITY_TAB ? 'KPIs and Metrics' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
+          {`Showing ${activeTab === ENTITY_TAB ? ENTITY_TAB_TITLE : activeTab === KPI_TTM_TAB ? 'KPIs and Metrics' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
         </div>
 
         {activeTab === 'financials' ? (
-          <div className="flex-1 min-h-0 flex flex-col"><FinancialsPlanGrid ref={financialsRef} canEdit year={year} mode={mode} /></div>
+          <div className="flex-1 min-h-0 flex flex-col"><FinancialsPlanGrid key="base" ref={financialsRef} canEdit year={year} mode={mode} part="base" /></div>
+        ) : activeTab === KPI_TTM_TAB ? (
+          <div className="flex-1 min-h-0 flex flex-col"><FinancialsPlanGrid key="ttm" ref={financialsRef} canEdit year={year} mode={mode} part="ttm" /></div>
         ) : activeTab === 'headcount' ? (
           <div className="flex-1 min-h-0 flex flex-col"><HeadcountGrid ref={headcountRef} year={year} mode={mode} /></div>
         ) : loading ? (

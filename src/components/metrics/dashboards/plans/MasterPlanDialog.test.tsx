@@ -47,7 +47,7 @@ describe('Master Plan opening tab', () => {
     );
     const { rerender } = render(view(true));
     expect(screen.getByRole('textbox', { name: 'Financial plan value' })).toBeInTheDocument();
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'KPIs & Metrics' }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Sales Dashboard' }), { button: 0, ctrlKey: false });
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Financial plan value' })).toBeNull());
     rerender(view(false));
     rerender(view(true));

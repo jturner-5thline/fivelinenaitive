@@ -11,12 +11,13 @@ export const headcountMonth = z.string().regex(/^202[78]-(0[1-9]|1[0-2])$/);
 export const headcountValue = z.number().finite().min(0).max(9999.99).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 1e-7, 'Use at most two decimal places').nullable();
 
 export function masterPlanCatalog() {
-  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key).map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) })) };
+  const financials = { key: 'financials', label: 'Financials', sections: FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key, 'base').map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) })) };
+  const kpiRows = FINANCIAL_SEGMENTS.map(s => ({ key: s.key, label: s.label, rows: financialRowsFor(s.key, 'ttm').map(r => ({ key: r.key, label: r.label, format: r.format as string, metric_key: financialMetricKey(s.key, r.key), metric_keys: [financialMetricKey(s.key, r.key)], linked_dashboards: [] as string[], editable: true })) }));
   const sections = VISIBLE_ENTRIES.map(([dk, def]) => ({ key: dk as string, label: ENTITY_TAB_LABELS[dk] ?? def.label, rows: def.widgets.map(w => {
     const linked = VISIBLE_ENTRIES.filter(([, d]) => d.widgets.some(x => x.key === w.key));
     return { key: w.key, label: w.label, format: w.format as string, metric_key: buildPlanMetricKey(dk, w.key), metric_keys: linked.map(([k]) => buildPlanMetricKey(k, w.key)), linked_dashboards: linked.length > 1 ? linked.map(([, d]) => d.label) : [], editable: true };
   }) }));
-  return [financials, { key: ENTITY_TAB, label: 'KPIs & Metrics', sections: sections.filter(s => ENTITY_TAB_KEYS.includes(s.key)) }, ...sections.filter(s => !ENTITY_TAB_KEYS.includes(s.key)).map(s => ({ key: s.key, label: VISIBLE_ENTRIES.find(([k]) => k === s.key)?.[1].label ?? s.label, sections: [s] }))];
+  return [financials, { key: ENTITY_TAB, label: 'KPIs & Metrics', sections: kpiRows }, { key: 'sales-dashboard', label: 'Sales Dashboard', sections: sections.filter(s => ENTITY_TAB_KEYS.includes(s.key)) }, ...sections.filter(s => !ENTITY_TAB_KEYS.includes(s.key)).map(s => ({ key: s.key, label: VISIBLE_ENTRIES.find(([k]) => k === s.key)?.[1].label ?? s.label, sections: [s] }))];
 }
 
 export function normalizeTargetUpdates(updates: Array<{ metric_key: string; period: string; value: number | null }>) {
@@ -72,7 +73,7 @@ export function buildMasterPlan(targets: PlanTarget[], headcount: HeadcountRecor
     const average = (months: string[]) => headcountSummary(months.map(m => { const v = value(m); return v === null ? '' : String(v); })).average;
     return { ...r, format: 'headcount', cells: periods.map(p => ({ period: p.key, value: p.period_type === 'monthly' ? value(p.key) : average([1, 2, 3].map(i => `${p.key.slice(0, 4)}-${String((Number(p.key.at(-1)) - 1) * 3 + i).padStart(2, '0')}`)), editable: r.editable && p.period_type === 'monthly', derived: !r.editable || p.period_type === 'quarterly' })), annual_averages: years.map(y => ({ year: y, value: average(financialPeriods(y, 'monthly').map(p => p.key)) })) };
   });
-  const allTabs = [...tabs.slice(0, 2), { key: 'headcount', label: 'Headcount', columns: periods, sections: [{ key: 'units', label: 'Unit', rows: hcRows }] }, ...tabs.slice(2)];
+  const allTabs = [tabs[0], tabs[1], { key: 'headcount', label: 'Headcount', columns: periods, sections: [{ key: 'units', label: 'Unit', rows: hcRows }] }, ...tabs.slice(2)];
   const selectedTab = tab === 'kpis' ? ENTITY_TAB : tab;
   if (selectedTab && selectedTab !== 'all' && !allTabs.some(t => t.key === selectedTab)) throw new Error('Unknown Master Plan tab');
   return { company_id: HEADCOUNT_COMPANY_ID, years, period_type: periodType, row_titles_editable: false, tabs: allTabs.filter(t => !selectedTab || selectedTab === 'all' || t.key === selectedTab) };
