@@ -722,6 +722,13 @@
       "when": 1795375567266,
       "tag": "0102_master_plan_mcp_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1795540393856,
+      "tag": "0103_master_plan_mcp_accept_tech_and_per_head_keys",
+      "breakpoints": true
     }
   ]
 }
