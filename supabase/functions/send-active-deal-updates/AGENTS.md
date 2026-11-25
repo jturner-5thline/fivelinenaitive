@@ -1,0 +1,1 @@
+- Deal triggers queue Active-pipeline stage/status/note changes; this function sends after 40 minutes - why: batch emails.
