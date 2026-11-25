@@ -31983,6 +31983,22 @@ export type Database = {
         Returns: Json
       }
       mcp_outstanding_state: { Args: { p_status: string }; Returns: Json }
+      mcp_reorder_deal_milestones: {
+        Args: { p_deal_id: string; p_index: number; p_target: string }
+        Returns: undefined
+      }
+      mcp_set_stage_milestone: {
+        Args: {
+          p_completed: boolean
+          p_deal_id: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
+          p_label: string
+          p_milestone_key: string
+          p_stage: string
+        }
+        Returns: Json
+      }
       mcp_transfer_lender_audit: {
         Args: { p_keep: string; p_merge: string }
         Returns: undefined
@@ -32085,6 +32101,17 @@ export type Database = {
         Args: {
           p_action: string
           p_deal_id: string
+          p_id: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
+      mcp_write_deal_milestone: {
+        Args: {
+          p_action: string
+          p_deal_id: string
+          p_dry_run?: boolean
+          p_expected_updated_at?: string
           p_id: string
           p_payload: Json
         }

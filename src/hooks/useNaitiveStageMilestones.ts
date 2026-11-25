@@ -57,6 +57,21 @@ export function useNaitiveStageMilestones(
     fetchMilestones();
   }, [fetchMilestones]);
 
+  // Refresh when stage milestones change elsewhere (e.g. Claude via MCP).
+  const dealKey = dealIds.join(',');
+  useEffect(() => {
+    if (!dealKey) return;
+    const ids = new Set(dealKey.split(','));
+    const channel = supabase
+      .channel(`naitive-stage-milestones-${crypto.randomUUID()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'naitive_stage_milestones' }, (payload) => {
+        const row = (payload.new ?? payload.old) as { deal_id?: string } | null;
+        if (row?.deal_id && ids.has(row.deal_id)) fetchMilestones();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [dealKey, fetchMilestones]);
+
   const getMilestonesForDeal = useCallback(
     (dealId: string, stage: string): DealStageMilestone[] => {
       const defs = getStageMilestones(stage);

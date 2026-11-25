@@ -1,3 +1,11 @@
+import listDealMilestones from "./tools/list-deal-milestones";
+import createDealMilestone from "./tools/create-deal-milestone";
+import updateDealMilestone from "./tools/update-deal-milestone";
+import deleteDealMilestone from "./tools/delete-deal-milestone";
+import listStageMilestones from "./tools/list-stage-milestones";
+import setStageMilestone from "./tools/set-stage-milestone";
+import listMilestones from "./tools/list-milestones";
+import listDefaultMilestones from "./tools/list-default-milestones";
 import updateDealFees from './tools/update-deal-fees';
 import getDealQualifiers from './tools/get-deal-qualifiers';
 import upsertDealQualifiers from './tools/upsert-deal-qualifiers';
@@ -306,6 +314,7 @@ export default defineMcp({
     addDealCalendarItem,
     updateDealCalendarItem,
     deleteDealCalendarItem,
+    listDealMilestones, createDealMilestone, updateDealMilestone, deleteDealMilestone, listStageMilestones, setStageMilestone, listMilestones, listDefaultMilestones,
     listDealQualifiers,
     addDealQualifier,
     updateDealQualifier,

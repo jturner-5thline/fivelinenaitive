@@ -743,6 +743,13 @@
       "when": 1795616183245,
       "tag": "0105_active_deal_update_email_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1795624704936,
+      "tag": "0106_mcp_deal_milestone_writes",
+      "breakpoints": true
     }
   ]
 }

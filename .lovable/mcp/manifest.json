@@ -12289,6 +12289,341 @@
         "outputSchema": null
       },
       {
+        "name": "list_deal_milestones",
+        "title": "List deal milestones",
+        "description": "List a deal's dated milestones ordered by position (id, title, due_date, completed, completed_at, status, position, updated_at). Use updated_at as expected_updated_at for edits.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_deal_milestone",
+        "title": "Create deal milestone",
+        "description": "Add a dated milestone to a deal. Appends to the end unless position (0-based) is given; other milestones shift to keep positions unique. dry_run defaults true. Logged to deal activity and audit log. Returns the row.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "due_date": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true,
+              "description": "Preview only (default). Set false to write after the user approves."
+            }
+          },
+          "required": [
+            "deal_id",
+            "title"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_deal_milestone",
+        "title": "Update deal milestone",
+        "description": "Edit a dated milestone. Only passed fields change; null clears due_date or status. completed=true stamps completed_at now (kept if already complete); completed=false clears it. position moves it and renumbers the rest. dry_run defaults true; expected_updated_at returns a conflict with the current row if stale. Returns the row.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "milestone_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "due_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "position": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "completed": {
+              "type": "boolean"
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Reject with a conflict if the row changed since this updated_at."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true,
+              "description": "Preview only (default). Set false to write after the user approves."
+            }
+          },
+          "required": [
+            "milestone_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_deal_milestone",
+        "title": "Delete deal milestone",
+        "description": "Permanently delete a dated milestone and close the position gap. Requires confirm: true; dry_run defaults true. Logged to deal activity and audit log with the deleted row.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "milestone_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "confirm": {
+              "type": "boolean",
+              "const": true
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Reject with a conflict if the row changed since this updated_at."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true,
+              "description": "Preview only (default). Set false to write after the user approves."
+            }
+          },
+          "required": [
+            "milestone_id",
+            "confirm"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_stage_milestones",
+        "title": "List stage milestones",
+        "description": "List a deal's stage checklist milestones (stage, milestone_key, label, completed, completed_at). Includes defined milestones with no saved row as not completed. Defaults to every stage with milestones or saved rows; pass stage (id) to narrow.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "required": [
+            "deal_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "set_stage_milestone",
+        "title": "Set stage milestone",
+        "description": "Check or uncheck a stage checklist milestone on a deal. Creates the row if missing. completed=true stamps completed_at now; false clears it. Rejects milestone_key values not defined for that stage (see list_stage_milestones). Does not move the deal's stage. dry_run defaults true. Returns the row.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "deal_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "milestone_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "completed": {
+              "type": "boolean"
+            },
+            "expected_updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Reject with a conflict if the row changed since this updated_at."
+            },
+            "dry_run": {
+              "type": "boolean",
+              "default": true,
+              "description": "Preview only (default). Set false to write after the user approves."
+            }
+          },
+          "required": [
+            "deal_id",
+            "stage",
+            "milestone_key",
+            "completed"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_milestones",
+        "title": "List milestones across deals",
+        "description": "Dated milestones across every deal the user can see, ordered by due_date, with deal name, stage and stage_label. Filter by due_date range (from inclusive, to exclusive), completed, pipeline_id, owner_email (substring of deal_owner). Paginate with limit/offset; response has total_count, next_offset, has_more.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "to": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "completed": {
+              "type": "boolean"
+            },
+            "pipeline_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "owner_email": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 200
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_default_milestones",
+        "title": "List default milestone templates",
+        "description": "Read-only milestone templates for the user's workspace(s): title, timing_type, days_from_creation, trigger_stage, days_from_stage, position.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_deal_qualifiers",
         "title": "List deal qualifiers",
         "description": "List a deal's Qualifiers (agreement requirements that trigger the milestone fee) in display order, with is_met showing whether each has been met in the term sheet.",
