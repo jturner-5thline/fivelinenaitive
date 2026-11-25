@@ -35,10 +35,12 @@ function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
 }
 
-export function describeChange(field: string, c: { from: string | null; to: string | null }, stageLabel: (id: string | null) => string): string {
-  if (field === "stage") return `Stage: ${stageLabel(c.from)} → ${stageLabel(c.to)}`;
-  if (field === "status") return `Status: ${prettyStatus(c.from)} → ${prettyStatus(c.to)}`;
-  return "Status Note updated";
+export function describeChange(field: string, c: { from: string | null; to: string | null }, stageLabel: (id: string | null) => string, deal = "Deal"): string {
+  if (field === "stage") return `${deal} moved into ${stageLabel(c.to)}`;
+  if (field === "status") return `${deal} status was updated to ${prettyStatus(c.to)}`;
+  const note = stripHtml(c.to);
+  if (!note) return `${deal} status note was cleared`;
+  return `${deal} status note was updated to "${note.length > 200 ? note.slice(0, 200) + "…" : note}"`;
 }
 
 export function buildEmailHtml(
@@ -48,7 +50,7 @@ export function buildEmailHtml(
   const blocks = deals.map((d) => {
     const items = (rowsByDeal[d.id] ?? []).flatMap((r) => Object.entries(r.changes).map(([f, c]) => {
       const who = nameOf(r.changed_by);
-      return `<li style="margin:2px 0">${esc(describeChange(f, c, stageLabel))} <span style="color:#6b7280">— ${esc(fmtTime(r.created_at))}${who ? ` by ${esc(who)}` : ""}</span></li>`;
+      return `<li style="margin:2px 0">${esc(describeChange(f, c, stageLabel, d.company))} <span style="color:#6b7280">— ${esc(fmtTime(r.created_at))}${who ? ` by ${esc(who)}` : ""}</span></li>`;
     })).join("");
     const note = stripHtml(d.notes);
     return `<div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin:0 0 16px">
@@ -59,5 +61,5 @@ export function buildEmailHtml(
 <tr><td style="color:#6b7280;padding:2px 12px 2px 0">Status</td><td>${esc(prettyStatus(d.status))}</td></tr>
 <tr><td style="color:#6b7280;padding:2px 12px 2px 0;vertical-align:top">Status Note</td><td style="white-space:pre-wrap">${esc(note || "—")}</td></tr></table></div>`;
   }).join("");
-  return `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111827">${blocks}<p style="font-size:11px;color:#9ca3af">Active pipeline updates from naitive.</p></div>`;
+  return `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#111827">${blocks}<p style="font-size:11px;color:#9ca3af">Deal Updates — Active pipeline.</p></div>`;
 }

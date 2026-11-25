@@ -23,7 +23,7 @@ async function sendTest(req: Request): Promise<Response> {
     changes: { stage: { from: "NDA / Needs List Sent", to: "Final Credit Items" }, notes: { from: "Old note", to: "Test run note" } } }] };
   const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
   const { error } = await resend.emails.send({
-    from: buildFrom("Naitive Updates"), to: [TEST_RECIPIENT],
+    from: buildFrom("Deal Updates"), to: [TEST_RECIPIENT],
     subject: `[TEST] ${buildSubject(deals.map((d) => d.company))}`,
     html: buildEmailHtml(deals, rows, (id) => id ?? "—", () => "James Turner (test)", APP_URL),
   });
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
     if (deals.length) {
       const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
       const { error: sendErr } = await resend.emails.send({
-        from: buildFrom("Naitive Updates"),
+        from: buildFrom("Deal Updates"),
         to: RECIPIENTS,
         subject: buildSubject(deals.map((d) => d.company)),
         html: buildEmailHtml(deals, rowsByDeal, stageLabel, (u) => (u ? names[u] ?? null : null), APP_URL),

@@ -12,4 +12,6 @@ Deno.test("batch waits 40 minutes from first update", () => {
 Deno.test("recipients are exactly the three requested", () =>
   assertEquals(RECIPIENTS, ["jturner@5thline.co", "jmoffitt@5thline.co", "swilliams@5thline.co"]));
 Deno.test("describes stage change with labels", () =>
-  assertEquals(describeChange("stage", { from: "a", to: "b" }, (id) => `L-${id}`), "Stage: L-a → L-b"));
+  assertEquals(describeChange("stage", { from: "a", to: "b" }, (id) => `L-${id}`, "Acme"), "Acme moved into L-b"));
+Deno.test("describes status change naturally", () =>
+  assertEquals(describeChange("status", { from: "x", to: "on-hold" }, (id) => id ?? "", "Acme"), "Acme status was updated to On Hold"));
