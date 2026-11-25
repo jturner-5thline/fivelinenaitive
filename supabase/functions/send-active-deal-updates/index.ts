@@ -7,7 +7,32 @@ import { BATCH_WINDOW_MINUTES, RECIPIENTS, buildEmailHtml, buildSubject, isBatch
 const APP_URL = "https://naitive.co";
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json" } });
 
+const TEST_RECIPIENT = "jturner@5thline.co";
+
+// Test mode: signed-in jturner only; sends a sample email to jturner only. No DB reads/writes of the queue.
+async function sendTest(req: Request): Promise<Response> {
+  const auth = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } }, auth: { persistSession: false },
+  });
+  const { data: { user } } = await auth.auth.getUser();
+  if (!user) return json({ error: "Unauthorized" }, 401);
+  if ((user.email ?? "").toLowerCase() !== TEST_RECIPIENT) return json({ error: "Forbidden" }, 403);
+  const now = new Date();
+  const deals: DealSnapshot[] = [{ id: "test", company: "[TEST] Sample Deal", stage: "Final Credit Items", status: "active", notes: "<p>Test run of the Active-pipeline update email. No real deal changed.</p>" }];
+  const rows: Record<string, QueueRow[]> = { test: [{ id: "t1", deal_id: "test", changed_by: null, created_at: new Date(now.getTime() - 15 * 60_000).toISOString(),
+    changes: { stage: { from: "NDA / Needs List Sent", to: "Final Credit Items" }, notes: { from: "Old note", to: "Test run note" } } }] };
+  const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+  const { error } = await resend.emails.send({
+    from: buildFrom("Naitive Updates"), to: [TEST_RECIPIENT],
+    subject: `[TEST] ${buildSubject(deals.map((d) => d.company))}`,
+    html: buildEmailHtml(deals, rows, (id) => id ?? "—", () => "James Turner (test)", APP_URL),
+  });
+  if (error) return json({ error: JSON.stringify(error) }, 500);
+  return json({ sent: true, to: TEST_RECIPIENT });
+}
+
 Deno.serve(async (req) => {
+  if (new URL(req.url).searchParams.get("test") === "1") return sendTest(req);
   const denied = authenticateCronRequest(req);
   if (denied) return denied;
   try {
