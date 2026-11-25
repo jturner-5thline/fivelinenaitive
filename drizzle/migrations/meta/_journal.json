@@ -736,6 +736,13 @@
       "when": 1795544830123,
       "tag": "0104_master_plan_mcp_accept_all_plan_years",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1795616183245,
+      "tag": "0105_active_deal_update_email_queue",
+      "breakpoints": true
     }
   ]
 }

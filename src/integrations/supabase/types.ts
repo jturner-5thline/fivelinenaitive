@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      active_deal_update_queue: {
+        Row: {
+          changed_by: string | null
+          changes: Json
+          company_id: string
+          created_at: string
+          deal_id: string
+          id: string
+          sent_at: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          changes?: Json
+          company_id: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          sent_at?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          changes?: Json
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           activity_type: string
