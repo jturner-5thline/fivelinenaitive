@@ -757,6 +757,13 @@
       "when": 1795625447937,
       "tag": "0107_merge_lenders_retained_refs",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1795704700406,
+      "tag": "0108_merge_lenders_skip_view_refs",
+      "breakpoints": true
     }
   ]
 }
